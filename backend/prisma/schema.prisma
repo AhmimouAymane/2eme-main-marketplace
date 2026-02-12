@@ -1,0 +1,207 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  firstName String
+  lastName  String
+  phone     String?
+  avatarUrl String?
+  bio       String?
+  role      Role      @default(USER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  comments  Comment[] @relation("UserComments")
+  products  Product[] @relation("UserProducts")
+  reviews   Review[]  @relation("UserReviews")
+  buyerOrders Order[] @relation("BuyerOrders")
+  sellerOrders Order[] @relation("SellerOrders")
+  favorites   Favorite[]
+  buyerConversations  Conversation[] @relation("BuyerConversations")
+  sellerConversations Conversation[] @relation("SellerConversations")
+  messages            Message[]      @relation("UserMessages")
+
+  @@map("users")
+}
+
+model Product {
+  id          String           @id @default(uuid())
+  title       String
+  description String
+  price       Float
+  categoryId  String
+  category    Category         @relation(fields: [categoryId], references: [id])
+  size        String
+  brand       String
+  condition   ProductCondition
+  status      ProductStatus    @default(FOR_SALE)
+  sellerId    String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  comments    Comment[]
+  images      ProductImage[]
+  seller      User             @relation("UserProducts", fields: [sellerId], references: [id])
+  reviews     Review[]
+  orders      Order[]
+  favorites   Favorite[]
+  conversations Conversation[]
+
+  @@map("products")
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@map("favorites")
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  productId       String
+  buyerId         String
+  sellerId        String
+  totalPrice      Float
+  status          OrderStatus @default(PENDING)
+  shippingAddress String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  deliveredAt     DateTime?
+  
+  product         Product     @relation(fields: [productId], references: [id])
+  buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller          User        @relation("SellerOrders", fields: [sellerId], references: [id])
+
+  @@map("orders")
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  productId String
+  buyerId   String
+  sellerId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastMessageAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+  buyer   User    @relation("BuyerConversations", fields: [buyerId], references: [id])
+  seller  User    @relation("SellerConversations", fields: [sellerId], references: [id])
+  messages Message[]
+
+  @@unique([buyerId, sellerId, productId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime @default(now())
+  isRead         Boolean  @default(false)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User        @relation("UserMessages", fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  url       String
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_images")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String?
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation("UserReviews", fields: [userId], references: [id])
+
+  @@map("reviews")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation("UserComments", fields: [userId], references: [id])
+
+  @@map("comments")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ProductStatus {
+  DRAFT
+  FOR_SALE
+  RESERVED
+  SOLD
+}
+
+enum ProductCondition {
+  NEW_WITH_TAGS
+  NEW_WITHOUT_TAGS
+  VERY_GOOD
+  GOOD
+  FAIR
+}
+
+enum SizeType {
+  ALPHA           // XS, S, M, L, XL...
+  NUMERIC_SHOES   // 36-46
+  NUMERIC_PANTS   // 28-38 (US) or 36-48 (FR)
+  AGE             // 2ans - 14ans
+  ONE_SIZE        // Unique
+}
+
+model Category {
+  id        String      @id @default(uuid())
+  name      String
+  slug      String      @unique
+  level     Int         // 0=Genre, 1=Category, 2=SubCategory
+  parentId  String?
+  parent    Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  Category[]  @relation("CategoryHierarchy")
+  sizeType  SizeType?   // Enum: ALPHA, NUMERIC_SHOES, etc. (only for leaves)
+  products  Product[]
+
+  @@map("categories")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}

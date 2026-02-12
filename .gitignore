@@ -1,0 +1,15 @@
+# Node / Nest
+backend/node_modules
+backend/dist
+backend/uploads
+backend/.env
+
+# Flutter / Dart
+marketplace_app/.dart_tool
+marketplace_app/build
+marketplace_app/.env
+
+# OS / IDE
+.DS_Store
+.vscode
+.idea
