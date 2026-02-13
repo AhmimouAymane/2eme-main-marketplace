@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
-import 'package:marketplace_app/shared/services/api_client.dart';
+//import 'package:marketplace_app/shared/services/api_client.dart';
 
 /// Service pour gérer les appels API liés aux produits
 class ProductsService {

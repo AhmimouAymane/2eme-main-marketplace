@@ -245,6 +245,9 @@ final favoritesProvider = AsyncNotifierProvider<FavoritesNotifier, List<ProductM
 // Dernier message reçu via socket (global)
 final lastIncomingMessageProvider = StateProvider<MessageModel?>((ref) => null);
 
+// Conversation actuellement ouverte dans l'écran de chat (ou null)
+final currentChatConversationIdProvider = StateProvider<String?>((ref) => null);
+
 // Socket.io global pour le chat
 final chatSocketProvider = Provider<IO.Socket>((ref) {
   final baseUrl = AppConstants.mediaBaseUrl; // ex: http://192.168.100.118:8080

@@ -1,21 +1,23 @@
+/// Écran de création d'annonce
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // Pour kIsWeb
 import 'package:image_picker/image_picker.dart';
-import 'package:marketplace_app/core/theme/app_colors.dart';
+//import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/utils/validators.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'dart:io';
 
 import 'package:marketplace_app/shared/models/product_model.dart';
-import 'package:marketplace_app/features/products/data/products_service.dart';
-import 'package:marketplace_app/shared/services/media_service.dart';
+//import 'package:marketplace_app/features/products/data/products_service.dart';
+//import 'package:marketplace_app/shared/services/media_service.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/services/categories_service.dart';
 import 'package:marketplace_app/shared/models/category_model.dart';
 
-/// Écran de création d'annonce
+
 class CreateProductScreen extends ConsumerStatefulWidget {
   final ProductModel? productToEdit;
 

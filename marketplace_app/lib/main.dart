@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
+//import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/router_config.dart';
 import 'shared/providers/shop_providers.dart';
 import 'shared/models/conversation_model.dart';
+
+// Clé globale pour pouvoir afficher des SnackBar depuis la racine
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 void main() {
   runApp(
@@ -27,31 +31,27 @@ class MarketplaceApp extends ConsumerWidget {
       lastIncomingMessageProvider,
       (previous, next) {
         if (next == null) return;
-
-        final router = GoRouter.of(context);
-        final uri = router.routeInformationProvider.value.uri.toString();
-
-        // Si on n'est pas déjà sur la conversation concernée, affiche un SnackBar
-        if (!uri.startsWith('/chat/${next.conversationId}')) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Nouveau message: ${next.content}'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
+        rootScaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('Nouveau message: ${next.content}'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       },
     );
 
     return MaterialApp.router(
       title: 'Marketplace',
       debugShowCheckedModeBanner: false,
-      
+
       // Thème personnalisé
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.light, // TODO: Gérer le mode thème dynamiquement
-      
+
+      // Utilise une clé globale pour le ScaffoldMessenger
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
+
       // Configuration du routeur
       routerConfig: AppRouter.router,
     );

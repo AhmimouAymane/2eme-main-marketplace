@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/utils/formatters.dart';
-import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/conversation_model.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
@@ -25,19 +24,24 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _isSending = false;
 
   @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  @override
   void initState() {
     super.initState();
     // Marquer les messages comme lus dès l'ouverture de la conversation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _markAsRead();
+      // Enregistrer la conversation comme actuellement ouverte
+      ref.read(currentChatConversationIdProvider.notifier).state =
+          widget.conversationId;
     });
+  }
+
+  @override
+  void dispose() {
+    // On indique qu'aucune conversation n'est ouverte
+    ref.read(currentChatConversationIdProvider.notifier).state = null;
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _scrollToBottom() {
