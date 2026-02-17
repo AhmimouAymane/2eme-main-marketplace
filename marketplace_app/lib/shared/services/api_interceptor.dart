@@ -2,6 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 
+/// Routes qui ne doivent pas recevoir le token (authentification en cours)
+const _publicPaths = ['/auth/register', '/auth/login'];
+
 /// Intercepteur pour ajouter le token d'authentification aux requêtes
 class ApiInterceptor extends Interceptor {
   @override
@@ -9,15 +12,21 @@ class ApiInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
+    final path = options.uri.path;
+    final isPublic = _publicPaths.any((p) => path.endsWith(p) || path.contains(p));
+    if (isPublic) {
+      return handler.next(options);
+    }
+
     // Récupérer le token depuis le stockage local
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AppConstants.keyAuthToken);
-    
+
     // Ajouter le token aux headers si disponible
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
     }
-    
+
     return handler.next(options);
   }
   

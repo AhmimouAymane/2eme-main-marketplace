@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../shared/providers/shop_providers.dart';
+import '../../../../shared/models/order_model.dart';
+import '../../../../shared/models/address_model.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 
 /// Écran de détail d'une commande
-class OrderDetailScreen extends StatelessWidget {
+class OrderDetailScreen extends ConsumerWidget {
   final String orderId;
 
   const OrderDetailScreen({
@@ -12,97 +17,202 @@ class OrderDetailScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    // TODO: Charger les vraies données depuis l'API
-    
+  Widget build(BuildContext context, WidgetRef ref) {
+    final orderAsync = ref.watch(orderDetailProvider(orderId));
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Détail de la commande'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Statut de la commande
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Statut',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildStatusStep('Commandé', true, DateTime.now()),
-                  _buildStatusStep('Confirmé', true, DateTime.now()),
-                  _buildStatusStep('Expédié', true, DateTime.now()),
-                  _buildStatusStep('Livré', false, null),
-                ],
+      body: orderAsync.when(
+        data: (order) => _buildContent(context, ref, order),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Erreur: $err'),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(orderDetailProvider(orderId)),
+                child: const Text('Réessayer'),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, WidgetRef ref, OrderModel order) {
+    final currentUserId = ref.watch(userIdProvider).maybeWhen(
+      data: (id) => id,
+      orElse: () => null,
+    );
+    final isSeller = currentUserId == order.sellerId;
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Statut de la commande
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Statut',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 16),
+                _buildStatusStep('Commandé', true, order.createdAt),
+                _buildStatusStep(
+                  'Confirmé', 
+                  order.status != OrderStatus.pending && order.status != OrderStatus.cancelled, 
+                  order.status != OrderStatus.pending ? (order.updatedAt ?? order.createdAt) : null
+                ),
+                _buildStatusStep(
+                  'Expédié', 
+                  order.status == OrderStatus.shipped || order.status == OrderStatus.delivered, 
+                  order.status == OrderStatus.shipped || order.status == OrderStatus.delivered ? (order.updatedAt) : null
+                ),
+                _buildStatusStep(
+                  'Livré', 
+                  order.status == OrderStatus.delivered, 
+                  order.deliveredAt
+                ),
+                if (order.status == OrderStatus.cancelled)
+                  _buildStatusStep('Annulé', true, order.updatedAt),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
+        ),
+        const SizedBox(height: 16),
 
-          // Produit
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Produit',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(Icons.image_outlined,
-                            color: Colors.grey[400]),
+        // Produit
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Produit',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Titre du produit',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                        image: order.product?.mainImageUrl != null
+                            ? DecorationImage(
+                                image: NetworkImage(order.product!.fullMainImageUrl),
+                                fit: BoxFit.cover,
+                              )
+                            : null,
+                      ),
+                      child: order.product?.mainImageUrl == null
+                          ? Icon(Icons.image_outlined, color: Colors.grey[400])
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            order.product?.title ?? 'Produit inconnu',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
                             ),
-                            const SizedBox(height: 4),
+                          ),
+                          const SizedBox(height: 4),
+                          if (order.product?.size != null)
                             Text(
-                              'Taille: M',
+                              'Taille: ${order.product!.size}',
                               style: TextStyle(
                                 color: AppColors.textSecondaryLight,
                               ),
                             ),
-                          ],
-                        ),
+                          Text(
+                            'Prix: ${Formatters.price(order.product?.price ?? 0)}',
+                            style: TextStyle(
+                              color: AppColors.textSecondaryLight,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
+        ),
+        const SizedBox(height: 16),
 
-          // Résumé
+        // Résumé
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Résumé',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                _buildSummaryRow('Prix du produit', order.product?.price ?? order.totalPrice),
+                _buildSummaryRow('Frais de service (inclus)', 0.0), // Pour l'instant on garde ça simple
+                const Divider(height: 24),
+                _buildSummaryRow('Total payé', order.totalPrice, isBold: true),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Adresse de livraison
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Adresse de livraison',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  order.shippingAddress ?? 'Aucune adresse renseignée',
+                  style: const TextStyle(height: 1.5),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Adresse de récupération (Seller)
+        if (order.pickupAddress != null)
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -110,43 +220,126 @@ class OrderDetailScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Résumé',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSummaryRow('Sous-total', 49.99),
-                  _buildSummaryRow('Frais de livraison', 5.00),
-                  const Divider(height: 24),
-                  _buildSummaryRow('Total', 54.99, isBold: true),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Adresse de livraison
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Adresse de livraison',
+                    'Adresse de récupération (Vendeur)',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    '123 Rue Exemple\n75000 Paris\nFrance',
-                    style: TextStyle(height: 1.5),
+                  Text(
+                    order.pickupAddress!,
+                    style: const TextStyle(height: 1.5),
                   ),
                 ],
               ),
             ),
+          ),
+        const SizedBox(height: 32),
+
+        // Actions
+        if (isSeller && order.status == OrderStatus.pending)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: ElevatedButton(
+              onPressed: () => _showConfirmDialog(context, ref, order),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: AppColors.success,
+              ),
+              child: const Text('Confirmer la commande'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showConfirmDialog(BuildContext context, WidgetRef ref, OrderModel order) {
+    AddressModel? selectedAddress;
+    final formKey = GlobalKey<FormState>();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmer la commande'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Veuillez indiquer l\'adresse où le livreur pourra récupérer le colis :'),
+              const SizedBox(height: 16),
+              Consumer(
+                builder: (context, ref, child) {
+                  return ref.watch(userAddressesProvider(order.sellerId)).when(
+                    data: (addresses) {
+                      if (addresses.isEmpty) {
+                        return const Text(
+                          'Aucune adresse enregistrée. Veuillez en ajouter une dans votre profil.',
+                          style: TextStyle(color: AppColors.error),
+                        );
+                      }
+                      
+                      selectedAddress ??= addresses.firstWhere(
+                        (a) => a.isDefault,
+                        orElse: () => addresses.first,
+                      );
+
+                      return DropdownButtonFormField<AddressModel>(
+                        value: selectedAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Adresse de collecte *',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: addresses.map((a) => DropdownMenuItem(
+                          value: a,
+                          child: Text(a.label),
+                        )).toList(),
+                        onChanged: (val) => selectedAddress = val,
+                        validator: (val) => val == null ? 'L\'adresse est obligatoire' : null,
+                      );
+                    },
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (e, _) => Text('Erreur: $e'),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              
+              final addressStr = '${selectedAddress!.street}, ${selectedAddress!.postal} ${selectedAddress!.city}';
+              
+              Navigator.pop(context);
+              try {
+                await ref.read(ordersServiceProvider).updateOrderStatus(
+                  order.id, 
+                  OrderStatus.confirmed,
+                  pickupAddress: addressStr,
+                );
+                ref.invalidate(orderDetailProvider(order.id));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Commande confirmée')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erreur: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Confirmer'),
           ),
         ],
       ),

@@ -65,11 +65,14 @@ class OrdersService {
   }
 
   /// Mettre à jour le statut d'une commande
-  Future<OrderModel> updateOrderStatus(String id, OrderStatus status) async {
+  Future<OrderModel> updateOrderStatus(String id, OrderStatus status, {String? pickupAddress}) async {
     try {
       final response = await _dio.patch(
         '/orders/$id',
-        data: {'status': status.name.toUpperCase()},
+        data: {
+          'status': status.name.toUpperCase(),
+          if (pickupAddress != null) 'pickupAddress': pickupAddress,
+        },
       );
       if (response.statusCode == 200) {
         return OrderModel.fromJson(response.data);

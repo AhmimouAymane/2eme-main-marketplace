@@ -17,8 +17,11 @@ class AppRoutes {
   // Profile
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
+  static const String settings = '/settings';
   static const String myProducts = '/my-products';
   static const String favorites = '/favorites';
+  static const String addresses = '/addresses';
+  static const String addressForm = '/addresses/:id'; // id = new|existing
   static const String sellerProfile = '/seller/:id';
 
   // Chat

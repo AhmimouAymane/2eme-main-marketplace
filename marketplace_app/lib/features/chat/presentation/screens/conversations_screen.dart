@@ -5,274 +5,274 @@ import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/utils/formatters.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/core/routes/app_routes.dart';
+import 'package:marketplace_app/shared/widgets/clovi_bottom_nav.dart';
 
-class ConversationsScreen extends ConsumerWidget {
+class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ConversationsScreen> createState() => _ConversationsScreenState();
+}
+
+class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+
+  void _onItemTapped(int index) {
+    switch (index) {
+      case 0:
+        context.go(AppRoutes.home);
+        break;
+      case 1:
+        context.go(AppRoutes.search);
+        break;
+      case 2:
+        context.push(AppRoutes.createProduct);
+        break;
+      case 3:
+        // Déjà sur messages
+        break;
+      case 4:
+        context.go(AppRoutes.profile);
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final conversationsAsync = ref.watch(conversationsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        elevation: 0.5,
-        backgroundColor: Colors.white,
-        title: const Text(
-          'Messages',
-          style: TextStyle(
-            color: Colors.black87,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
+      backgroundColor: AppColors.cloviBeige,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildTopBar(),
+            Expanded(
+              child: conversationsAsync.when(
+                data: (conversations) {
+                  final filteredConversations = conversations.where((conv) {
+                    final currentUserIdAsync = ref.watch(userIdProvider);
+                    final currentUserId = currentUserIdAsync.maybeWhen(
+                      data: (id) => id,
+                      orElse: () => null,
+                    );
+                    final otherUser = currentUserId != null && conv.buyerId == currentUserId
+                        ? conv.seller
+                        : conv.buyer;
+                    final nameMatch = otherUser?.fullName.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
+                    final messageMatch = conv.messages.isNotEmpty && conv.messages.last.content.toLowerCase().contains(_searchQuery.toLowerCase());
+                    return nameMatch || messageMatch;
+                  }).toList();
+
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(conversationsProvider);
+                    },
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_isSearching)
+                            _buildSearchInput(),
+                          
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Messages',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.cloviGreen,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  Text(
+                                    'See all',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: AppColors.cloviGreen.withOpacity(0.8),
+                                    ),
+                                  ),
+                                  Icon(Icons.chevron_right, color: AppColors.cloviGreen.withOpacity(0.8)),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          _buildConversationsList(filteredConversations),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => _buildErrorState(e),
+              ),
+            ),
+          ],
         ),
-        actions: [
+      ),
+      bottomNavigationBar: CloviBottomNav(
+        selectedIndex: 3,
+        onItemTapped: _onItemTapped,
+      ),
+    );
+  }
+
+  Widget _buildTopBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.black87),
+            icon: const Icon(Icons.search, size: 32, color: AppColors.cloviGreen),
             onPressed: () {
-              // Recherche de conversations
+              setState(() {
+                _isSearching = !_isSearching;
+                if (!_isSearching) {
+                  _searchQuery = '';
+                  _searchController.clear();
+                }
+              });
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black87),
-            onPressed: () {
-              // Menu options
-            },
+          const Text(
+            'Conversations',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+            ),
+          ),
+          const CircleAvatar(
+            backgroundColor: Colors.white,
+            child: Icon(Icons.person, color: Colors.grey),
           ),
         ],
       ),
-      body: conversationsAsync.when(
-        data: (conversations) {
-          if (conversations.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.forum_outlined,
-                    size: 80,
-                    color: Colors.grey.shade300,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Aucune conversation',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Vos conversations apparaîtront ici',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade500,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+    );
+  }
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(conversationsProvider);
-            },
-            child: ListView.separated(
-              itemCount: conversations.length,
-              separatorBuilder: (_, __) => Divider(
-                height: 1,
-                indent: 76,
-                color: Colors.grey.shade200,
-              ),
-              itemBuilder: (context, index) {
-                final conv = conversations[index];
-                final product = conv.product;
-                final currentUserIdAsync = ref.watch(userIdProvider);
-                final currentUserId = currentUserIdAsync.maybeWhen(
-                  data: (id) => id,
-                  orElse: () => null,
-                );
-                final otherUser = currentUserId != null &&
-                        conv.buyerId == currentUserId
-                    ? conv.seller
-                    : conv.buyer;
-
-                final unreadCount = currentUserId == null
-                    ? 0
-                    : conv.messages
-                        .where((m) =>
-                            m.senderId != currentUserId && !m.isRead)
-                        .length;
-                final lastMessage = conv.messages.isNotEmpty
-                    ? conv.messages.last
-                    : null;
-
-                return InkWell(
-                  onTap: () {
-                    context.push('/chat/${conv.id}');
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    color: unreadCount > 0
-                        ? AppColors.primary.withOpacity(0.02)
-                        : Colors.transparent,
-                    child: Row(
-                      children: [
-                        Stack(
-                          children: [
-                            CircleAvatar(
-                              radius: 28,
-                              backgroundColor:
-                                  AppColors.primary.withOpacity(0.1),
-                              child: Icon(
-                                Icons.person,
-                                size: 28,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            if (unreadCount > 0)
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  constraints: const BoxConstraints(
-                                    minWidth: 18,
-                                    minHeight: 18,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      unreadCount > 9 ? '9+' : '$unreadCount',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      otherUser?.fullName ?? 'Utilisateur',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: unreadCount > 0
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ),
-                                  if (conv.lastMessageAt != null)
-                                    Text(
-                                      _formatTime(conv.lastMessageAt!),
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: unreadCount > 0
-                                            ? AppColors.primary
-                                            : Colors.grey.shade600,
-                                        fontWeight: unreadCount > 0
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                product?.title ?? 'Annonce',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                              if (lastMessage != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  lastMessage.content,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: unreadCount > 0
-                                        ? Colors.black87
-                                        : Colors.grey.shade600,
-                                    fontWeight: unreadCount > 0
-                                        ? FontWeight.w500
-                                        : FontWeight.normal,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
+  Widget _buildSearchInput() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        decoration: const InputDecoration(
+          hintText: 'Rechercher une conversation...',
+          border: InputBorder.none,
+          icon: Icon(Icons.search, color: AppColors.cloviGreen),
+        ),
+        onChanged: (value) {
+          setState(() => _searchQuery = value);
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red.shade300,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Erreur de chargement',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                e.toString(),
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => ref.invalidate(conversationsProvider),
-                icon: const Icon(Icons.refresh),
-                label: const Text('Réessayer'),
-              ),
-            ],
+      ),
+    );
+  }
+
+  Widget _buildConversationsList(List filteredConversations) {
+    if (filteredConversations.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Text(
+            _searchQuery.isEmpty ? 'Aucune conversation' : 'Aucun résultat pour "$_searchQuery"',
+            style: const TextStyle(color: Colors.grey),
           ),
         ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: filteredConversations.length,
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          color: Colors.grey.withOpacity(0.2),
+          indent: 80,
+        ),
+        itemBuilder: (context, index) {
+          final conv = filteredConversations[index];
+          final currentUserIdAsync = ref.watch(userIdProvider);
+          final currentUserId = currentUserIdAsync.maybeWhen(
+            data: (id) => id,
+            orElse: () => null,
+          );
+          final otherUser = currentUserId != null && conv.buyerId == currentUserId
+              ? conv.seller
+              : conv.buyer;
+          final lastMessage = conv.messages.isNotEmpty ? conv.messages.last : null;
+
+          return ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            leading: const CircleAvatar(
+              radius: 30,
+              backgroundColor: Color(0xFFE0E0E0),
+              child: Icon(Icons.person, size: 35, color: Colors.white),
+            ),
+            title: Text(
+              otherUser?.fullName ?? 'Utilisateur',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            subtitle: Text(
+              lastMessage?.content ?? 'Message',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.blueGrey.withAlpha(178),
+                fontSize: 14,
+              ),
+            ),
+            onTap: () => context.push('/chat/${conv.id}'),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildErrorState(Object e) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const SizedBox(height: 16),
+          Text(e.toString()),
+          ElevatedButton(
+            onPressed: () => ref.invalidate(conversationsProvider),
+            child: const Text('Réessayer'),
+          ),
+        ],
       ),
     );
   }

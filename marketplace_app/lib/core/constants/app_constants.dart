@@ -1,25 +1,26 @@
-import 'dart:io';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Constantes de l'application marketplace
 class AppConstants {
   // API Configuration
   static String get apiBaseUrl {
-    // Note: Utilisation de l'IP locale (192.168.100.118) pour permettre la connexion depuis un téléphone physique
-    // Assurez-vous que le téléphone et le PC sont sur le même réseau Wi-Fi.
-    if (Platform.isAndroid) {
-      return 'http://192.168.100.118:8080/api/v1';
+    // Sur Web, Platform.isAndroid lance une erreur.
+    // Sur Émulateur Android, 10.0.2.2 est l'adresse pour accéder au localhost du PC.
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'http://10.0.2.2:8080/api/v1';
     }
     return 'http://localhost:8080/api/v1';
   }
-
+  
   static String get mediaBaseUrl {
-    if (Platform.isAndroid) {
-      return 'http://192.168.100.118:8080';
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'http://10.0.2.2:8080';
     }
     return 'http://localhost:8080';
   }
   
-  static const Duration apiTimeout = Duration(seconds: 30);
+  static const Duration apiTimeout = Duration(seconds: 60);
   
   // Storage Keys
   static const String keyAuthToken = 'auth_token';
@@ -41,8 +42,8 @@ class AppConstants {
   static const int maxProductDescriptionLength = 1000;
   
   // Currency
-  static const String currencySymbol = '€';
-  static const String currencyCode = 'EUR';
+  static const String currencySymbol = 'DH';
+  static const String currencyCode = 'MAD';
   
   // App Info
   static const String appName = 'Marketplace';

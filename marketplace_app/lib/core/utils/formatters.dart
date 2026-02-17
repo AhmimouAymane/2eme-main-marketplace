@@ -8,7 +8,7 @@ class Formatters {
     final formatter = NumberFormat.currency(
       symbol: AppConstants.currencySymbol,
       decimalDigits: 2,
-      locale: 'fr_FR',
+      locale: 'fr_MA',
     );
     return formatter.format(price);
   }

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-//import 'package:go_router/go_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/router_config.dart';
 import 'shared/providers/shop_providers.dart';
+import 'shared/providers/settings_providers.dart';
 import 'shared/models/conversation_model.dart';
 
 // Clé globale pour pouvoir afficher des SnackBar depuis la racine
@@ -47,7 +47,7 @@ class MarketplaceApp extends ConsumerWidget {
       // Thème personnalisé
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light, // TODO: Gérer le mode thème dynamiquement
+      themeMode: ref.watch(themeModeProvider),
 
       // Utilise une clé globale pour le ScaffoldMessenger
       scaffoldMessengerKey: rootScaffoldMessengerKey,

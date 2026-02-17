@@ -12,8 +12,8 @@ export class CreateOrderDto {
     @Min(0)
     totalPrice: number;
 
-    @ApiProperty({ example: '123 Main St, New York, NY 10001', required: false })
+    @ApiProperty({ example: '123 rue Example, 75001 Paris', description: 'Adresse de livraison (obligatoire pour paiement à la livraison)' })
     @IsString()
-    @IsOptional()
-    shippingAddress?: string;
+    @IsNotEmpty({ message: 'L\'adresse de livraison est requise pour le paiement à la livraison' })
+    shippingAddress: string;
 }

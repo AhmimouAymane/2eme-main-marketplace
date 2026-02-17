@@ -14,6 +14,8 @@ import 'package:marketplace_app/shared/models/order_model.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
 import 'package:marketplace_app/shared/models/conversation_model.dart';
 import 'package:marketplace_app/features/chat/data/chat_service.dart';
+import 'package:marketplace_app/shared/models/address_model.dart';
+import 'package:marketplace_app/features/addresses/data/addresses_service.dart';
 
 // Services
 final usersServiceProvider = Provider((ref) {
@@ -51,7 +53,15 @@ final chatServiceProvider = Provider((ref) {
   return ChatService(dio);
 });
 
-final categoriesProvider = FutureProvider.autoDispose<List<CategoryModel>>((ref) async {
+// Addresses service/provider
+final addressesServiceProvider = Provider((ref) {
+  final dio = ref.watch(dioProvider);
+  return AddressesService(dio);
+});
+
+final categoriesProvider = FutureProvider.autoDispose<List<CategoryModel>>((
+  ref,
+) async {
   final service = ref.watch(categoriesServiceProvider);
   return service.getCategories();
 });
@@ -102,7 +112,10 @@ class ProductFilterNotifier extends Notifier<ProductFilters> {
 
   void updateCategory(String? categoryId) {
     print('DEBUG: Changing categoryId to: $categoryId');
-    state = state.copyWith(categoryId: categoryId, clearCategory: categoryId == null);
+    state = state.copyWith(
+      categoryId: categoryId,
+      clearCategory: categoryId == null,
+    );
   }
 
   void updatePriceRange(double min, double max) {
@@ -126,16 +139,21 @@ class ProductFilterNotifier extends Notifier<ProductFilters> {
   }
 }
 
-final productFilterProvider = NotifierProvider<ProductFilterNotifier, ProductFilters>(() {
-  return ProductFilterNotifier();
-});
+final productFilterProvider =
+    NotifierProvider<ProductFilterNotifier, ProductFilters>(() {
+      return ProductFilterNotifier();
+    });
 
-final productsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
+final productsProvider = FutureProvider.autoDispose<List<ProductModel>>((
+  ref,
+) async {
   final filters = ref.watch(productFilterProvider);
   final service = ref.watch(productsServiceProvider);
-  
-  print('Fetching products with filters: search=${filters.search}, categoryId=${filters.categoryId}, price=[${filters.minPrice}-${filters.maxPrice}]');
-  
+
+  print(
+    'Fetching products with filters: search=${filters.search}, categoryId=${filters.categoryId}, price=[${filters.minPrice}-${filters.maxPrice}]',
+  );
+
   return service.getProducts(
     search: filters.search,
     category: filters.categoryId,
@@ -145,41 +163,65 @@ final productsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) as
 });
 
 // Provider pour l'accueil (ignore les filtres de recherche et de prix)
-final homeProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
-  final filters = ref.watch(productFilterProvider);
+final homeProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((
+  ref,
+) async {
+  // On observe les filtres pour que l'accueil se rafraîchisse quand ils sont réinitialisés
+  ref.watch(productFilterProvider);
   final service = ref.watch(productsServiceProvider);
-  
-  return service.getProducts(
-    category: filters.categoryId,
+  print(
+    'DEBUG: homeProductsProvider fetching all products (reactive to filters)',
   );
+  return service.getProducts();
 });
 
 // User Products Provider (My Ads)
-final userProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
+final userProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((
+  ref,
+) async {
   final userId = await ref.watch(userIdProvider.future);
   if (userId == null) return [];
-  
+
   final service = ref.watch(productsServiceProvider);
   return service.getProducts(sellerId: userId);
 });
 
 // Single Product Provider
-final productDetailProvider = FutureProvider.autoDispose.family<ProductModel, String>((ref, id) async {
-  final service = ref.watch(productsServiceProvider);
-  return service.getProduct(id);
-});
+final productDetailProvider = FutureProvider.autoDispose
+    .family<ProductModel, String>((ref, id) async {
+      final service = ref.watch(productsServiceProvider);
+      return service.getProduct(id);
+    });
 
 // Buyer Orders Provider
-final buyerOrdersProvider = FutureProvider.autoDispose<List<OrderModel>>((ref) async {
+final buyerOrdersProvider = FutureProvider.autoDispose<List<OrderModel>>((
+  ref,
+) async {
   final service = ref.watch(ordersServiceProvider);
   return service.getBuyerOrders();
 });
 
 // Seller Orders Provider
-final sellerOrdersProvider = FutureProvider.autoDispose<List<OrderModel>>((ref) async {
+final sellerOrdersProvider = FutureProvider.autoDispose<List<OrderModel>>((
+  ref,
+) async {
   final service = ref.watch(ordersServiceProvider);
   return service.getSellerOrders();
 });
+
+// Single Order Detail Provider
+final orderDetailProvider = FutureProvider.autoDispose
+    .family<OrderModel, String>((ref, id) async {
+      final service = ref.watch(ordersServiceProvider);
+      return service.getOrder(id);
+    });
+
+// User addresses provider (requires userId)
+final userAddressesProvider = FutureProvider.autoDispose
+    .family<List<AddressModel>, String>((ref, userId) async {
+      final service = ref.watch(addressesServiceProvider);
+      return service.fetchUserAddresses(userId);
+    });
 
 // Favorites Notifier
 class FavoritesNotifier extends AsyncNotifier<List<ProductModel>> {
@@ -191,18 +233,20 @@ class FavoritesNotifier extends AsyncNotifier<List<ProductModel>> {
 
   Future<void> toggleFavorite(ProductModel product) async {
     final service = ref.read(favoritesServiceProvider);
-    
+
     // Optimistic update
     final previousState = state;
     final isAdding = !product.isFavorite;
-    
+
     // Create new list for state
     if (state.hasValue) {
       final currentList = state.value!;
       if (isAdding) {
         state = AsyncData([...currentList, product.copyWith(isFavorite: true)]);
       } else {
-        state = AsyncData(currentList.where((p) => p.id != product.id).toList());
+        state = AsyncData(
+          currentList.where((p) => p.id != product.id).toList(),
+        );
       }
     }
 
@@ -210,7 +254,7 @@ class FavoritesNotifier extends AsyncNotifier<List<ProductModel>> {
       await service.toggleFavorite(product.id);
       // Refresh after toggle to be sure
       ref.invalidateSelf();
-      
+
       // Also invalidate productsProvider to update isFavorite flag there
       ref.invalidate(homeProductsProvider);
       ref.invalidate(productsProvider);
@@ -228,19 +272,21 @@ final userProfileProvider = FutureProvider.autoDispose<UserModel?>((ref) async {
   final service = ref.watch(usersServiceProvider);
   final userId = await ref.watch(userIdProvider.future);
   if (userId == null) return null;
-  
+
   return service.getMe();
 });
 
 // Seller Profile Provider (Public)
-final sellerProfileProvider = FutureProvider.autoDispose.family<UserModel, String>((ref, id) async {
-  final service = ref.watch(usersServiceProvider);
-  return service.getPublicProfile(id);
-});
+final sellerProfileProvider = FutureProvider.autoDispose
+    .family<UserModel, String>((ref, id) async {
+      final service = ref.watch(usersServiceProvider);
+      return service.getPublicProfile(id);
+    });
 
-final favoritesProvider = AsyncNotifierProvider<FavoritesNotifier, List<ProductModel>>(() {
-  return FavoritesNotifier();
-});
+final favoritesProvider =
+    AsyncNotifierProvider<FavoritesNotifier, List<ProductModel>>(() {
+      return FavoritesNotifier();
+    });
 
 // Dernier message reçu via socket (global)
 final lastIncomingMessageProvider = StateProvider<MessageModel?>((ref) => null);
@@ -287,21 +333,22 @@ final chatSocketProvider = Provider<IO.Socket>((ref) {
 });
 
 // Conversations list
-final conversationsProvider = FutureProvider.autoDispose<List<ConversationModel>>((ref) async {
-  final service = ref.watch(chatServiceProvider);
-  return service.getConversations();
-});
+final conversationsProvider =
+    FutureProvider.autoDispose<List<ConversationModel>>((ref) async {
+      final service = ref.watch(chatServiceProvider);
+      return service.getConversations();
+    });
 
 // Single conversation
-final conversationProvider =
-    FutureProvider.autoDispose.family<ConversationModel, String>((ref, id) async {
-  final service = ref.watch(chatServiceProvider);
-  return service.getConversation(id);
-});
+final conversationProvider = FutureProvider.autoDispose
+    .family<ConversationModel, String>((ref, id) async {
+      final service = ref.watch(chatServiceProvider);
+      return service.getConversation(id);
+    });
 
 // Messages for a conversation
 final conversationMessagesProvider = FutureProvider.autoDispose
     .family<List<MessageModel>, String>((ref, conversationId) async {
-  final service = ref.watch(chatServiceProvider);
-  return service.getMessages(conversationId);
-});
+      final service = ref.watch(chatServiceProvider);
+      return service.getMessages(conversationId);
+    });

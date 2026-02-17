@@ -30,10 +30,11 @@ class OrderModel extends Equatable {
   final double totalPrice;
   final OrderStatus status;
   final String? shippingAddress;
+  final String? pickupAddress;
   final DateTime createdAt;
   final DateTime? updatedAt;
   final DateTime? deliveredAt;
-  
+
   const OrderModel({
     required this.id,
     required this.productId,
@@ -45,34 +46,44 @@ class OrderModel extends Equatable {
     required this.totalPrice,
     required this.status,
     this.shippingAddress,
+    this.pickupAddress,
     required this.createdAt,
     this.updatedAt,
     this.deliveredAt,
   });
-  
+
   // Getters
   bool get isPending => status == OrderStatus.pending;
   bool get isCompleted => status == OrderStatus.delivered;
-  bool get canCancel => status == OrderStatus.pending || status == OrderStatus.confirmed;
-  
+  bool get canCancel =>
+      status == OrderStatus.pending || status == OrderStatus.confirmed;
+
   // JSON serialization
-  factory OrderModel.fromJson(Map<String, dynamic> json) => 
-      OrderModel(
-        id: json['id'] ?? '',
-        productId: json['productId'] ?? '',
-        product: json['product'] != null ? ProductModel.fromJson(json['product']) : null,
-        buyerId: json['buyerId'] ?? '',
-        buyer: json['buyer'] != null ? UserModel.fromJson(json['buyer']) : null,
-        sellerId: json['sellerId'] ?? '',
-        seller: json['seller'] != null ? UserModel.fromJson(json['seller']) : null,
-        totalPrice: (json['totalPrice'] ?? 0.0).toDouble(),
-        status: _statusFromString(json['status'] ?? 'PENDING'),
-        shippingAddress: json['shippingAddress'],
-        createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
-        updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
-        deliveredAt: json['deliveredAt'] != null ? DateTime.parse(json['deliveredAt']) : null,
-      );
-  
+  factory OrderModel.fromJson(Map<String, dynamic> json) => OrderModel(
+    id: json['id'] ?? '',
+    productId: json['productId'] ?? '',
+    product: json['product'] != null
+        ? ProductModel.fromJson(json['product'])
+        : null,
+    buyerId: json['buyerId'] ?? '',
+    buyer: json['buyer'] != null ? UserModel.fromJson(json['buyer']) : null,
+    sellerId: json['sellerId'] ?? '',
+    seller: json['seller'] != null ? UserModel.fromJson(json['seller']) : null,
+    totalPrice: (json['totalPrice'] ?? 0.0).toDouble(),
+    status: _statusFromString(json['status'] ?? 'PENDING'),
+    shippingAddress: json['shippingAddress'],
+    pickupAddress: json['pickupAddress'],
+    createdAt: json['createdAt'] != null
+        ? DateTime.parse(json['createdAt'])
+        : DateTime.now(),
+    updatedAt: json['updatedAt'] != null
+        ? DateTime.parse(json['updatedAt'])
+        : null,
+    deliveredAt: json['deliveredAt'] != null
+        ? DateTime.parse(json['deliveredAt'])
+        : null,
+  );
+
   static OrderStatus _statusFromString(String status) {
     return OrderStatus.values.firstWhere(
       (e) => e.name.toUpperCase() == status,
@@ -80,13 +91,23 @@ class OrderModel extends Equatable {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'productId': productId,
-    'totalPrice': totalPrice,
-    'shippingAddress': shippingAddress,
-    'status': status.name.toUpperCase(),
-  };
-  
+  /// Payload pour la création de commande (le backend définit status lui-même)
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{
+      'productId': productId,
+      'totalPrice': totalPrice,
+    };
+
+    if (shippingAddress != null) {
+      map['shippingAddress'] = shippingAddress;
+    }
+    if (pickupAddress != null) {
+      map['pickupAddress'] = pickupAddress;
+    }
+
+    return map;
+  }
+
   // CopyWith
   OrderModel copyWith({
     String? id,
@@ -99,6 +120,7 @@ class OrderModel extends Equatable {
     double? totalPrice,
     OrderStatus? status,
     String? shippingAddress,
+    String? pickupAddress,
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deliveredAt,
@@ -114,26 +136,28 @@ class OrderModel extends Equatable {
       totalPrice: totalPrice ?? this.totalPrice,
       status: status ?? this.status,
       shippingAddress: shippingAddress ?? this.shippingAddress,
+      pickupAddress: pickupAddress ?? this.pickupAddress,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deliveredAt: deliveredAt ?? this.deliveredAt,
     );
   }
-  
+
   @override
   List<Object?> get props => [
-        id,
-        productId,
-        product,
-        buyerId,
-        buyer,
-        sellerId,
-        seller,
-        totalPrice,
-        status,
-        shippingAddress,
-        createdAt,
-        updatedAt,
-        deliveredAt,
-      ];
+    id,
+    productId,
+    product,
+    buyerId,
+    buyer,
+    sellerId,
+    seller,
+    totalPrice,
+    status,
+    shippingAddress,
+    pickupAddress,
+    createdAt,
+    updatedAt,
+    deliveredAt,
+  ];
 }

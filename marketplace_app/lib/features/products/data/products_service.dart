@@ -35,7 +35,7 @@ class ProductsService {
       
       queryParams.removeWhere((key, value) => value == null);
       
-      print('ProductsService.getProducts: queryParams=$queryParams');
+      print('DEBUG: ProductsService.getProducts - URL: ${_dio.options.baseUrl}/products?${queryParams.entries.map((e) => "${e.key}=${e.value}").join("&")}');
 
       final response = await _dio.get('/products', queryParameters: queryParams);
 

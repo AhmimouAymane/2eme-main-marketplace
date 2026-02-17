@@ -22,7 +22,7 @@ class AppTheme {
     ),
     
     // Couleurs de fond
-    scaffoldBackgroundColor: AppColors.backgroundLight,
+    scaffoldBackgroundColor: AppColors.cloviBeige,
     
     // Font family
     fontFamily: GoogleFonts.inter().fontFamily,

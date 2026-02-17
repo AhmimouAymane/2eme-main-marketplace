@@ -1,0 +1,19 @@
+class aymane extand bigayman {
+    String nom ;
+    int age ;
+    int taille ;
+    int poids ;
+
+   aymane(String nom ,int age,int taille,int poids){
+    this nom = nom ;
+    this age = age ;
+    this taille = taille ;
+    this poids = poids ;
+   }
+    public void getnom(){
+        return nom ;
+    }  
+    public vaid getage(){
+        return age ;
+    }
+}

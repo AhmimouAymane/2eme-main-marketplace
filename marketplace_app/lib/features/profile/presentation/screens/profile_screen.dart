@@ -5,8 +5,9 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../shared/providers/shop_providers.dart';
+import '../../../../shared/widgets/clovi_bottom_nav.dart';
 
-/// Écran de profil utilisateur
+/// Écran de profil utilisateur — design aligné avec le reste de l'app (Clovi)
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
@@ -15,233 +16,300 @@ class ProfileScreen extends ConsumerWidget {
     final userAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mon profil'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              // TODO: Ouvrir les paramètres
-            },
-          ),
-        ],
-      ),
-      body: userAsync.when(
-        data: (user) {
-          if (user == null) {
-            return const Center(child: Text('Utilisateur non trouvé'));
-          }
-          return ListView(
-            children: [
-              // Header avec avatar et info
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.05),
-                ),
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: AppColors.primary,
-                      backgroundImage: user.avatarUrl != null 
-                          ? NetworkImage(user.avatarUrl!) 
-                          : null,
-                      child: user.avatarUrl == null 
-                          ? const Icon(Icons.person, size: 50, color: Colors.white)
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      user.fullName,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      user.email,
-                      style: TextStyle(
-                        color: AppColors.textSecondaryLight,
-                      ),
-                    ),
-                    if (user.bio != null && user.bio!.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          user.bio!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 16),
-                    OutlinedButton.icon(
-                      onPressed: () => context.push(AppRoutes.editProfile),
-                      icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Modifier le profil'),
-                    ),
-                  ],
-                ),
-              ),
-
-          // Statistiques
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    icon: Icons.shopping_bag_outlined,
-                    label: 'Achats',
-                    value: '12',
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    icon: Icons.sell_outlined,
-                    label: 'Ventes',
-                    value: '8',
-                    color: AppColors.secondary,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => context.push(AppRoutes.favorites),
-                    child: _buildStatCard(
-                      icon: Icons.favorite_outline,
-                      label: 'Favoris',
-                      value: '24',
-                      color: AppColors.error,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Menu
-          const Divider(height: 1),
-          _buildMenuItem(
-            icon: Icons.message_outlined,
-            title: 'Messages',
-            onTap: () => context.push(AppRoutes.conversations),
-          ),
-          _buildMenuItem(
-            icon: Icons.inventory_2_outlined,
-            title: 'Mes annonces',
-            onTap: () => context.push(AppRoutes.myProducts),
-          ),
-          _buildMenuItem(
-            icon: Icons.favorite_outline,
-            title: 'Mes favoris',
-            onTap: () => context.push(AppRoutes.favorites),
-          ),
-          _buildMenuItem(
-            icon: Icons.receipt_long_outlined,
-            title: 'Mes commandes',
-            onTap: () => context.push(AppRoutes.orders),
-          ),
-          _buildMenuItem(
-            icon: Icons.payment_outlined,
-            title: 'Moyens de paiement',
-            onTap: () {
-              // TODO: Naviguer vers moyens de paiement
-            },
-          ),
-          _buildMenuItem(
-            icon: Icons.location_on_outlined,
-            title: 'Adresses',
-            onTap: () {
-              // TODO: Naviguer vers adresses
-            },
-          ),
-          const Divider(height: 1),
-          _buildMenuItem(
-            icon: Icons.help_outline,
-            title: 'Aide & Support',
-            onTap: () {
-              // TODO: Naviguer vers aide
-            },
-          ),
-          _buildMenuItem(
-            icon: Icons.info_outline,
-            title: 'À propos',
-            onTap: () {
-              // TODO: Naviguer vers à propos
-            },
-          ),
-          const Divider(height: 1),
-          _buildMenuItem(
-            icon: Icons.logout,
-            title: 'Se déconnecter',
-            textColor: AppColors.error,
-            onTap: () {
-              _showLogoutDialog(context, ref);
-            },
-          ),
-          const SizedBox(height: 32),
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, s) => Center(child: Text('Erreur : $e')),
-      ),
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: AppColors.cloviBeige,
+      body: SafeArea(
         child: Column(
           children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondaryLight,
+            _buildTopBar(context),
+            Expanded(
+              child: userAsync.when(
+                data: (user) {
+                  if (user == null) {
+                    return const Center(
+                      child: Text(
+                        'Utilisateur non trouvé',
+                        style: TextStyle(color: AppColors.textSecondaryLight),
+                      ),
+                    );
+                  }
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
+                    child: Column(
+                      children: [
+                        _buildProfileCard(context, user),
+                        const SizedBox(height: 24),
+                        _buildMenuSection(context, ref),
+                        const SizedBox(height: 100),
+                      ],
+                    ),
+                  );
+                },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(color: AppColors.cloviGreen),
+                ),
+                error: (e, _) => Center(
+                  child: Text(
+                    'Erreur : $e',
+                    style: const TextStyle(color: AppColors.textSecondaryLight),
+                  ),
+                ),
               ),
             ),
           ],
         ),
       ),
+      bottomNavigationBar: CloviBottomNav(
+        selectedIndex: 4,
+        onItemTapped: (index) {
+          if (index == 4) return;
+          switch (index) {
+            case 0:
+              context.go(AppRoutes.home);
+              break;
+            case 1:
+              context.go(AppRoutes.search);
+              break;
+            case 2:
+              context.push(AppRoutes.createProduct);
+              break;
+            case 3:
+              context.go(AppRoutes.conversations);
+              break;
+          }
+        },
+      ),
     );
   }
 
-  Widget _buildMenuItem({
+  Widget _buildTopBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              size: 22,
+              color: AppColors.cloviGreen,
+            ),
+            onPressed: () => context.go(AppRoutes.home),
+          ),
+          const Text(
+            'Mon profil',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.settings_outlined,
+              size: 24,
+              color: AppColors.cloviGreen,
+            ),
+            onPressed: () => context.pushNamed('settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProfileCard(BuildContext context, dynamic user) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 48,
+            backgroundColor: AppColors.cloviGreen,
+            backgroundImage:
+                user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                ? NetworkImage(user.avatarUrl!)
+                : null,
+            child: user.avatarUrl == null || user.avatarUrl!.isEmpty
+                ? const Icon(Icons.person, size: 48, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            user.fullName,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            user.email,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondaryLight,
+            ),
+          ),
+          if (user.bio != null && user.bio!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              user.bio!,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondaryLight,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => context.push(AppRoutes.editProfile),
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              label: const Text('Modifier le profil'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.cloviDarkGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMenuSection(BuildContext context, WidgetRef ref) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildMenuTile(
+            icon: Icons.chat_bubble_outline,
+            title: 'Messages',
+            onTap: () => context.push(AppRoutes.conversations),
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.inventory_2_outlined,
+            title: 'Mes annonces',
+            onTap: () => context.push(AppRoutes.myProducts),
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.favorite_outline,
+            title: 'Mes favoris',
+            onTap: () => context.push(AppRoutes.favorites),
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.receipt_long_outlined,
+            title: 'Mes commandes',
+            onTap: () => context.push(AppRoutes.orders),
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.payment_outlined,
+            title: 'Moyens de paiement',
+            onTap: () {},
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.location_on_outlined,
+            title: 'Adresses',
+            onTap: () => context.push(AppRoutes.addresses),
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.help_outline,
+            title: 'Aide & Support',
+            onTap: () {},
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.info_outline,
+            title: 'À propos',
+            onTap: () {},
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.logout,
+            title: 'Se déconnecter',
+            textColor: AppColors.error,
+            iconColor: AppColors.error,
+            onTap: () => _showLogoutDialog(context, ref),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Divider(
+      height: 1,
+      indent: 56,
+      endIndent: 16,
+      color: AppColors.divider.withOpacity(0.5),
+    );
+  }
+
+  Widget _buildMenuTile({
     required IconData icon,
     required String title,
     required VoidCallback onTap,
     Color? textColor,
+    Color? iconColor,
   }) {
+    final color = textColor ?? AppColors.textPrimaryLight;
+    final iconColorFinal = iconColor ?? AppColors.cloviGreen;
     return ListTile(
-      leading: Icon(icon, color: textColor),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: Icon(icon, color: iconColorFinal, size: 24),
       title: Text(
         title,
-        style: TextStyle(color: textColor),
+        style: TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 16,
+          color: color,
+        ),
       ),
-      trailing: const Icon(Icons.chevron_right),
+      trailing: Icon(
+        Icons.chevron_right,
+        color: textColor ?? AppColors.textSecondaryLight,
+        size: 22,
+      ),
       onTap: onTap,
     );
   }
@@ -249,31 +317,32 @@ class ProfileScreen extends ConsumerWidget {
   void _showLogoutDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Déconnexion'),
         content: const Text('Voulez-vous vraiment vous déconnecter ?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Annuler'),
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context);
+              Navigator.pop(ctx);
               await ref.read(authServiceProvider).logout();
-              
-              // Réinitialiser les providers
               ref.read(authTokenProvider.notifier).state = null;
               ref.invalidate(userEmailProvider);
               ref.invalidate(userIdProvider);
               ref.invalidate(isAuthenticatedProvider);
-              
               if (context.mounted) {
                 context.go(AppRoutes.login);
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Se déconnecter'),
           ),

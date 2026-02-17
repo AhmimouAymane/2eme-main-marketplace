@@ -11,6 +11,11 @@ class AppColors {
   static const Color secondaryLight = Color(0xFFFF9E40);
   static const Color secondaryDark = Color(0xFFC43E00);
   
+  // Couleurs Clovie
+  static const Color cloviGreen = Color(0xFF2D5F4F);
+  static const Color cloviDarkGreen = Color(0xFF1B4332);
+  static const Color cloviBeige = Color(0xFFF5F5F0);
+  
   // Couleurs de fond
   static const Color backgroundLight = Color(0xFFFAFAFA);
   static const Color backgroundDark = Color(0xFF121212);

@@ -12,4 +12,9 @@ export class UpdateOrderDto {
     @IsString()
     @IsOptional()
     shippingAddress?: string;
+
+    @ApiProperty({ example: 'Seller pickup address', required: false })
+    @IsString()
+    @IsOptional()
+    pickupAddress?: string;
 }

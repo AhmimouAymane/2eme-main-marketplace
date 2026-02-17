@@ -29,12 +29,20 @@ class CategoryModel extends Equatable {
       sizeType: json['sizeType'],
       children: json['children'] != null
           ? (json['children'] as List)
-              .map((c) => CategoryModel.fromJson(c))
-              .toList()
+                .map((c) => CategoryModel.fromJson(c))
+                .toList()
           : [],
     );
   }
 
   @override
-  List<Object?> get props => [id, name, slug, level, parentId, children, sizeType];
+  List<Object?> get props => [
+    id,
+    name,
+    slug,
+    level,
+    parentId,
+    children,
+    sizeType,
+  ];
 }

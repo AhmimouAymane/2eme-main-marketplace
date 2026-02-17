@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { ProductsModule } from './modules/products/products.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { AddressesModule } from './modules/addresses/addresses.module';
 import { MediaModule } from './modules/media/media.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
@@ -24,6 +25,7 @@ import { join } from 'path';
     PrismaModule,
     ProductsModule,
     OrdersModule,
+    AddressesModule,
     MediaModule,
     CategoriesModule,
     FavoritesModule,

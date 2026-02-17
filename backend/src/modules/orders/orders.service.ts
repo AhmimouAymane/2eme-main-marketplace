@@ -42,10 +42,10 @@ export class OrdersService {
                 include: {
                     product: true,
                     buyer: {
-                        select: { id: true, firstName: true, lastName: true, email: true },
+                        select: { id: true, firstName: true, lastName: true, email: true, addresses: true },
                     },
                     seller: {
-                        select: { id: true, firstName: true, lastName: true, email: true },
+                        select: { id: true, firstName: true, lastName: true, email: true, addresses: true },
                     },
                 },
             }),
@@ -84,10 +84,10 @@ export class OrdersService {
                     include: { images: true },
                 },
                 buyer: {
-                    select: { id: true, firstName: true, lastName: true, email: true },
+                    select: { id: true, firstName: true, lastName: true, email: true, addresses: true },
                 },
                 seller: {
-                    select: { id: true, firstName: true, lastName: true, email: true },
+                    select: { id: true, firstName: true, lastName: true, email: true, addresses: true },
                 },
             },
         });
@@ -110,6 +110,15 @@ export class OrdersService {
         // Here we allow both for simplicity, but usually status flow is controlled
         if (order.sellerId !== userId && order.buyerId !== userId) {
             throw new ForbiddenException('You do not have permission to update this order');
+        }
+
+        // Only seller can confirm and provide pickup address
+        if (updateOrderDto.status === OrderStatus.CONFIRMED && order.sellerId !== userId) {
+            throw new ForbiddenException('Only the seller can confirm the order');
+        }
+
+        if (updateOrderDto.pickupAddress && order.sellerId !== userId) {
+            throw new ForbiddenException('Only the seller can provide a pickup address');
         }
 
         const updatedOrder = await this.prisma.order.update({

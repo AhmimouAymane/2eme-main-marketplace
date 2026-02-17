@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 /// Widget card pour afficher un produit
 class ProductCard extends StatefulWidget {
@@ -48,41 +49,56 @@ class _ProductCardState extends State<ProductCard> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: widget.onTap,
-      child: Card(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image
             Expanded(
-              flex: 3,
+              flex: 4,
               child: Stack(
                 children: [
                   Container(
                     width: double.infinity,
-                    color: Colors.grey[200],
+                    color: Colors.grey[100],
                     child: widget.imageUrl.isEmpty
-                        ? Icon(
+                        ? const Icon(
                             Icons.image_outlined,
                             size: 48,
-                            color: Colors.grey[400],
+                            color: Colors.grey,
                           )
-                        : Image.network(
-                            widget.imageUrl,
+                        : CachedNetworkImage(
+                            imageUrl: widget.imageUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                Icons.broken_image_outlined,
-                                size: 48,
-                                color: Colors.grey[400],
-                              );
-                            },
+                            placeholder: (context, url) => Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.cloviGreen.withOpacity(0.3),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => const Icon(
+                              Icons.broken_image_outlined,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
                           ),
                   ),
                   // Favorite button
                   Positioned(
-                    top: 4,
-                    right: 4,
+                    top: 8,
+                    right: 8,
                     child: GestureDetector(
                       onTap: () {
                         setState(() {
@@ -90,13 +106,16 @@ class _ProductCardState extends State<ProductCard> {
                         });
                         widget.onFavoriteToggle?.call();
                       },
-                      child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: Colors.white.withOpacity(0.9),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
                         child: Icon(
                           _isFavorite ? Icons.favorite : Icons.favorite_border,
-                          size: 18,
-                          color: _isFavorite ? AppColors.error : Colors.grey[700],
+                          size: 16,
+                          color: _isFavorite ? Colors.red : AppColors.cloviGreen,
                         ),
                       ),
                     ),
@@ -108,25 +127,28 @@ class _ProductCardState extends State<ProductCard> {
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      widget.title,
+                      widget.title.toLowerCase(),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF4A4A4A),
+                      ),
                     ),
                     Text(
                       Formatters.price(widget.price),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style: const TextStyle(
+                        color: AppColors.cloviGreen,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
                   ],
                 ),

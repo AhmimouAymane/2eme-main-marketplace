@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -104,7 +104,7 @@ export class ProductsService {
 
         const products = await this.prisma.product.findMany({
             where: {
-                status: status || undefined,
+                status: status || (sellerId ? undefined : ProductStatus.FOR_SALE),
                 categoryId: categoryIds.length > 0 ? { in: categoryIds } : undefined,
                 size: size || undefined,
                 brand: brand ? { contains: brand, mode: 'insensitive' } : undefined,
@@ -210,6 +210,7 @@ export class ProductsService {
             data: {
                 ...data,
                 sellerId,
+                status: ProductStatus.PENDING_APPROVAL,
                 images: imagesToSave ? {
                     create: imagesToSave.map(url => ({ url })),
                 } : undefined,
@@ -267,14 +268,23 @@ export class ProductsService {
     }
 
     async remove(id: string, userId: string) {
+        // ensure the product exists and retrieve owner
         const product = await this.findOne(id);
         if (product.sellerId !== userId) {
-            throw new Error('You can only delete your own products');
+            // return a 403 Forbidden instead of generic error
+            throw new ForbiddenException('You can only delete your own products');
         }
 
-        return this.prisma.product.delete({
-            where: { id },
-        });
+        try {
+            return await this.prisma.product.delete({
+                where: { id },
+            });
+        } catch (err) {
+            // Prisma may throw for many reasons; log and wrap
+            console.error('Error deleting product', id, err);
+            // if it's a known Prisma error, you could inspect err.code
+            throw new InternalServerErrorException('Unable to delete product at this time');
+        }
     }
 
     async addReview(productId: string, userId: string, rating: number, comment?: string) {

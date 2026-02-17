@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'product_model.dart';
+import 'address_model.dart';
 
 enum UserRole {
   @JsonValue('USER')
@@ -17,6 +18,7 @@ class UserModel extends Equatable {
   final String firstName;
   final String lastName;
   final String? phone;
+  final List<AddressModel>? addresses;
   final String? avatarUrl;
   final String? bio;
   final List<ProductModel>? products;
@@ -30,6 +32,7 @@ class UserModel extends Equatable {
     required this.firstName,
     required this.lastName,
     this.phone,
+    this.addresses,
     this.avatarUrl,
     this.bio,
     this.products,
@@ -49,6 +52,11 @@ class UserModel extends Equatable {
         firstName: json['firstName'] as String? ?? '',
         lastName: json['lastName'] as String? ?? '',
         phone: json['phone'] as String?,
+        addresses: json['addresses'] != null
+            ? (json['addresses'] as List)
+                .map((a) => AddressModel.fromJson(a as Map<String, dynamic>))
+                .toList()
+            : null,
         avatarUrl: json['avatarUrl'] as String?,
         bio: json['bio'] as String?,
         products: json['products'] != null
@@ -72,6 +80,7 @@ class UserModel extends Equatable {
         'firstName': firstName,
         'lastName': lastName,
         'phone': phone,
+        'addresses': addresses?.map((a) => a.toJson()).toList(),
         'avatarUrl': avatarUrl,
         'bio': bio,
         'role': role.name.toUpperCase(),
@@ -86,7 +95,10 @@ class UserModel extends Equatable {
     String? firstName,
     String? lastName,
     String? phone,
+    List<AddressModel>? addresses,
     String? avatarUrl,
+    String? bio,
+    List<ProductModel>? products,
     UserRole? role,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -97,7 +109,10 @@ class UserModel extends Equatable {
       firstName: firstName ?? this.firstName,
       lastName: lastName ?? this.lastName,
       phone: phone ?? this.phone,
+      addresses: addresses ?? this.addresses,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      bio: bio ?? this.bio,
+      products: products ?? this.products,
       role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -111,6 +126,7 @@ class UserModel extends Equatable {
         firstName,
         lastName,
         phone,
+        addresses,
         avatarUrl,
         bio,
         products,

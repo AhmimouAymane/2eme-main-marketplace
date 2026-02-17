@@ -11,12 +11,16 @@ import 'package:marketplace_app/features/orders/presentation/screens/orders_scre
 import 'package:marketplace_app/features/orders/presentation/screens/order_detail_screen.dart';
 import 'package:marketplace_app/features/profile/presentation/screens/profile_screen.dart';
 import 'package:marketplace_app/features/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:marketplace_app/features/profile/presentation/screens/settings_screen.dart';
 import 'package:marketplace_app/features/profile/presentation/screens/seller_profile_screen.dart';
 import 'package:marketplace_app/features/products/presentation/screens/favorites_screen.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/features/chat/presentation/screens/conversations_screen.dart';
 import 'package:marketplace_app/features/chat/presentation/screens/chat_screen.dart';
+import 'package:marketplace_app/features/addresses/presentation/screens/addresses_screen.dart';
+import 'package:marketplace_app/features/addresses/presentation/screens/address_form_screen.dart';
+import 'package:marketplace_app/shared/models/address_model.dart';
 
 /// Configuration du routeur Go Router
 class AppRouter {
@@ -28,30 +32,24 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.login,
         name: 'login',
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const LoginScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const LoginScreen()),
       ),
       GoRoute(
         path: AppRoutes.register,
         name: 'register',
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const RegisterScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const RegisterScreen()),
       ),
-      
+
       // Home
       GoRoute(
         path: AppRoutes.home,
         name: 'home',
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const HomeScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const HomeScreen()),
       ),
-      
+
       // Products
       GoRoute(
         path: AppRoutes.productDetail,
@@ -67,10 +65,8 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.search,
         name: 'search',
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const SearchScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const SearchScreen()),
       ),
       GoRoute(
         path: AppRoutes.createProduct,
@@ -83,15 +79,13 @@ class AppRouter {
           );
         },
       ),
-      
+
       // Orders
       GoRoute(
         path: AppRoutes.orders,
         name: 'orders',
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const OrdersScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const OrdersScreen()),
       ),
       GoRoute(
         path: AppRoutes.orderDetail,
@@ -104,39 +98,37 @@ class AppRouter {
           );
         },
       ),
-      
+
       // Profile
       GoRoute(
         path: AppRoutes.profile,
         name: 'profile',
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const ProfileScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const ProfileScreen()),
       ),
       GoRoute(
         path: AppRoutes.editProfile,
         name: 'edit-profile',
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const EditProfileScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const EditProfileScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.settings,
+        name: 'settings',
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const SettingsScreen()),
       ),
       GoRoute(
         path: AppRoutes.myProducts,
         name: 'my-products',
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const MyProductsScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const MyProductsScreen()),
       ),
       GoRoute(
         path: AppRoutes.favorites,
         name: 'favorites',
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const FavoritesScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const FavoritesScreen()),
       ),
       GoRoute(
         path: AppRoutes.sellerProfile,
@@ -146,6 +138,25 @@ class AppRouter {
           return MaterialPage(
             key: state.pageKey,
             child: SellerProfileScreen(userId: userId),
+          );
+        },
+      ),
+
+      // Addresses
+      GoRoute(
+        path: AppRoutes.addresses,
+        name: 'addresses',
+        pageBuilder: (context, state) =>
+            MaterialPage(key: state.pageKey, child: const AddressesScreen()),
+      ),
+      GoRoute(
+        path: AppRoutes.addressForm,
+        name: 'address-form',
+        pageBuilder: (context, state) {
+          final addr = state.extra as AddressModel?;
+          return MaterialPage(
+            key: state.pageKey,
+            child: AddressFormScreen(initial: addr),
           );
         },
       ),

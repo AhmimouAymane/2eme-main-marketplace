@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
-import 'package:intl/intl.dart';
+import 'package:marketplace_app/core/utils/formatters.dart';
 
 class MyProductsScreen extends ConsumerWidget {
   const MyProductsScreen({super.key});
@@ -39,10 +40,7 @@ class MyProductsScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   const Text(
                     'Vous n\'avez pas encore d\'annonces',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   ElevatedButton(
@@ -65,9 +63,7 @@ class MyProductsScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('Erreur: $error'),
-        ),
+        error: (error, stack) => Center(child: Text('Erreur: $error')),
       ),
     );
   }
@@ -94,10 +90,7 @@ class _ProductListTile extends ConsumerWidget {
               SizedBox(
                 width: 100,
                 child: product.imageUrls.isNotEmpty
-                    ? Image.network(
-                        product.imageUrls.first,
-                        fit: BoxFit.cover,
-                      )
+                    ? Image.network(product.imageUrls.first, fit: BoxFit.cover)
                     : Container(
                         color: Colors.grey[200],
                         child: const Icon(Icons.image_not_supported),
@@ -120,23 +113,63 @@ class _ProductListTile extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        priceFormat.format(product.price),
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            Formatters.price(product.price),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          _StatusChip(status: product.status),
+                        ],
                       ),
+                      if (product.status == ProductStatus.rejected &&
+                          product.moderationComment != null) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: AppColors.error.withOpacity(0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Motif du rejet :',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.error,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                product.moderationComment!,
+                                style: const TextStyle(fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const Spacer(),
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          _StatusChip(status: product.status),
-                          const Spacer(),
                           IconButton(
                             icon: const Icon(Icons.edit_outlined, size: 20),
                             onPressed: () async {
-                              final result = await context.push(AppRoutes.createProduct, extra: product);
+                              final result = await context.push(
+                                AppRoutes.createProduct,
+                                extra: product,
+                              );
                               if (result == true) {
                                 ref.invalidate(userProductsProvider);
                               }
@@ -175,7 +208,9 @@ class _ProductListTile extends ConsumerWidget {
             onPressed: () async {
               Navigator.pop(context);
               try {
-                await ref.read(productsServiceProvider).deleteProduct(product.id);
+                await ref
+                    .read(productsServiceProvider)
+                    .deleteProduct(product.id);
                 // Force refresh of the list
                 ref.invalidate(userProductsProvider);
                 if (context.mounted) {
@@ -185,9 +220,9 @@ class _ProductListTile extends ConsumerWidget {
                 }
               } catch (e) {
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
                 }
               }
             },
@@ -213,13 +248,17 @@ class _StatusChip extends StatelessWidget {
     String label;
 
     switch (status) {
-      case ProductStatus.draft:
+      case ProductStatus.pendingApproval:
         color = Colors.orange;
-        label = 'Brouillon';
+        label = 'En attente';
         break;
       case ProductStatus.forSale:
         color = Colors.green;
-        label = 'En vente';
+        label = 'Publié';
+        break;
+      case ProductStatus.rejected:
+        color = AppColors.error;
+        label = 'Rejeté';
         break;
       case ProductStatus.reserved:
         color = Colors.purple;

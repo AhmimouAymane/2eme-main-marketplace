@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
-import '../../../../core/utils/validators.dart';
+import 'package:marketplace_app/core/utils/validators.dart';
 
-/// Écran d'édition du profil
+/// Écran d'édition du profil — même design que la page profil (Clovi)
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -72,20 +74,26 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       });
 
       if (mounted) {
-        // Invalider le profile pour rafraîchir partout
-        ref.invalidate(userProfileProvider);
-        
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil mis à jour avec succès !')),
+          const SnackBar(
+            content: Text('Profil mis à jour avec succès !'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
-        Navigator.pop(context);
+        context.pop();
+        // Invalidate after pop so the screen is no longer in the tree (avoids _dependents.isEmpty)
+        Future.microtask(() => ref.invalidate(userProfileProvider));
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : ${e.toString()}')),
+          SnackBar(
+            content: Text('Erreur : ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }
@@ -93,114 +101,163 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(userProfileProvider).value;
+
     return Scaffold(
+      backgroundColor: AppColors.cloviBeige,
       appBar: AppBar(
-        title: const Text('Modifier le profil'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
+          onPressed: () => context.pop(),
+        ),
+        title: const Text(
+          'Modifier le profil',
+          style: TextStyle(
+            color: AppColors.cloviGreen,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // Avatar
-            Center(
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundImage: ref.watch(userProfileProvider).value?.avatarUrl != null
-                        ? NetworkImage(ref.watch(userProfileProvider).value!.avatarUrl!)
-                        : null,
-                    child: ref.watch(userProfileProvider).value?.avatarUrl == null
-                        ? const Icon(Icons.person, size: 60)
-                        : null,
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: CircleAvatar(
-                      radius: 20,
-                      backgroundColor: Theme.of(context).primaryColor,
-                      child: IconButton(
-                        icon: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
-                        onPressed: () {
-                          // TODO: Changer la photo de profil
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Column(
+            children: [
+              _buildProfileCard(user),
+              const SizedBox(height: 24),
+              _buildFormCard(),
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-            // Prénom
-            TextFormField(
-              controller: _firstNameController,
-              validator: (v) => Validators.required(v, fieldName: 'Le prénom'),
-              decoration: const InputDecoration(
-                labelText: 'Prénom',
-                prefixIcon: Icon(Icons.person_outlined),
+  Widget _buildProfileCard(dynamic user) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.bottomRight,
+            children: [
+              CircleAvatar(
+                radius: 48,
+                backgroundColor: AppColors.cloviGreen,
+                backgroundImage: user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
+                    ? NetworkImage(user.avatarUrl!)
+                    : null,
+                child: (user == null || user.avatarUrl == null || user.avatarUrl!.isEmpty)
+                    ? const Icon(Icons.person, size: 48, color: Colors.white)
+                    : null,
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // Nom
-            TextFormField(
-              controller: _lastNameController,
-              validator: (v) => Validators.required(v, fieldName: 'Le nom'),
-              decoration: const InputDecoration(
-                labelText: 'Nom',
-                prefixIcon: Icon(Icons.person_outlined),
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.cloviDarkGreen,
+                child: IconButton(
+                  icon: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
+                  onPressed: () {
+                    // TODO: Changer la photo de profil
+                  },
+                  padding: EdgeInsets.zero,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-            // Bio
-            TextFormField(
-              controller: _bioController,
-              maxLines: 3,
-              maxLength: 500,
-              decoration: const InputDecoration(
-                labelText: 'Bio',
-                hintText: 'Parlez-nous de vous...',
-                prefixIcon: Icon(Icons.info_outline),
-                alignLabelWithHint: true,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Email (Lecture seule pour l'instant)
-            TextFormField(
-              controller: _emailController,
-              enabled: false,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
-                helperText: 'L\'email ne peut pas être modifié.',
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Téléphone
-            TextFormField(
-              controller: _phoneController,
-              validator: Validators.phone,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: 'Téléphone',
-                prefixIcon: Icon(Icons.phone_outlined),
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Bouton de sauvegarde
-            ElevatedButton(
+  Widget _buildFormCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTextField(
+            controller: _firstNameController,
+            label: 'Prénom',
+            icon: Icons.person_outlined,
+            validator: (v) => Validators.required(v, fieldName: 'Le prénom'),
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _lastNameController,
+            label: 'Nom',
+            icon: Icons.person_outlined,
+            validator: (v) => Validators.required(v, fieldName: 'Le nom'),
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _emailController,
+            label: 'Email',
+            icon: Icons.email_outlined,
+            enabled: false,
+            helperText: 'L\'email ne peut pas être modifié.',
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _phoneController,
+            label: 'Téléphone',
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+            validator: Validators.phone,
+          ),
+          const SizedBox(height: 16),
+          _buildTextField(
+            controller: _bioController,
+            label: 'Bio',
+            icon: Icons.info_outline,
+            maxLines: 3,
+            maxLength: 500,
+            hintText: 'Parlez-nous de vous...',
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 52,
+            child: ElevatedButton(
               onPressed: _isLoading ? null : _handleSave,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.cloviDarkGreen,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
               child: _isLoading
                   ? const SizedBox(
-                      height: 20,
-                      width: 20,
+                      height: 24,
+                      width: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
@@ -208,8 +265,49 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     )
                   : const Text('Enregistrer'),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? Function(String?)? validator,
+    bool enabled = true,
+    String? helperText,
+    String? hintText,
+    int maxLines = 1,
+    int? maxLength,
+    TextInputType? keyboardType,
+  }) {
+    return TextFormField(
+      controller: controller,
+      validator: validator,
+      enabled: enabled,
+      maxLines: maxLines,
+      maxLength: maxLength,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hintText,
+        helperText: helperText,
+        prefixIcon: Icon(icon, color: AppColors.cloviGreen, size: 22),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.divider),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.cloviGreen, width: 2),
+        ),
+        filled: true,
+        fillColor: enabled ? Colors.white : Colors.grey.shade100,
       ),
     );
   }

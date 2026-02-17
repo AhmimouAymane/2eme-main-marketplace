@@ -5,10 +5,12 @@ import 'package:marketplace_app/core/constants/app_constants.dart';
 // part 'product_model.g.dart';
 /// Statut d'un produit (Synchronisé avec le backend)
 enum ProductStatus {
-  @JsonValue('DRAFT')
-  draft,
+  @JsonValue('PENDING_APPROVAL')
+  pendingApproval,
   @JsonValue('FOR_SALE')
   forSale,
+  @JsonValue('REJECTED')
+  rejected,
   @JsonValue('RESERVED')
   reserved,
   @JsonValue('SOLD')
@@ -38,6 +40,7 @@ class ProductModel extends Equatable {
   final double price;
   final ProductCondition condition;
   final ProductStatus status;
+  final String? moderationComment;
   final String category;
   final String categoryId;
   final String size;
@@ -56,6 +59,7 @@ class ProductModel extends Equatable {
     required this.price,
     required this.condition,
     required this.status,
+    this.moderationComment,
     required this.category,
     this.categoryId = '',
     required this.size,
@@ -115,6 +119,7 @@ class ProductModel extends Equatable {
       price: (json['price'] ?? 0.0).toDouble(),
       condition: _conditionFromString(json['condition'] ?? ''),
       status: _statusFromString(json['status'] ?? ''),
+      moderationComment: json['moderationComment'],
       category: categoryName,
       categoryId: categoryId,
       size: json['size'] ?? '',
@@ -141,7 +146,7 @@ class ProductModel extends Equatable {
 
   static ProductStatus _statusFromString(String value) {
     return ProductStatus.values.firstWhere(
-      (e) => e.toString().split('.').last.toUpperCase() == value.replaceAll('_', ''),
+      (e) => e.name.replaceAll(RegExp(r'(?=[A-Z])'), '_').toUpperCase() == value.toUpperCase(),
       orElse: () => ProductStatus.forSale,
     );
   }
@@ -171,8 +176,9 @@ class ProductModel extends Equatable {
 
   static String _statusToString(ProductStatus status) {
     switch (status) {
-      case ProductStatus.draft: return 'DRAFT';
+      case ProductStatus.pendingApproval: return 'PENDING_APPROVAL';
       case ProductStatus.forSale: return 'FOR_SALE';
+      case ProductStatus.rejected: return 'REJECTED';
       case ProductStatus.reserved: return 'RESERVED';
       case ProductStatus.sold: return 'SOLD';
     }
@@ -186,6 +192,7 @@ class ProductModel extends Equatable {
     double? price,
     ProductCondition? condition,
     ProductStatus? status,
+    String? moderationComment,
     String? category,
     String? categoryId,
     String? size,
@@ -204,6 +211,7 @@ class ProductModel extends Equatable {
       price: price ?? this.price,
       condition: condition ?? this.condition,
       status: status ?? this.status,
+      moderationComment: moderationComment ?? this.moderationComment,
       category: category ?? this.category,
       categoryId: categoryId ?? this.categoryId,
       size: size ?? this.size,
@@ -225,6 +233,7 @@ class ProductModel extends Equatable {
         price,
         condition,
         status,
+        moderationComment,
         category,
         categoryId,
         size,

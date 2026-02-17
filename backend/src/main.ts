@@ -66,6 +66,8 @@ async function bootstrap() {
     const AdminJSPrisma = await import('@adminjs/prisma');
     const { PrismaClient, Prisma } = await import('@prisma/client');
     const bcrypt = await import('bcrypt');
+    const { ComponentLoader } = await import('adminjs');
+    const path = await import('path');
     console.log('[AdminJS] Step 2: Registering adapter...');
 
     AdminJS.registerAdapter({
@@ -73,46 +75,145 @@ async function bootstrap() {
       Resource: AdminJSPrisma.Resource,
     });
 
+    const componentLoader = new ComponentLoader();
+    const IMAGE_PREVIEW = componentLoader.add('ImagePreview', path.join(process.cwd(), 'src/admin/components/image-preview'));
+    const IMAGE_SHOW = componentLoader.add('ImageShow', path.join(process.cwd(), 'src/admin/components/image-show'));
+
     const prisma = new PrismaClient();
     const getModel = (name: string) => Prisma.dmmf.datamodel.models.find((m: any) => m.name === name);
     console.log('[AdminJS] Step 3: Creating AdminJS instance...');
 
     const admin = new AdminJS({
+      componentLoader,
       resources: [
         {
           resource: { model: getModel('User'), client: prisma },
           options: {
-            navigation: { name: 'Users', icon: 'User' },
+            navigation: { name: 'Utilisateurs', icon: 'User', parent: { name: 'Paramètres', icon: 'Settings' } },
             properties: { password: { isVisible: false } },
           },
         },
         {
           resource: { model: getModel('Product'), client: prisma },
-          options: { navigation: { name: 'Products', icon: 'ShoppingBag' } },
+          options: {
+            navigation: { name: 'Produits', icon: 'ShoppingBag', parent: { name: 'Modération', icon: 'CheckSquare' } },
+            actions: {
+              approve: {
+                actionType: 'record',
+                icon: 'Check',
+                handler: async (request: any, response: any, context: any) => {
+                  const { record, resource } = context;
+                  await record.update({ status: 'FOR_SALE' });
+                  return {
+                    record: record.toJSON(context.currentAdmin),
+                    notice: { message: 'Produit approuvé avec succès', type: 'success' },
+                    redirectUrl: resource.recordURL({ recordId: record.id() }),
+                  };
+                },
+                component: false,
+              },
+              reject: {
+                actionType: 'record',
+                icon: 'X',
+                handler: async (request: any, response: any, context: any) => {
+                  const { record, resource } = context;
+                  if (request.method === 'get') {
+                    return { record: record.toJSON(context.currentAdmin) };
+                  }
+                  const { moderationComment } = request.payload;
+                  if (!moderationComment) {
+                    return {
+                      record: record.toJSON(context.currentAdmin),
+                      notice: { message: 'Un motif est requis pour rejeter le produit', type: 'error' },
+                    };
+                  }
+                  await record.update({ status: 'REJECTED', moderationComment });
+                  return {
+                    record: record.toJSON(context.currentAdmin),
+                    notice: { message: 'Produit rejeté', type: 'success' },
+                    redirectUrl: resource.recordURL({ recordId: record.id() }),
+                  };
+                },
+              },
+            },
+            properties: {
+              status: {
+                position: 1,
+                availableValues: [
+                  { value: 'PENDING_APPROVAL', label: 'En attente' },
+                  { value: 'FOR_SALE', label: 'Publié' },
+                  { value: 'REJECTED', label: 'Rejeté' },
+                  { value: 'RESERVED', label: 'Réservé' },
+                  { value: 'SOLD', label: 'Vendu' },
+                ],
+              },
+              title: { position: 2 },
+              price: { position: 3 },
+              moderationComment: {
+                type: 'textarea',
+                isVisible: { list: false, filter: false, show: true, edit: true },
+              },
+            },
+          },
+        },
+        {
+          resource: { model: getModel('ProductImage'), client: prisma },
+          options: {
+            navigation: { name: 'Images', icon: 'Image', parent: { name: 'Modération', icon: 'CheckSquare' } },
+            properties: {
+              url: {
+                isVisible: { list: true, show: true, edit: true, filter: false },
+                components: {
+                  list: IMAGE_PREVIEW,
+                  show: IMAGE_SHOW,
+                }
+              }
+            }
+          }
         },
         {
           resource: { model: getModel('Order'), client: prisma },
-          options: { navigation: { name: 'Orders', icon: 'ShoppingCart' } },
+          options: {
+            navigation: { name: 'Commandes', icon: 'ShoppingCart', parent: { name: 'Gestion', icon: 'Briefcase' } }
+          },
         },
         {
           resource: { model: getModel('Category'), client: prisma },
-          options: { navigation: { name: 'Categories', icon: 'Folder' } },
+          options: {
+            navigation: { name: 'Catégories', icon: 'Folder', parent: { name: 'Paramètres', icon: 'Settings' } },
+            properties: {
+              id: { isVisible: true },
+              name: { isVisible: true },
+              slug: { isVisible: true },
+              level: { isVisible: true },
+              parentId: { isVisible: true },
+              sizeType: { isVisible: true },
+            }
+          },
         },
         {
           resource: { model: getModel('Conversation'), client: prisma },
-          options: { navigation: { name: 'Chat', icon: 'MessageCircle' } },
+          options: {
+            navigation: { name: 'Conversations', icon: 'MessageCircle', parent: { name: 'Messagerie', icon: 'Mail' } }
+          },
         },
         {
           resource: { model: getModel('Message'), client: prisma },
-          options: { navigation: { name: 'Chat', icon: 'MessageSquare' } },
+          options: {
+            navigation: { name: 'Messages', icon: 'MessageSquare', parent: { name: 'Messagerie', icon: 'Mail' } }
+          },
         },
         {
           resource: { model: getModel('Review'), client: prisma },
-          options: { navigation: { name: 'Reviews', icon: 'Star' } },
+          options: {
+            navigation: { name: 'Avis', icon: 'Star', parent: { name: 'Modération', icon: 'CheckSquare' } }
+          },
         },
         {
           resource: { model: getModel('Favorite'), client: prisma },
-          options: { navigation: { name: 'Favorites', icon: 'Heart' } },
+          options: {
+            navigation: { name: 'Favoris', icon: 'Heart', parent: { name: 'Gestion', icon: 'Briefcase' } }
+          },
         },
       ],
       rootPath: '/admin',
@@ -146,8 +247,12 @@ async function bootstrap() {
   }
 
   const port = process.env.PORT || 8080;
-  await app.listen(port);
+  const host = process.env.HOST || '0.0.0.0';
+  await app.listen(port, host);
   console.log(`Application is running on: http://localhost:${port}/api/v1`);
+  if (host === '0.0.0.0') {
+    console.log('Listening on all interfaces — use your PC IP (e.g. http://192.168.x.x:' + port + '/api/v1) from phone/emulator');
+  }
   console.log(`Swagger documentation: http://localhost:${port}/api/docs`);
   console.log(`AdminJS panel: http://localhost:${port}/admin`);
 }

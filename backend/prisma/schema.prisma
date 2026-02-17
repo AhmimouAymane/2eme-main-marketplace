@@ -15,6 +15,7 @@ model User {
   firstName String
   lastName  String
   phone     String?
+  // address field removed; use Address model to store multiple
   avatarUrl String?
   bio       String?
   role      Role      @default(USER)
@@ -29,6 +30,7 @@ model User {
   buyerConversations  Conversation[] @relation("BuyerConversations")
   sellerConversations Conversation[] @relation("SellerConversations")
   messages            Message[]      @relation("UserMessages")
+  addresses Address[]
 
   @@map("users")
 }
@@ -43,7 +45,8 @@ model Product {
   size        String
   brand       String
   condition   ProductCondition
-  status      ProductStatus    @default(FOR_SALE)
+  status      ProductStatus    @default(PENDING_APPROVAL)
+  moderationComment String?
   sellerId    String
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
@@ -79,6 +82,7 @@ model Order {
   totalPrice      Float
   status          OrderStatus @default(PENDING)
   shippingAddress String?
+  pickupAddress   String?     // Adresse fournie par le vendeur lors de la confirmation
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   deliveredAt     DateTime?
@@ -117,9 +121,27 @@ model Message {
   isRead         Boolean  @default(false)
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User        @relation("UserMessages", fields: [senderId], references: [id])
+  sender       User         @relation("UserMessages", fields: [senderId], references: [id])
 
   @@map("messages")
+}
+
+model Address {
+  id        String   @id @default(uuid())
+  userId    String
+  label     String
+  street    String
+  city      String
+  postal    String
+  country   String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("addresses")
 }
 
 model ProductImage {
@@ -162,8 +184,9 @@ enum Role {
 }
 
 enum ProductStatus {
-  DRAFT
+  PENDING_APPROVAL
   FOR_SALE
+  REJECTED
   RESERVED
   SOLD
 }

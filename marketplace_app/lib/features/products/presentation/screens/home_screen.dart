@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
-import 'package:marketplace_app/shared/models/category_model.dart';
 import '../widgets/product_card.dart';
-import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/shared/widgets/clovi_logo.dart';
+import 'package:marketplace_app/shared/widgets/clovi_bottom_nav.dart';
+import 'package:marketplace_app/shared/widgets/clovi_drawer.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 /// Écran d'accueil avec liste de produits
 class HomeScreen extends ConsumerStatefulWidget {
@@ -17,262 +19,419 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   @override
   void initState() {
     super.initState();
+    // Reinitialiser les filtres quand on arrive sur l'accueil
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        print('DEBUG: HomeScreen.initState - Clearing filters');
+        ref.read(productFilterProvider.notifier).clearAll();
+      }
+    });
   }
 
   int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
-    if (index == 0) {
-      // Si on clique sur Accueil, on réinitialise les filtres
-      ref.read(productFilterProvider.notifier).clearAll();
-    }
-    
-    setState(() => _selectedIndex = index);
-    
     switch (index) {
       case 0:
-        // Déjà sur home
+        // Déjà sur home : refresh
+        ref.read(productFilterProvider.notifier).clearAll();
+        ref.invalidate(homeProductsProvider);
+        setState(() => _selectedIndex = 0);
         break;
       case 1:
-        context.push(AppRoutes.search);
+        ref.read(productFilterProvider.notifier).clearAll();
+        context.go(AppRoutes.search);
         break;
       case 2:
         context.push(AppRoutes.createProduct);
         break;
       case 3:
-        context.push(AppRoutes.orders);
+        context.go(AppRoutes.conversations);
         break;
       case 4:
-        context.push(AppRoutes.profile);
+        context.go(AppRoutes.profile);
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final conversationsAsync = ref.watch(conversationsProvider);
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Marketplace'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => context.push(AppRoutes.search),
-          ),
-          IconButton(
-            icon: const Icon(Icons.favorite_border),
-            onPressed: () => context.push(AppRoutes.favorites),
-          ),
-          conversationsAsync.when(
-            data: (conversations) {
-              final currentUserIdAsync = ref.watch(userIdProvider);
-              final currentUserId = currentUserIdAsync.maybeWhen(
-                data: (id) => id,
-                orElse: () => null,
-              );
-              int totalUnread = 0;
-              if (currentUserId != null) {
-                for (final conv in conversations) {
-                  totalUnread += conv.messages
-                      .where((m) =>
-                          m.senderId != currentUserId && !m.isRead)
-                      .length;
-                }
-              }
+      key: _scaffoldKey,
+      backgroundColor: AppColors.cloviBeige,
+      drawer: const CloviDrawer(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Custom Top Bar
+            _buildTopBar(),
 
-              if (totalUnread > 0) {
-                return Stack(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.message_outlined),
-                      onPressed: () =>
-                          context.push(AppRoutes.conversations),
-                    ),
-                    Positioned(
-                      right: 8,
-                      top: 8,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
-                        ),
-                        child: Center(
-                          child: Text(
-                            totalUnread > 9 ? '9+' : '$totalUnread',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              }
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  print(
+                    'DEBUG: HomeScreen.onRefresh - Clearing filters and refreshing products',
+                  );
+                  ref.read(productFilterProvider.notifier).clearAll();
+                  await ref.refresh(homeProductsProvider.future);
+                },
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Search Section
+                      _buildSearchSection(),
+                      const SizedBox(height: 24),
 
-              return IconButton(
-                icon: const Icon(Icons.message_outlined),
-                onPressed: () => context.push(AppRoutes.conversations),
-              );
-            },
-            loading: () => IconButton(
-              icon: const Icon(Icons.message_outlined),
-              onPressed: () => context.push(AppRoutes.conversations),
-            ),
-            error: (_, __) => IconButton(
-              icon: const Icon(Icons.message_outlined),
-              onPressed: () => context.push(AppRoutes.conversations),
-            ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(homeProductsProvider.future),
-        child: CustomScrollView(
-          slivers: [
-            // Categories horizontales
-            ref.watch(categoriesProvider).maybeWhen(
-              data: (categories) {
-                final selectedCategoryId = ref.watch(productFilterProvider).categoryId;
-                
-                return SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 50,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      children: [
-                        _buildCategoryChip(
-                          'Tous',
-                          selectedCategoryId == null,
-                          onSelected: (_) {
-                            print('HomeScreen: Selected category: Tous');
-                            ref.read(productFilterProvider.notifier).updateCategory(null);
-                          },
-                        ),
-                        ...categories.take(10).map((CategoryModel category) => _buildCategoryChip(
-                          category.name,
-                          selectedCategoryId == category.id,
-                          onSelected: (_) {
-                            print('HomeScreen: Selected category: ${category.name} (id: ${category.id})');
-                            ref.read(productFilterProvider.notifier).updateCategory(category.id);
-                          },
-                        )),
-                      ],
-                    ),
-                  ),
-                );
-              },
-              orElse: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-            ),
+                      // Trending Products
+                      _buildTrendingProductsSection(),
+                      const SizedBox(height: 32),
 
-            // Grille de produits
-            ref.watch(homeProductsProvider).when(
-              data: (products) => SliverPadding(
-                padding: const EdgeInsets.all(16),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.7,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                      // Trending Categories
+                      _buildTrendingCategoriesSection(),
+                      const SizedBox(height: 100), // Space for bottom bar
+                    ],
                   ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final product = products[index];
-                      return ProductCard(
-                        productId: product.id,
-                        imageUrl: product.fullMainImageUrl,
-                        title: product.title,
-                        price: product.price,
-                        isFavorite: product.isFavorite,
-                        onTap: () => context.push('/product/${product.id}'),
-                        onFavoriteToggle: () {
-                          ref.read(favoritesProvider.notifier).toggleFavorite(product);
-                        },
-                      );
-                    },
-                    childCount: products.length,
-                  ),
-                ),
-              ),
-              loading: () => const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (error, stack) => SliverFillRemaining(
-                child: Center(
-                  child: Text('Erreur: $error'),
                 ),
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Accueil',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.search),
-            label: 'Recherche',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline),
-            activeIcon: Icon(Icons.add_circle),
-            label: 'Vendre',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long_outlined),
-            activeIcon: Icon(Icons.receipt_long),
-            label: 'Commandes',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profil',
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push(AppRoutes.createProduct),
-        child: const Icon(Icons.add),
+      bottomNavigationBar: CloviBottomNav(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
       ),
     );
   }
 
-  Widget _buildCategoryChip(String label, bool isSelected, {required Function(bool) onSelected}) {
+  Widget _buildTopBar() {
     return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: onSelected,
-        backgroundColor: Colors.transparent,
-        selectedColor: AppColors.primary.withOpacity(0.2),
-        checkmarkColor: AppColors.primary,
-        labelStyle: TextStyle(
-          color: isSelected ? AppColors.primary : AppColors.textSecondaryLight,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.menu, size: 28, color: AppColors.cloviGreen),
+            onPressed: () {
+              _scaffoldKey.currentState?.openDrawer();
+            },
+          ),
+          const CloviLogo(size: 30, fontSize: 24),
+          IconButton(
+            icon: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.grey[300],
+              ),
+              child: const Icon(Icons.person, color: Colors.white, size: 28),
+            ),
+            onPressed: () => context.push(AppRoutes.profile),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildSearchSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () async {
+                ref.read(productFilterProvider.notifier).clearAll();
+                await context.push(AppRoutes.search);
+                // Au retour de la recherche, on s'assure que l'accueil est propre
+                print('DEBUG: Returning from Search - Resetting Home');
+                ref.read(productFilterProvider.notifier).clearAll();
+                ref.invalidate(homeProductsProvider);
+              },
+              child: Container(
+                height: 45,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search, color: AppColors.cloviGreen),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: AbsorbPointer(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Search items...',
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            fillColor: Colors.transparent,
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => context.push(AppRoutes.favorites),
+            child: Container(
+              height: 45,
+              width: 45,
+              decoration: const BoxDecoration(
+                color: AppColors.cloviDarkGreen,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.favorite, color: Colors.white, size: 24),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrendingProductsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'All Products',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.cloviGreen,
+                ),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  ref.read(productFilterProvider.notifier).clearAll();
+                  await context.push(AppRoutes.search);
+                  ref.read(productFilterProvider.notifier).clearAll();
+                  ref.invalidate(homeProductsProvider);
+                },
+                child: const Row(
+                  children: [
+                    Text(
+                      'See all',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.cloviGreen,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, color: AppColors.cloviGreen),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 240,
+          child: ref
+              .watch(homeProductsProvider)
+              .when(
+                data: (products) {
+                  if (products.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No trending products found',
+                        style: TextStyle(color: AppColors.cloviGreen),
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      final product = products[index];
+                      return Container(
+                        width: 160,
+                        margin: const EdgeInsets.only(right: 16),
+                        child: ProductCard(
+                          productId: product.id,
+                          imageUrl: product.fullMainImageUrl,
+                          title: product.title,
+                          price: product.price,
+                          isFavorite: product.isFavorite,
+                          onTap: () => context.push('/product/${product.id}'),
+                          onFavoriteToggle: () {
+                            ref
+                                .read(favoritesProvider.notifier)
+                                .toggleFavorite(product);
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Error: $e')),
+              ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTrendingCategoriesSection() {
+    // Fetch categories from backend instead of hardcoding IDs
+    final categoriesAsync = ref.watch(categoriesProvider);
+
+    final categoryImages = [
+      'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?q=80&w=500&auto=format&fit=crop', // Children
+      'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=500&auto=format&fit=crop', // Women
+      'https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?q=80&w=500&auto=format&fit=crop', // Men
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Trending',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.cloviGreen,
+                ),
+              ),
+              Icon(Icons.chevron_right, color: AppColors.cloviGreen, size: 28),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 160,
+          child: categoriesAsync.when(
+            data: (categories) {
+              if (categories.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'No categories available',
+                    style: TextStyle(color: AppColors.cloviGreen),
+                  ),
+                );
+              }
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final cat = categories[index];
+                  final catImage =
+                      categoryImages[index % categoryImages.length];
+
+                  return GestureDetector(
+                    onTap: () async {
+                      print(
+                        'DEBUG: Clicked category - ID: ${cat.id}, Name: ${cat.name}',
+                      );
+                      ref
+                          .read(productFilterProvider.notifier)
+                          .updateCategory(cat.id);
+                      print('DEBUG: Filter updated to categoryId: ${cat.id}');
+                      await context.push(AppRoutes.search);
+                      // Reset après retour de la recherche
+                      ref.read(productFilterProvider.notifier).clearAll();
+                      ref.invalidate(homeProductsProvider);
+                    },
+                    child: Container(
+                      width: 140,
+                      margin: const EdgeInsets.only(right: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: catImage,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: [
+                                AppColors.cloviGreen,
+                                AppColors.cloviDarkGreen,
+                                Colors.brown[300] ?? Colors.brown,
+                              ][index % 3].withOpacity(0.1),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.image_not_supported),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0,
+                            left: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                borderRadius: const BorderRadius.only(
+                                  topRight: Radius.circular(12),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    cat.name,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.cloviGreen,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    size: 14,
+                                    color: AppColors.cloviGreen,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) =>
+                Center(child: Text('Error loading categories: $e')),
+          ),
+        ),
+      ],
     );
   }
 }
