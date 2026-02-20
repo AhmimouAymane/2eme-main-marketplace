@@ -16,4 +16,9 @@ export class CreateOrderDto {
     @IsString()
     @IsNotEmpty({ message: 'L\'adresse de livraison est requise pour le paiement à la livraison' })
     shippingAddress: string;
+
+    @ApiProperty({ example: 'OFFER_PENDING', required: false })
+    @IsOptional()
+    @IsString()
+    status?: any; // Using any for now to avoid Prisma import issues during generation
 }

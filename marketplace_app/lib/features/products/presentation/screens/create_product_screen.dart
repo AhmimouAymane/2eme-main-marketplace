@@ -4,7 +4,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart'; // Pour kIsWeb
 import 'package:image_picker/image_picker.dart';
-//import 'package:marketplace_app/core/theme/app_colors.dart';
+import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/utils/validators.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'dart:io';
@@ -255,6 +255,39 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
     _categoriesInitialized = true;
   }
 
+  Widget _buildSection({required String title, required List<Widget> children}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+            ),
+          ),
+          const SizedBox(height: 16),
+          ...children,
+        ],
+      ),
+    );
+  }
+
   Widget _buildCategorySelectors(List<CategoryModel> genres) {
     // Tenter d'initialiser si on est en mode édition
     _initializeCategories(genres);
@@ -352,19 +385,41 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 16),
-        Text('Taille', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
+        const Text(
+          'Taille',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 12),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 12,
+          runSpacing: 12,
           children: sizes.map((size) {
             final isSelected = _selectedSize == size;
-            return FilterChip(
-              label: Text(size),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() => _selectedSize = selected ? size : '');
-              },
+            return GestureDetector(
+              onTap: () => setState(() => _selectedSize = size),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppColors.cloviGreen : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isSelected ? AppColors.cloviGreen : Colors.grey.shade300,
+                    width: 1.5,
+                  ),
+                ),
+                child: Text(
+                  size,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
             );
           }).toList(),
         ),
@@ -377,151 +432,276 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
     final categoriesAsync = ref.watch(categoriesTreeProvider);
 
     return Scaffold(
+      backgroundColor: AppColors.cloviBeige,
       appBar: AppBar(
-        title: Text(widget.productToEdit != null ? 'Modifier l\'annonce' : 'Vendre un article'),
+        title: Text(
+          widget.productToEdit != null ? 'Modifier l\'annonce' : 'Vendre un article',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: AppColors.cloviGreen,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           children: [
-            // Photos
-            Text(
-              'Photos',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+            // Section Photos
+            _buildSection(
+              title: 'Photos',
+              children: [
+                SizedBox(
+                  height: 110,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      GestureDetector(
+                        onTap: _pickImages,
+                        child: Container(
+                          width: 100,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.cloviBeige,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppColors.cloviGreen.withOpacity(0.3),
+                              style: BorderStyle.solid,
+                              width: 1,
+                            ),
+                          ),
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.add_photo_alternate_rounded,
+                                color: AppColors.cloviGreen,
+                                size: 32,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'Ajouter',
+                                style: TextStyle(
+                                  color: AppColors.cloviGreen,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      ..._existingImageUrls.map((url) => _buildImageThumbnail(url, isNetwork: true)),
+                      ..._selectedImages.map((file) => _buildImageThumbnail(file.path, isNetwork: false)),
+                    ],
                   ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Ajoutez jusqu\'à ${AppConstants.maxImageUpload} photos pour mieux vendre.',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            // ... (Image picker widget code remains similar, simplifying for this view)
-             SizedBox(
-              height: 100,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  GestureDetector(
-                    onTap: _pickImages,
-                    child: Container(
-                      width: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[400]!),
-                      ),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add_photo_alternate_outlined),
-                          Text('Ajouter'),
-                        ],
-                      ),
+
+            // Details Section
+            _buildSection(
+              title: 'Détails de l\'article',
+              children: [
+                TextFormField(
+                  controller: _titleController,
+                  validator: Validators.productTitle,
+                  decoration: const InputDecoration(
+                    labelText: 'Titre',
+                    hintText: 'Ex: T-shirt Nike blanc taille M',
+                    prefixIcon: Icon(Icons.title_rounded, color: AppColors.cloviGreen),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _descriptionController,
+                  validator: Validators.productDescription,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    hintText: 'Décrivez votre article (matière, défauts...)',
+                    alignLabelWithHint: true,
+                    prefixIcon: Padding(
+                      padding: EdgeInsets.only(bottom: 60),
+                      child: Icon(Icons.description_rounded, color: AppColors.cloviGreen),
                     ),
                   ),
-                   ..._existingImageUrls.map((url) => Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Image.network(url.startsWith('http') ? url : '${AppConstants.mediaBaseUrl}$url', width: 100, height: 100, fit: BoxFit.cover),
-                  )),
-                  ..._selectedImages.map((file) => Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: kIsWeb ? Image.network(file.path, width: 100, height: 100, fit: BoxFit.cover) : Image.file(File(file.path), width: 100, height: 100, fit: BoxFit.cover),
-                  )),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Titre
-            TextFormField(
-              controller: _titleController,
-              validator: Validators.productTitle,
-              decoration: const InputDecoration(
-                labelText: 'Titre',
-                hintText: 'Ex: T-shirt Nike blanc taille M',
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Description
-            TextFormField(
-              controller: _descriptionController,
-              validator: Validators.productDescription,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                hintText: 'Décrivez votre article...',
-                alignLabelWithHint: true,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Prix
-            TextFormField(
-              controller: _priceController,
-              validator: Validators.price,
-              keyboardType: TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'Prix',
-                suffixText: AppConstants.currencySymbol,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Marque
-            TextFormField(
-              controller: _brandController,
-              validator: (v) => Validators.required(v, fieldName: 'La marque'),
-              decoration: const InputDecoration(
-                labelText: 'Marque',
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // CATEGORIES (Async)
-            categoriesAsync.when(
-              data: (genres) => _buildCategorySelectors(genres),
-              loading: () => const CircularProgressIndicator(),
-              error: (err, stack) => Text('Erreur de chargement des catégories: $err'),
-            ),
-            
-            // TAILLE (Dynamic)
-            _buildSizeSelector(),
-            
-            const SizedBox(height: 16),
-
-            // Condition
-            DropdownButtonFormField<String>(
-              initialValue: _selectedCondition,
-              decoration: const InputDecoration(labelText: 'État'),
-              items: const [
-                DropdownMenuItem(value: 'NEW_WITH_TAGS', child: Text('Neuf avec étiquette')),
-                DropdownMenuItem(value: 'NEW_WITHOUT_TAGS', child: Text('Neuf sans étiquette')),
-                DropdownMenuItem(value: 'VERY_GOOD', child: Text('Très bon état')),
-                DropdownMenuItem(value: 'GOOD', child: Text('Bon état')),
-                DropdownMenuItem(value: 'FAIR', child: Text('État correct')),
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  controller: _brandController,
+                  validator: (v) => Validators.required(v, fieldName: 'La marque'),
+                  decoration: const InputDecoration(
+                    labelText: 'Marque',
+                    hintText: 'Ex: Nike, Zara, Vintage...',
+                    prefixIcon: Icon(Icons.sell_rounded, color: AppColors.cloviGreen),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedCondition,
+                  decoration: const InputDecoration(
+                    labelText: 'État',
+                    prefixIcon: Icon(Icons.star_rounded, color: AppColors.cloviGreen),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'NEW_WITH_TAGS', child: Text('Neuf avec étiquette')),
+                    DropdownMenuItem(value: 'NEW_WITHOUT_TAGS', child: Text('Neuf sans étiquette')),
+                    DropdownMenuItem(value: 'VERY_GOOD', child: Text('Très bon état')),
+                    DropdownMenuItem(value: 'GOOD', child: Text('Bon état')),
+                    DropdownMenuItem(value: 'FAIR', child: Text('État correct')),
+                  ],
+                  onChanged: (value) => setState(() => _selectedCondition = value!),
+                ),
               ],
-              onChanged: (value) {
-                setState(() => _selectedCondition = value!);
-              },
             ),
-            const SizedBox(height: 32),
+
+            // Catégorie Section
+            _buildSection(
+              title: 'Catégorie & Taille',
+              children: [
+                categoriesAsync.when(
+                  data: (genres) => _buildCategorySelectors(genres),
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Text('Erreur: $err'),
+                ),
+                _buildSizeSelector(),
+              ],
+            ),
+
+            // Pricing Section
+            _buildSection(
+              title: 'Prix',
+              children: [
+                TextFormField(
+                  controller: _priceController,
+                  validator: Validators.price,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    labelText: 'Votre prix de vente',
+                    suffixText: AppConstants.currencySymbol,
+                    suffixStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    prefixIcon: const Icon(Icons.money, color: AppColors.cloviGreen),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.cloviGreen.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: AppColors.cloviGreen, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Les frais d\'envoi s\'ajoutent au prix.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.cloviGreen.withOpacity(0.8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
 
             // Submit button
-            ElevatedButton(
-              onPressed: _isLoading ? null : _handleSubmit,
-              child: _isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            SizedBox(
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleSubmit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.cloviGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        widget.productToEdit != null ? 'Enregistrer les modifications' : 'Publier l\'annonce',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                    )
-                  : Text(widget.productToEdit != null ? 'Modifier l\'annonce' : 'Publier l\'annonce'),
+              ),
             ),
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildImageThumbnail(String path, {required bool isNetwork}) {
+    return Container(
+      width: 100,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          isNetwork
+              ? Image.network(
+                  path.startsWith('http') ? path : '${AppConstants.mediaBaseUrl}$path',
+                  fit: BoxFit.cover,
+                )
+              : (kIsWeb 
+                  ? Image.network(path, fit: BoxFit.cover) 
+                  : Image.file(File(path), fit: BoxFit.cover)),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  if (isNetwork) {
+                    _existingImageUrls.remove(path);
+                  } else {
+                    _selectedImages.removeWhere((f) => f.path == path);
+                  }
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
+

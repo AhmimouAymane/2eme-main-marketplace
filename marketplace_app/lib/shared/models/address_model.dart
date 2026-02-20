@@ -36,6 +36,7 @@ class AddressModel extends Equatable {
     'city': city,
     'postal': postal,
     'country': country,
+    'isDefault': isDefault,
   };
 
   @override

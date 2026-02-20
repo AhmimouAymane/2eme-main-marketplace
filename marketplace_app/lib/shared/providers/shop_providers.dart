@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:marketplace_app/core/constants/app_constants.dart';
@@ -162,15 +163,24 @@ final productsProvider = FutureProvider.autoDispose<List<ProductModel>>((
   );
 });
 
-// Provider pour l'accueil (ignore les filtres de recherche et de prix)
+// Provider pour l'accueil (auto-refresh toutes les 30s)
 final homeProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((
   ref,
 ) async {
   // On observe les filtres pour que l'accueil se rafraîchisse quand ils sont réinitialisés
   ref.watch(productFilterProvider);
   final service = ref.watch(productsServiceProvider);
+
+  // Mise en place d'un timer pour rafraîchir la page automatiquement
+  final timer = Timer(const Duration(seconds: 30), () {
+    ref.invalidateSelf();
+  });
+
+  // Nettoyage du timer à la disposition du provider pour éviter les fuites de mémoire
+  ref.onDispose(() => timer.cancel());
+
   print(
-    'DEBUG: homeProductsProvider fetching all products (reactive to filters)',
+    'DEBUG: homeProductsProvider fetching all products (periodic refresh active)',
   );
   return service.getProducts();
 });
@@ -315,12 +325,16 @@ final chatSocketProvider = Provider<IO.Socket>((ref) {
         final map = Map<String, dynamic>.from(data);
         final message = MessageModel.fromJson(map);
 
-        // Met à jour le dernier message reçu
-        ref.read(lastIncomingMessageProvider.notifier).state = message;
+        // Déférer les modifications de providers pour éviter l'erreur
+        // "Tried to modify a provider while the widget tree is building"
+        Future.microtask(() {
+          // Met à jour le dernier message reçu
+          ref.read(lastIncomingMessageProvider.notifier).state = message;
 
-        // Rafraîchit les conversations et la conversation ciblée
-        ref.invalidate(conversationsProvider);
-        ref.invalidate(conversationMessagesProvider(message.conversationId));
+          // Rafraîchit les conversations et la conversation ciblée
+          ref.invalidate(conversationsProvider);
+          ref.invalidate(conversationMessagesProvider(message.conversationId));
+        });
       }
     })
     ..connect();

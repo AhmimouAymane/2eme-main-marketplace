@@ -6,9 +6,10 @@ import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import '../widgets/product_card.dart';
 import 'package:marketplace_app/shared/widgets/clovi_logo.dart';
-import 'package:marketplace_app/shared/widgets/clovi_bottom_nav.dart';
 import 'package:marketplace_app/shared/widgets/clovi_drawer.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:marketplace_app/shared/models/product_model.dart';
+import 'package:marketplace_app/core/constants/app_constants.dart';
+import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 
 /// Écran d'accueil avec liste de produits
 class HomeScreen extends ConsumerStatefulWidget {
@@ -33,37 +34,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  int _selectedIndex = 0;
 
-  void _onItemTapped(int index) {
-    switch (index) {
-      case 0:
-        // Déjà sur home : refresh
-        ref.read(productFilterProvider.notifier).clearAll();
-        ref.invalidate(homeProductsProvider);
-        setState(() => _selectedIndex = 0);
-        break;
-      case 1:
-        ref.read(productFilterProvider.notifier).clearAll();
-        context.go(AppRoutes.search);
-        break;
-      case 2:
-        context.push(AppRoutes.createProduct);
-        break;
-      case 3:
-        context.go(AppRoutes.conversations);
-        break;
-      case 4:
-        context.go(AppRoutes.profile);
-        break;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: AppColors.cloviBeige,
+      // backgroundColor: AppColors.cloviBeige, // Inherited from theme
       drawer: const CloviDrawer(),
       body: SafeArea(
         child: Column(
@@ -85,17 +62,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Safety Carousel
+                      //removed for now, can be added back later if needed
+                      // _buildSafetyCarousel(),  
+
                       // Search Section
                       _buildSearchSection(),
                       const SizedBox(height: 24),
 
-                      // Trending Products
-                      _buildTrendingProductsSection(),
+                      // Trending Categories
+                      _buildCategoriesSection(),
                       const SizedBox(height: 32),
 
-                      // Trending Categories
-                      _buildTrendingCategoriesSection(),
-                      const SizedBox(height: 100), // Space for bottom bar
+                      // Fresh Arrivals
+                      _buildFreshArrivalsSection(),
+                      const SizedBox(height: 32),
+
+                      // Community Activity
+                      _buildCommunityActivitySection(),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -103,10 +88,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: CloviBottomNav(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped,
       ),
     );
   }
@@ -125,17 +106,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const CloviLogo(size: 30, fontSize: 24),
           IconButton(
-            icon: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.grey[300],
-              ),
-              child: const Icon(Icons.person, color: Colors.white, size: 28),
-            ),
+            icon: ref.watch(userAvatarUrlProvider).maybeWhen(
+                  data: (url) {
+                    if (url != null && url.isNotEmpty) {
+                      final fullUrl = url.startsWith('http')
+                          ? url
+                          : '${AppConstants.mediaBaseUrl}$url';
+                      return CircleAvatar(
+                        radius: 14,
+                        backgroundImage: NetworkImage(fullUrl),
+                      );
+                    }
+                    return _buildDefaultAvatar();
+                  },
+                  orElse: () => _buildDefaultAvatar(),
+                ),
             onPressed: () => context.push(AppRoutes.profile),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.grey[300],
+      ),
+      child: const Icon(Icons.person, color: Colors.white, size: 28),
     );
   }
 
@@ -202,7 +201,175 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildTrendingProductsSection() {
+  Widget _buildSafetyCarousel() {
+    final tips = [
+      {
+        'icon': Icons.security,
+        'title': 'Safety First',
+        'desc': 'Meet in public places for transactions.',
+        'color': AppColors.cloviGreen
+      },
+      {
+        'icon': Icons.visibility,
+        'title': 'Inspect Items',
+        'desc': 'Check items thoroughly before paying.',
+        'color': AppColors.cloviDarkGreen
+      },
+      {
+        'icon': Icons.payments,
+        'title': 'Cash on Delivery',
+        'desc': 'Pay only after receiving your item.',
+        'color': Colors.brown[400]
+      },
+    ];
+
+    return SizedBox(
+      height: 120,
+      child: PageView.builder(
+        itemCount: tips.length,
+        itemBuilder: (context, index) {
+          final tip = tips[index];
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: (tip['color'] as Color).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: (tip['color'] as Color).withOpacity(0.2),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(tip['icon'] as IconData,
+                    size: 40, color: tip['color'] as Color),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        tip['title'] as String,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: tip['color'] as Color,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        tip['desc'] as String,
+                        style: TextStyle(
+                          color: (tip['color'] as Color).withOpacity(0.8),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCategoriesSection() {
+    final categoriesAsync = ref.watch(categoriesProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Categories',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 100,
+          child: categoriesAsync.when(
+            data: (categories) => ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final cat = categories[index];
+                return GestureDetector(
+                  onTap: () {
+                    ref
+                        .read(productFilterProvider.notifier)
+                        .updateCategory(cat.id);
+                    context.push(AppRoutes.search);
+                  },
+                  child: Container(
+                    width: 80,
+                    margin: const EdgeInsets.only(right: 12),
+                    child: Column(
+                      children: [
+                        Container(
+                          height: 60,
+                          width: 60,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            _getCategoryIcon(cat.name),
+                            color: AppColors.cloviGreen,
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          cat.name,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => const SizedBox(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  IconData _getCategoryIcon(String name) {
+    name = name.toLowerCase();
+    if (name.contains('homme') || name.contains('men')) return Icons.man;
+    if (name.contains('femme') || name.contains('women')) return Icons.woman;
+    if (name.contains('enfant') || name.contains('kid')) return Icons.child_care;
+    if (name.contains('chaussure')) return Icons.directions_run;
+    if (name.contains('accessoire')) return Icons.watch;
+    return Icons.category;
+  }
+
+  Widget _buildFreshArrivalsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -212,60 +379,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'All Products',
+                'Fresh Arrivals',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: AppColors.cloviGreen,
                 ),
               ),
-              GestureDetector(
-                onTap: () async {
-                  ref.read(productFilterProvider.notifier).clearAll();
-                  await context.push(AppRoutes.search);
-                  ref.read(productFilterProvider.notifier).clearAll();
-                  ref.invalidate(homeProductsProvider);
-                },
-                child: const Row(
-                  children: [
-                    Text(
-                      'See all',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppColors.cloviGreen,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Icon(Icons.chevron_right, color: AppColors.cloviGreen),
-                  ],
-                ),
+              TextButton(
+                onPressed: () => context.push(AppRoutes.search),
+                child: const Text('See all'),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
         SizedBox(
           height: 240,
-          child: ref
-              .watch(homeProductsProvider)
-              .when(
+          child: ref.watch(homeProductsProvider).when(
                 data: (products) {
-                  if (products.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'No trending products found',
-                        style: TextStyle(color: AppColors.cloviGreen),
-                      ),
-                    );
-                  }
+                  if (products.isEmpty) return const SizedBox();
                   return ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: products.length,
+                    itemCount: products.length > 5 ? 5 : products.length,
                     itemBuilder: (context, index) {
                       final product = products[index];
                       return Container(
-                        width: 160,
+                        width: 150,
                         margin: const EdgeInsets.only(right: 16),
                         child: ProductCard(
                           productId: product.id,
@@ -285,153 +425,82 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Error: $e')),
+                error: (e, _) => const SizedBox(),
               ),
         ),
       ],
     );
   }
 
-  Widget _buildTrendingCategoriesSection() {
-    // Fetch categories from backend instead of hardcoding IDs
-    final categoriesAsync = ref.watch(categoriesProvider);
-
-    final categoryImages = [
-      'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?q=80&w=500&auto=format&fit=crop', // Children
-      'https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=500&auto=format&fit=crop', // Women
-      'https://images.unsplash.com/photo-1490578474895-699cd4e2cf59?q=80&w=500&auto=format&fit=crop', // Men
-    ];
-
+  Widget _buildCommunityActivitySection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Trending',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.cloviGreen,
-                ),
-              ),
-              Icon(Icons.chevron_right, color: AppColors.cloviGreen, size: 28),
-            ],
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Community Activity',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+            ),
           ),
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 160,
-          child: categoriesAsync.when(
-            data: (categories) {
-              if (categories.isEmpty) {
-                return const Center(
-                  child: Text(
-                    'No categories available',
-                    style: TextStyle(color: AppColors.cloviGreen),
-                  ),
-                );
-              }
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final cat = categories[index];
-                  final catImage =
-                      categoryImages[index % categoryImages.length];
+        const SizedBox(height: 12),
+        ref.watch(homeProductsProvider).when(
+              data: (products) {
+                // Flatten all comments from all products for "Recent Activity"
+                final allComments = products
+                    .expand((p) => p.comments.map((c) => {'comment': c, 'product': p}))
+                    .toList();
+                
+                allComments.sort((a, b) => (b['comment'] as dynamic).createdAt.compareTo((a['comment'] as dynamic).createdAt));
 
-                  return GestureDetector(
-                    onTap: () async {
-                      print(
-                        'DEBUG: Clicked category - ID: ${cat.id}, Name: ${cat.name}',
-                      );
-                      ref
-                          .read(productFilterProvider.notifier)
-                          .updateCategory(cat.id);
-                      print('DEBUG: Filter updated to categoryId: ${cat.id}');
-                      await context.push(AppRoutes.search);
-                      // Reset après retour de la recherche
-                      ref.read(productFilterProvider.notifier).clearAll();
-                      ref.invalidate(homeProductsProvider);
-                    },
-                    child: Container(
-                      width: 140,
-                      margin: const EdgeInsets.only(right: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CachedNetworkImage(
-                            imageUrl: catImage,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: [
-                                AppColors.cloviGreen,
-                                AppColors.cloviDarkGreen,
-                                Colors.brown[300] ?? Colors.brown,
-                              ][index % 3].withOpacity(0.1),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.grey[200],
-                              child: const Icon(Icons.image_not_supported),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            left: 0,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.9),
-                                borderRadius: const BorderRadius.only(
-                                  topRight: Radius.circular(12),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    cat.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.cloviGreen,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(
-                                    Icons.chevron_right,
-                                    size: 14,
-                                    color: AppColors.cloviGreen,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                if (allComments.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Text('No recent activity', style: TextStyle(color: Colors.grey)),
                   );
-                },
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) =>
-                Center(child: Text('Error loading categories: $e')),
-          ),
-        ),
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: allComments.length > 3 ? 3 : allComments.length,
+                  itemBuilder: (context, index) {
+                    final item = allComments[index];
+                    final comment = item['comment'] as dynamic;
+                    final product = item['product'] as ProductModel;
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundImage: NetworkImage(product.fullMainImageUrl),
+                        ),
+                        title: Text(
+                          '${comment.user?.fullName ?? 'Someone'} commented on ${product.title}',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          comment.content,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        onTap: () => context.push('/product/${product.id}'),
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () => const SizedBox(),
+              error: (e, _) => const SizedBox(),
+            ),
       ],
     );
   }
 }
+
+

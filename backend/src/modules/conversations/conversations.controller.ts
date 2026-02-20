@@ -27,7 +27,7 @@ export class ConversationsController {
   constructor(
     private readonly conversationsService: ConversationsService,
     private readonly chatGateway: ChatGateway,
-  ) {}
+  ) { }
 
   @Post('product/:productId')
   @ApiOperation({ summary: 'Create or get a conversation for a product' })
@@ -36,6 +36,15 @@ export class ConversationsController {
     @GetCurrentUser('sub') userId: string,
   ) {
     return this.conversationsService.findOrCreateConversation(productId, userId);
+  }
+
+  @Post('order/:orderId')
+  @ApiOperation({ summary: 'Create or get a conversation for an order' })
+  createOrGetOrderConversation(
+    @Param('orderId') orderId: string,
+    @GetCurrentUser('sub') userId: string,
+  ) {
+    return this.conversationsService.findOrCreateOrderConversation(orderId, userId);
   }
 
   @Get()
@@ -73,7 +82,9 @@ export class ConversationsController {
       .createMessage(id, userId, body.content)
       .then((message) => {
         // Diffuse globalement, le client filtrera par conversationId
-        this.chatGateway.server.emit('new_message', message);
+        if (this.chatGateway?.server) {
+          this.chatGateway.server.emit('new_message', message);
+        }
         return message;
       });
   }

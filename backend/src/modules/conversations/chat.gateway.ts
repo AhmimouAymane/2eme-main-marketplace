@@ -25,7 +25,7 @@ export class ChatGateway {
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly conversationsService: ConversationsService) {}
+  constructor(private readonly conversationsService: ConversationsService) { }
 
   @SubscribeMessage('join_conversation')
   async handleJoinConversation(
@@ -52,8 +52,8 @@ export class ChatGateway {
       payload.content,
     );
 
-    // Diffuse à tous les clients connectés ; le client filtrera par conversationId
-    this.server.emit('new_message', message);
+    // Envoie uniquement aux autres participants de la conversation
+    client.to(payload.conversationId).emit('new_message', message);
   }
 }
 

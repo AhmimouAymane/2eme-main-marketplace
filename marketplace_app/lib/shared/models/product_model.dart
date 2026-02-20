@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
+import 'review_model.dart';
+import 'comment_model.dart';
 
 // part 'product_model.g.dart';
 /// Statut d'un produit (Synchronisé avec le backend)
@@ -51,6 +53,9 @@ class ProductModel extends Equatable {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final bool isFavorite;
+  final List<ReviewModel> reviews;
+  final List<CommentModel> comments;
+  final String? sellerCity;
   
   const ProductModel({
     required this.id,
@@ -70,6 +75,9 @@ class ProductModel extends Equatable {
     required this.createdAt,
     this.updatedAt,
     this.isFavorite = false,
+    this.reviews = const [],
+    this.comments = const [],
+    this.sellerCity,
   });
   
   // Getters
@@ -134,7 +142,23 @@ class ProductModel extends Equatable {
           ? DateTime.parse(json['updatedAt']) 
           : null,
       isFavorite: json['isFavorite'] ?? false,
+      reviews: (json['reviews'] as List?)?.map((r) => ReviewModel.fromJson(r)).toList() ?? [],
+      comments: (json['comments'] as List?)?.map((c) => CommentModel.fromJson(c)).toList() ?? [],
+      sellerCity: _extractCity(json['seller']),
     );
+  }
+
+  static String? _extractCity(Map<String, dynamic>? seller) {
+    if (seller == null || seller['addresses'] == null) return null;
+    final addresses = seller['addresses'] as List;
+    if (addresses.isEmpty) return null;
+    
+    // Try to find default address first, else take the first one
+    final defaultAddress = addresses.firstWhere(
+      (a) => a['isDefault'] == true,
+      orElse: () => addresses.first,
+    );
+    return defaultAddress['city'] as String?;
   }
   
   static ProductCondition _conditionFromString(String value) {
@@ -203,6 +227,9 @@ class ProductModel extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isFavorite,
+    List<ReviewModel>? reviews,
+    List<CommentModel>? comments,
+    String? sellerCity,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -222,6 +249,9 @@ class ProductModel extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isFavorite: isFavorite ?? this.isFavorite,
+      reviews: reviews ?? this.reviews,
+      comments: comments ?? this.comments,
+      sellerCity: sellerCity ?? this.sellerCity,
     );
   }
   
@@ -244,5 +274,7 @@ class ProductModel extends Equatable {
         createdAt,
         updatedAt,
         isFavorite,
+        reviews,
+        comments,
       ];
 }

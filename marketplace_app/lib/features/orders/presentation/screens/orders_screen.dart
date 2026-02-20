@@ -165,7 +165,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                           ),
                           decoration: BoxDecoration(
                             color: isDelivered
-                                ? AppColors.success.withOpacity(0.1)
+                                ? AppColors.cloviGreen.withOpacity(0.1)
                                 : AppColors.warning.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
@@ -173,7 +173,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                             statusText,
                             style: TextStyle(
                               color: isDelivered
-                                  ? AppColors.success
+                                  ? AppColors.cloviGreen
                                   : AppColors.warning,
                               fontSize: 12,
                               fontWeight: FontWeight.w600,

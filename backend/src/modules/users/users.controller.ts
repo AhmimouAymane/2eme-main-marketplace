@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, Param, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
@@ -14,8 +14,12 @@ export class UsersController {
     @UseGuards(AuthGuard('jwt'))
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get current user profile' })
-    getMe(@GetCurrentUser('sub') userId: string) {
-        return this.usersService.findOne(userId);
+    async getMe(@GetCurrentUser('sub') userId: string) {
+        const user = await this.usersService.findOne(userId);
+        if (!user) {
+            throw new NotFoundException('User profile not found in database');
+        }
+        return user;
     }
 
     @Patch('me')
@@ -29,6 +33,14 @@ export class UsersController {
         return this.usersService.update(userId, updateUserDto);
     }
 
+    @Delete('me')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Delete current user account (DB + Firebase)' })
+    deleteMe(@GetCurrentUser('sub') userId: string) {
+        return this.usersService.remove(userId);
+    }
+
     @Get(':id')
     @ApiOperation({ summary: 'Get a user profile by ID (public)' })
     async getOne(@Param('id') id: string) {
@@ -36,8 +48,19 @@ export class UsersController {
         if (!user) {
             throw new NotFoundException('User not found');
         }
-        // Don't expose password
-        const { password, ...result } = user;
-        return result;
+        return user;
+    }
+
+    @Post(':id/reviews')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Rate a user (seller)' })
+    async rateUser(
+        @GetCurrentUser('sub') reviewerId: string,
+        @Param('id') targetUserId: string,
+        @Body('rating') rating: number,
+        @Body('comment') comment?: string,
+    ) {
+        return this.usersService.rateUser(reviewerId, targetUserId, rating, comment);
     }
 }

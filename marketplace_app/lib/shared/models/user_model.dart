@@ -22,6 +22,8 @@ class UserModel extends Equatable {
   final String? avatarUrl;
   final String? bio;
   final List<ProductModel>? products;
+  final int salesCount;
+  final double averageRating;
   final UserRole role;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -36,6 +38,8 @@ class UserModel extends Equatable {
     this.avatarUrl,
     this.bio,
     this.products,
+    this.salesCount = 0,
+    this.averageRating = 0.0,
     required this.role,
     required this.createdAt,
     this.updatedAt,
@@ -64,6 +68,8 @@ class UserModel extends Equatable {
                 .map((p) => ProductModel.fromJson(p))
                 .toList()
             : null,
+        salesCount: json['salesCount'] as int? ?? 0,
+        averageRating: (json['averageRating'] ?? 0.0).toDouble(),
         role: _roleFromString(json['role'] as String? ?? 'USER'),
         createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
         updatedAt: json['updatedAt'] == null ? null : DateTime.parse(json['updatedAt'] as String),
@@ -83,6 +89,8 @@ class UserModel extends Equatable {
         'addresses': addresses?.map((a) => a.toJson()).toList(),
         'avatarUrl': avatarUrl,
         'bio': bio,
+        'salesCount': salesCount,
+        'averageRating': averageRating,
         'role': role.name.toUpperCase(),
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt?.toIso8601String(),
@@ -99,6 +107,8 @@ class UserModel extends Equatable {
     String? avatarUrl,
     String? bio,
     List<ProductModel>? products,
+    int? salesCount,
+    double? averageRating,
     UserRole? role,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -113,6 +123,8 @@ class UserModel extends Equatable {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       bio: bio ?? this.bio,
       products: products ?? this.products,
+      salesCount: salesCount ?? this.salesCount,
+      averageRating: averageRating ?? this.averageRating,
       role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

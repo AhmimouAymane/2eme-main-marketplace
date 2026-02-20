@@ -6,8 +6,8 @@ export class FavoritesService {
     constructor(private prisma: PrismaService) { }
 
     async toggleFavorite(userId: string, productId: string) {
-        const product = await this.prisma.product.findUnique({
-            where: { id: productId },
+        const product = await this.prisma.product.findFirst({
+            where: { id: productId, deletedAt: null },
         });
 
         if (!product) {
@@ -41,7 +41,10 @@ export class FavoritesService {
 
     async getFavorites(userId: string) {
         const favorites = await this.prisma.favorite.findMany({
-            where: { userId },
+            where: {
+                userId,
+                product: { deletedAt: null }
+            },
             include: {
                 product: {
                     include: {
@@ -60,6 +63,6 @@ export class FavoritesService {
             },
         });
 
-        return favorites.map((f) => f.product);
+        return favorites.map((f: any) => f.product);
     }
 }

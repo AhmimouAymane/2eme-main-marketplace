@@ -59,20 +59,32 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
       isDefault: _isDefault,
     );
 
-    if (widget.initial == null) {
-      await ref.read(addressesServiceProvider).createAddress(userId, address);
-    } else {
-      await ref.read(addressesServiceProvider).updateAddress(userId, address);
-    }
+    try {
+      if (widget.initial == null) {
+        address = await ref
+            .read(addressesServiceProvider)
+            .createAddress(userId, address);
+      } else {
+        address = await ref
+            .read(addressesServiceProvider)
+            .updateAddress(userId, address);
+      }
 
-    if (_isDefault) {
-      await ref
-          .read(addressesServiceProvider)
-          .setDefaultAddress(userId, address.id);
-    }
+      if (_isDefault) {
+        await ref
+            .read(addressesServiceProvider)
+            .setDefaultAddress(userId, address.id);
+      }
 
-    ref.invalidate(userAddressesProvider(userId));
-    if (context.mounted) context.pop();
+      ref.invalidate(userAddressesProvider(userId));
+      if (context.mounted) context.pop();
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de l\'enregistrement : $e')),
+        );
+      }
+    }
   }
 
   @override

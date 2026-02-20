@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/features/auth/presentation/screens/login_screen.dart';
 import 'package:marketplace_app/features/auth/presentation/screens/register_screen.dart';
@@ -20,15 +21,37 @@ import 'package:marketplace_app/features/chat/presentation/screens/conversations
 import 'package:marketplace_app/features/chat/presentation/screens/chat_screen.dart';
 import 'package:marketplace_app/features/addresses/presentation/screens/addresses_screen.dart';
 import 'package:marketplace_app/features/addresses/presentation/screens/address_form_screen.dart';
+import 'package:marketplace_app/features/notifications/presentation/screens/notifications_screen.dart';
+import 'package:marketplace_app/features/profile/presentation/screens/help_support_screen.dart';
+import 'package:marketplace_app/features/profile/presentation/screens/about_screen.dart';
 import 'package:marketplace_app/shared/models/address_model.dart';
+import 'package:marketplace_app/shared/widgets/app_shell.dart';
 
-/// Configuration du routeur Go Router
-class AppRouter {
-  static final GoRouter router = GoRouter(
-    initialLocation: AppRoutes.login,
+import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+
+/// Provider pour le routeur Go Router
+final routerProvider = Provider<GoRouter>((ref) {
+  final isAuthenticated = ref.watch(isAuthenticatedProvider);
+
+  return GoRouter(
+    initialLocation: AppRoutes.home,
     debugLogDiagnostics: true,
+    redirect: (context, state) {
+      final isLoggingIn = state.matchedLocation == AppRoutes.login;
+      final isRegistering = state.matchedLocation == AppRoutes.register;
+
+      if (!isAuthenticated && !isLoggingIn && !isRegistering) {
+        return AppRoutes.login;
+      }
+
+      if (isAuthenticated && (isLoggingIn || isRegistering)) {
+        return AppRoutes.home;
+      }
+
+      return null;
+    },
     routes: [
-      // Auth routes
+      // Auth routes (outside the shell — no nav bar)
       GoRoute(
         path: AppRoutes.login,
         name: 'login',
@@ -42,15 +65,18 @@ class AppRouter {
             MaterialPage(key: state.pageKey, child: const RegisterScreen()),
       ),
 
-      // Home
+      // Modal routes pushed on top of the shell (no nav bar)
       GoRoute(
-        path: AppRoutes.home,
-        name: 'home',
-        pageBuilder: (context, state) =>
-            MaterialPage(key: state.pageKey, child: const HomeScreen()),
+        path: AppRoutes.createProduct,
+        name: 'create-product',
+        pageBuilder: (context, state) {
+          final productToEdit = state.extra as ProductModel?;
+          return MaterialPage(
+            key: state.pageKey,
+            child: CreateProductScreen(productToEdit: productToEdit),
+          );
+        },
       ),
-
-      // Products
       GoRoute(
         path: AppRoutes.productDetail,
         name: 'product-detail',
@@ -63,24 +89,16 @@ class AppRouter {
         },
       ),
       GoRoute(
-        path: AppRoutes.search,
-        name: 'search',
-        pageBuilder: (context, state) =>
-            MaterialPage(key: state.pageKey, child: const SearchScreen()),
-      ),
-      GoRoute(
-        path: AppRoutes.createProduct,
-        name: 'create-product',
+        path: AppRoutes.sellerProfile,
+        name: 'seller-profile',
         pageBuilder: (context, state) {
-          final productToEdit = state.extra as ProductModel?;
+          final userId = state.pathParameters['id']!;
           return MaterialPage(
             key: state.pageKey,
-            child: CreateProductScreen(productToEdit: productToEdit),
+            child: SellerProfileScreen(userId: userId),
           );
         },
       ),
-
-      // Orders
       GoRoute(
         path: AppRoutes.orders,
         name: 'orders',
@@ -97,14 +115,6 @@ class AppRouter {
             child: OrderDetailScreen(orderId: orderId),
           );
         },
-      ),
-
-      // Profile
-      GoRoute(
-        path: AppRoutes.profile,
-        name: 'profile',
-        pageBuilder: (context, state) =>
-            MaterialPage(key: state.pageKey, child: const ProfileScreen()),
       ),
       GoRoute(
         path: AppRoutes.editProfile,
@@ -131,19 +141,6 @@ class AppRouter {
             MaterialPage(key: state.pageKey, child: const FavoritesScreen()),
       ),
       GoRoute(
-        path: AppRoutes.sellerProfile,
-        name: 'seller-profile',
-        pageBuilder: (context, state) {
-          final userId = state.pathParameters['id']!;
-          return MaterialPage(
-            key: state.pageKey,
-            child: SellerProfileScreen(userId: userId),
-          );
-        },
-      ),
-
-      // Addresses
-      GoRoute(
         path: AppRoutes.addresses,
         name: 'addresses',
         pageBuilder: (context, state) =>
@@ -160,16 +157,6 @@ class AppRouter {
           );
         },
       ),
-
-      // Chat
-      GoRoute(
-        path: AppRoutes.conversations,
-        name: 'conversations',
-        pageBuilder: (context, state) => MaterialPage(
-          key: state.pageKey,
-          child: const ConversationsScreen(),
-        ),
-      ),
       GoRoute(
         path: AppRoutes.chat,
         name: 'chat',
@@ -181,6 +168,93 @@ class AppRouter {
           );
         },
       ),
+      GoRoute(
+        path: AppRoutes.notifications,
+        name: 'notifications',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const NotificationsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.helpSupport,
+        name: 'help-support',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const HelpSupportScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.about,
+        name: 'about',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const AboutScreen(),
+        ),
+      ),
+
+      // ──────────────────────────────────────────────────────────────
+      // StatefulShellRoute: 4 branches with persistent nav bar
+      // Branch 0 → Home (/)
+      // Branch 1 → Search (/search)
+      // Branch 2 → Messages (/conversations)
+      // Branch 3 → Profile (/profile)
+      // ──────────────────────────────────────────────────────────────
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
+        branches: [
+          // Branch 0: Home
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.home,
+                name: 'home',
+                pageBuilder: (context, state) =>
+                    NoTransitionPage(key: state.pageKey, child: const HomeScreen()),
+              ),
+            ],
+          ),
+
+          // Branch 1: Search
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.search,
+                name: 'search',
+                pageBuilder: (context, state) =>
+                    NoTransitionPage(key: state.pageKey, child: const SearchScreen()),
+              ),
+            ],
+          ),
+
+          // Branch 2: Messages
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.conversations,
+                name: 'conversations',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  key: state.pageKey,
+                  child: const ConversationsScreen(),
+                ),
+              ),
+            ],
+          ),
+
+          // Branch 3: Profile
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: AppRoutes.profile,
+                name: 'profile',
+                pageBuilder: (context, state) =>
+                    NoTransitionPage(key: state.pageKey, child: const ProfileScreen()),
+              ),
+            ],
+          ),
+        ],
+      ),
     ],
   );
-}
+});

@@ -111,7 +111,7 @@ class ProductsService {
     try {
       await _dio.post('/products/$productId/reviews', data: {
         'rating': rating,
-        'comment': ?comment,
+        'comment': comment,
       });
     } catch (e) {
       rethrow;

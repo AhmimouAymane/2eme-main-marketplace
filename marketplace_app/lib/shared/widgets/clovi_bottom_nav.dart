@@ -28,51 +28,61 @@ class CloviBottomNav extends StatelessWidget {
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildNavItem(Icons.home, 'Home', 0, active: selectedIndex == 0),
-          _buildNavItem(Icons.search, 'Search', 1, active: selectedIndex == 1),
-          // Central button
-          GestureDetector(
-            onTap: () => onItemTapped(2),
-            child: Container(
-              height: 50,
-              width: 50,
-              decoration: const BoxDecoration(
-                color: AppColors.cloviDarkGreen,
-                shape: BoxShape.circle,
+          Expanded(child: _buildNavItem(Icons.home_outlined, Icons.home, 'Home', 0)),
+          Expanded(child: _buildNavItem(Icons.search_outlined, Icons.search, 'Search', 1)),
+
+          // Central "+" button — wrapped in Expanded + Center for perfect alignment
+          Expanded(
+            child: Center(
+              child: GestureDetector(
+                onTap: () => onItemTapped(2),
+                child: Container(
+                  height: 50,
+                  width: 50,
+                  decoration: const BoxDecoration(
+                    color: AppColors.cloviDarkGreen,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 30),
+                ),
               ),
-              child: const Icon(Icons.add, color: Colors.white, size: 30),
             ),
           ),
-          _buildNavItem(Icons.chat_bubble_outline, 'Messages', 3, active: selectedIndex == 3),
-          _buildNavItem(Icons.person_outline, 'Profile', 4, active: selectedIndex == 4),
+
+          Expanded(child: _buildNavItem(Icons.chat_bubble_outline, Icons.chat_bubble, 'Messages', 3)),
+          Expanded(child: _buildNavItem(Icons.person_outline, Icons.person, 'Profile', 4)),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index, {bool active = false}) {
+  Widget _buildNavItem(IconData icon, IconData activeIcon, String label, int index) {
+    final bool active = selectedIndex == index;
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => onItemTapped(index),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: active ? AppColors.cloviGreen : AppColors.textSecondaryLight,
-            size: 24,
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
+      child: SizedBox(
+        height: double.infinity,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              active ? activeIcon : icon,
               color: active ? AppColors.cloviGreen : AppColors.textSecondaryLight,
-              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+              size: 24,
             ),
-          ),
-        ],
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                color: active ? AppColors.cloviGreen : AppColors.textSecondaryLight,
+                fontWeight: active ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

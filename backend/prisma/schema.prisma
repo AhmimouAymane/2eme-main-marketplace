@@ -18,6 +18,7 @@ model User {
   // address field removed; use Address model to store multiple
   avatarUrl String?
   bio       String?
+  fcmToken  String?
   role      Role      @default(USER)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -31,6 +32,9 @@ model User {
   sellerConversations Conversation[] @relation("SellerConversations")
   messages            Message[]      @relation("UserMessages")
   addresses Address[]
+  receivedReviews     UserReview[]   @relation("TargetUser")
+  givenReviews        UserReview[]   @relation("Reviewer")
+  notifications       Notification[]
 
   @@map("users")
 }
@@ -48,6 +52,7 @@ model Product {
   status      ProductStatus    @default(PENDING_APPROVAL)
   moderationComment String?
   sellerId    String
+  deletedAt   DateTime?      // Soft delete timestamp
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
   comments    Comment[]
@@ -83,11 +88,12 @@ model Order {
   status          OrderStatus @default(PENDING)
   shippingAddress String?
   pickupAddress   String?     // Adresse fournie par le vendeur lors de la confirmation
+  rejectionReason String?     // Motif du refus (vendeur) ou de l'annulation
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   deliveredAt     DateTime?
   
-  product         Product     @relation(fields: [productId], references: [id])
+  product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id])
   seller          User        @relation("SellerOrders", fields: [sellerId], references: [id])
 
@@ -103,7 +109,7 @@ model Conversation {
   updatedAt DateTime @updatedAt
   lastMessageAt DateTime @default(now())
 
-  product Product @relation(fields: [productId], references: [id])
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   buyer   User    @relation("BuyerConversations", fields: [buyerId], references: [id])
   seller  User    @relation("SellerConversations", fields: [sellerId], references: [id])
   messages Message[]
@@ -163,7 +169,24 @@ model Review {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   user      User     @relation("UserReviews", fields: [userId], references: [id])
 
+  @@unique([userId, productId])
   @@map("reviews")
+}
+
+model UserReview {
+  id           String   @id @default(uuid())
+  rating       Int
+  comment      String?
+  reviewerId   String
+  targetUserId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reviewer     User     @relation("Reviewer", fields: [reviewerId], references: [id])
+  targetUser   User     @relation("TargetUser", fields: [targetUserId], references: [id])
+
+  @@unique([reviewerId, targetUserId])
+  @@map("user_reviews")
 }
 
 model Comment {
@@ -222,9 +245,54 @@ model Category {
 }
 
 enum OrderStatus {
+  OFFER_PENDING
+  OFFER_REJECTED
   PENDING
   CONFIRMED
   SHIPPED
   DELIVERED
   CANCELLED
+  RETURN_REQUESTED
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType
+  data      Json?            // Payload data (productId, conversationId, screen, etc.)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  // PRODUIT
+  PRODUCT_APPROVED
+  PRODUCT_REJECTED
+  PRODUCT_PENDING
+  SIMILAR_PRODUCT_POSTED
+
+  // MESSAGERIE
+  MESSAGE_RECEIVED
+  MESSAGE_READ
+  CONVERSATION_REPLY
+
+  // COMMANDE
+  ORDER_CONFIRMED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  NEW_ORDER_RECEIVED
+  PAYMENT_RECEIVED
+  RATING_REQUEST
+
+  // SYSTÈME
+  WELCOME
+  SECURITY_ALERT
+  PROMOTION
 }

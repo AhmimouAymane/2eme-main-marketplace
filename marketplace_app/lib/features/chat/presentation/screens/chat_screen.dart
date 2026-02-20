@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
+import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/core/utils/formatters.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/conversation_model.dart';
+import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
@@ -26,19 +30,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // Marquer les messages comme lus dès l'ouverture de la conversation
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _markAsRead();
-      // Enregistrer la conversation comme actuellement ouverte
+    Future.microtask(() {
       ref.read(currentChatConversationIdProvider.notifier).state =
           widget.conversationId;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _markAsRead();
+      ref.read(chatSocketProvider).emit('join_conversation', {
+        'conversationId': widget.conversationId,
+      });
     });
   }
 
   @override
+  void deactivate() {
+    // Déférer la modification du provider pour éviter l'erreur
+    // "Tried to modify a provider while the widget tree is building"
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        ref.read(currentChatConversationIdProvider.notifier).state = null;
+      }
+    });
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
-    // On indique qu'aucune conversation n'est ouverte
-    ref.read(currentChatConversationIdProvider.notifier).state = null;
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -62,9 +80,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await service.markAsRead(widget.conversationId);
       ref.invalidate(conversationsProvider);
       ref.invalidate(conversationMessagesProvider(widget.conversationId));
-    } catch (_) {
-      // on ignore les erreurs de marquage pour ne pas bloquer l'UI
-    }
+    } catch (_) {}
   }
 
   Future<void> _sendMessage() async {
@@ -77,7 +93,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final service = ref.read(chatServiceProvider);
       await service.sendMessage(widget.conversationId, text);
-      // Rafraîchir immédiatement les messages et la liste des conversations
       ref.invalidate(conversationMessagesProvider(widget.conversationId));
       ref.invalidate(conversationsProvider);
       _scrollToBottom();
@@ -86,7 +101,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Erreur lors de l\'envoi: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -97,6 +112,132 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Text(
+              'Envoyer une pièce jointe',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimaryLight,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildAttachmentOption(
+                  icon: Icons.photo_library_outlined,
+                  label: 'Galerie',
+                  color: AppColors.cloviGreen,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickImage(ImageSource.gallery);
+                  },
+                ),
+                _buildAttachmentOption(
+                  icon: Icons.camera_alt_outlined,
+                  label: 'Caméra',
+                  color: Colors.orange,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _pickImage(ImageSource.camera);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAttachmentOption({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        // Pour l'instant, on envoie un message texte indiquant qu'une photo a été envoyée
+        // TODO: Implémenter l'envoi d'image via le backend
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📷 L\'envoi de photos sera bientôt disponible !'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final conversationAsync = ref.watch(conversationProvider(widget.conversationId));
@@ -104,12 +245,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final currentUserIdAsync = ref.watch(userIdProvider);
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade100,
+      backgroundColor: AppColors.cloviBeige,
       appBar: AppBar(
         elevation: 1,
         backgroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
           onPressed: () => Navigator.pop(context),
         ),
         title: conversationAsync.when(
@@ -122,44 +263,57 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     conversation.buyerId == currentUserId
                 ? conversation.seller
                 : conversation.buyer;
-            return Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  child: Icon(
-                    Icons.person,
-                    size: 20,
-                    color: AppColors.primary,
+            return GestureDetector(
+              onTap: () {
+                // Naviguer vers le profil du vendeur
+                if (otherUser?.id != null) {
+                  context.push('/seller/${otherUser!.id}');
+                }
+              },
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppColors.cloviGreen.withOpacity(0.1),
+                    backgroundImage: otherUser?.avatarUrl != null && otherUser!.avatarUrl!.isNotEmpty
+                        ? NetworkImage(
+                            otherUser.avatarUrl!.startsWith('http')
+                                ? otherUser.avatarUrl!
+                                : '${AppConstants.mediaBaseUrl}${otherUser.avatarUrl}',
+                          )
+                        : null,
+                    child: otherUser?.avatarUrl == null || otherUser!.avatarUrl!.isEmpty
+                        ? const Icon(Icons.person, size: 20, color: AppColors.cloviGreen)
+                        : null,
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        otherUser?.fullName ?? 'Utilisateur',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      if (conversation.product?.title != null)
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          conversation.product!.title,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
+                          otherUser?.fullName ?? 'Utilisateur',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                    ],
+                        if (conversation.product?.title != null)
+                          Text(
+                            conversation.product!.title,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           },
           loading: () => const Text('Chargement...'),
@@ -168,14 +322,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.more_vert, color: Colors.black87),
-            onPressed: () {
-              // Options menu
-            },
+            onPressed: () {},
           ),
         ],
       ),
       body: Column(
         children: [
+          // Carte produit en haut du chat
+          conversationAsync.when(
+            data: (conversation) => _buildProductCard(conversation.product),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
@@ -265,7 +423,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 48, color: Colors.red.shade300),
+                    const Icon(Icons.error_outline, size: 48, color: AppColors.error),
                     const SizedBox(height: 16),
                     Text(
                       'Erreur de chargement',
@@ -282,76 +440,182 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
             ),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  offset: const Offset(0, -1),
-                  blurRadius: 4,
-                  color: Colors.black.withOpacity(0.05),
-                ),
-              ],
+          // Barre de saisie
+          _buildInputBar(),
+        ],
+      ),
+    );
+  }
+
+  /// Carte du produit affiché en haut du chat
+  Widget _buildProductCard(ProductModel? product) {
+    if (product == null) return const SizedBox.shrink();
+
+    final imageUrl = product.fullMainImageUrl;
+
+    return GestureDetector(
+      onTap: () => context.push('/product/${product.id}'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Image produit
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 50,
+                        height: 50,
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.image, color: Colors.grey),
+                      ),
+                    )
+                  : Container(
+                      width: 50,
+                      height: 50,
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.image, color: Colors.grey),
+                    ),
             ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: TextField(
-                          controller: _controller,
-                          decoration: InputDecoration(
-                            hintText: 'Message...',
-                            hintStyle: TextStyle(color: Colors.grey.shade500),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                          ),
-                          minLines: 1,
-                          maxLines: 5,
-                          textCapitalization: TextCapitalization.sentences,
-                          onSubmitted: (_) => _sendMessage(),
-                        ),
-                      ),
+            const SizedBox(width: 12),
+            // Infos produit
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        onPressed: _isSending ? null : _sendMessage,
-                        icon: _isSending
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.send, size: 20),
-                        color: Colors.white,
-                        padding: const EdgeInsets.all(10),
-                        constraints: const BoxConstraints(),
-                      ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${product.price.toStringAsFixed(0)} ${AppConstants.currencySymbol}',
+                    style: const TextStyle(
+                      color: AppColors.cloviGreen,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
                     ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            // Bouton voir
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.cloviGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Voir',
+                style: TextStyle(
+                  color: AppColors.cloviGreen,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Barre de saisie avec bouton pièce jointe
+  Widget _buildInputBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            offset: const Offset(0, -1),
+            blurRadius: 4,
+            color: Colors.black.withOpacity(0.05),
           ),
         ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Bouton pièce jointe
+              IconButton(
+                onPressed: _showAttachmentOptions,
+                icon: Icon(Icons.attach_file_rounded, color: Colors.grey.shade600),
+                padding: const EdgeInsets.all(8),
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 4),
+              // Champ texte
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: TextField(
+                    controller: _controller,
+                    decoration: InputDecoration(
+                      hintText: 'Message...',
+                      hintStyle: TextStyle(color: Colors.grey.shade500),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                    ),
+                    minLines: 1,
+                    maxLines: 5,
+                    textCapitalization: TextCapitalization.sentences,
+                    onSubmitted: (_) => _sendMessage(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Bouton envoyer
+              Container(
+                decoration: const BoxDecoration(
+                  color: AppColors.cloviGreen,
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  onPressed: _isSending ? null : _sendMessage,
+                  icon: _isSending
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.send, size: 20),
+                  color: Colors.white,
+                  padding: const EdgeInsets.all(10),
+                  constraints: const BoxConstraints(),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -377,6 +641,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 }
 
+/// Bulle de message avec statut de lecture
 class _MessageBubble extends StatelessWidget {
   final MessageModel message;
   final bool isMine;
@@ -402,7 +667,7 @@ class _MessageBubble extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: isMine ? AppColors.primary : Colors.white,
+                color: isMine ? AppColors.cloviGreen : Colors.white,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -428,12 +693,28 @@ class _MessageBubble extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
-              child: Text(
-                _formatTime(message.createdAt),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Colors.grey.shade600,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _formatTime(message.createdAt),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  // Statut de lecture pour les messages envoyés
+                  if (isMine) ...[
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.done_all,
+                      size: 14,
+                      color: message.isRead
+                          ? AppColors.cloviGreen
+                          : Colors.grey.shade400,
+                    ),
+                  ],
+                ],
               ),
             ),
           ],

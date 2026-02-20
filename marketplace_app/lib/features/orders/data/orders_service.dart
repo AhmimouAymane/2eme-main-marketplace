@@ -65,13 +65,19 @@ class OrdersService {
   }
 
   /// Mettre à jour le statut d'une commande
-  Future<OrderModel> updateOrderStatus(String id, OrderStatus status, {String? pickupAddress}) async {
+  Future<OrderModel> updateOrderStatus(String id, OrderStatus status, {String? pickupAddress, String? rejectionReason}) async {
     try {
       final response = await _dio.patch(
         '/orders/$id',
         data: {
-          'status': status.name.toUpperCase(),
+          'status': status.name
+              .replaceAllMapped(
+                RegExp(r'([A-Z])'),
+                (match) => '_${match.group(1)}',
+              )
+              .toUpperCase(),
           if (pickupAddress != null) 'pickupAddress': pickupAddress,
+          if (rejectionReason != null) 'rejectionReason': rejectionReason,
         },
       );
       if (response.statusCode == 200) {

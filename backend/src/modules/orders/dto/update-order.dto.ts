@@ -17,4 +17,9 @@ export class UpdateOrderDto {
     @IsString()
     @IsOptional()
     pickupAddress?: string;
+
+    @ApiProperty({ example: 'Article endommagé', required: false })
+    @IsString()
+    @IsOptional()
+    rejectionReason?: string;
 }

@@ -121,7 +121,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         Formatters.price(product.price),
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
-                              color: AppColors.primary,
+                              color: AppColors.cloviGreen,
                               fontWeight: FontWeight.bold,
                             ),
                       ),
@@ -158,17 +158,19 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     'Taille',
                     product.size.isEmpty ? 'Non spécifiée' : product.size,
                   ),
-                  _buildInfoRow('État', product.condition.name.toUpperCase()),
-                  _buildInfoRow('Catégorie', product.category.toUpperCase()),
-                  const SizedBox(height: 16),
+                   _buildInfoRow('État', product.condition.name.toUpperCase()),
+                   _buildInfoRow('Catégorie', product.category.toUpperCase()),
+                   if (product.sellerCity != null)
+                     _buildInfoRow('Ville', product.sellerCity!),
+                   const SizedBox(height: 16),
 
                   // Vendeur
                   Card(
                     child: ListTile(
                       leading: const CircleAvatar(child: Icon(Icons.person)),
                       title: Text(product.sellerName ?? 'Vendeur anonyme'),
-                      subtitle: Text(
-                        'Membre depuis ${Formatters.date(product.createdAt)}',
+                       subtitle: Text(
+                        'Membre depuis ${Formatters.date(product.createdAt)}${product.sellerCity != null ? ' • ${product.sellerCity}' : ''}',
                       ),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
@@ -180,16 +182,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                   // Description
                   Text(
-                    'Description',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
                     product.description,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
+                  const SizedBox(height: 24),
+
+                  // Reviews section
+                  _buildReviewsSection(product, isOwner),
+                  const SizedBox(height: 24),
+
+                  // Comments section
+                  _buildCommentsSection(product, isOwner),
                   const SizedBox(height: 80), // Espace pour le bouton fixe
                 ],
               ),
@@ -202,7 +205,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              if (!isOwner)
+              if (!isOwner) ...[
                 SizedBox(
                   width: 56,
                   height: 56,
@@ -227,7 +230,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               content: Text(
                                 'Erreur lors de l\'ouverture de la conversation',
                               ),
-                              backgroundColor: Colors.red,
+                              backgroundColor: AppColors.error,
                             ),
                           );
                           return;
@@ -241,7 +244,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             content: Text(
                               'Impossible d\'ouvrir la messagerie: $e',
                             ),
-                            backgroundColor: Colors.red,
+                            backgroundColor: AppColors.error,
                           ),
                         );
                       }
@@ -249,19 +252,326 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     child: const Icon(Icons.message_outlined),
                   ),
                 ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: ElevatedButton(
-                  onPressed: product.isAvailable
-                      ? () => _showPurchaseDialog(context, product)
-                      : null,
-                  child: Text(product.isAvailable ? 'Acheter' : 'Vendu'),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 3,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                    onPressed: product.isAvailable
+                        ? () => _showOfferDialog(context, product)
+                        : null,
+                    child: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Faire une offre'),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                    ),
+                    onPressed: product.isAvailable
+                        ? () => _showPurchaseDialog(context, product)
+                        : null,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(product.isAvailable ? 'Acheter' : 'Vendu'),
+                    ),
+                  ),
+                ),
+              ] else
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => context.push(
+                      AppRoutes.createProduct,
+                      extra: product,
+                    ),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: const Text('Modifier mon annonce'),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReviewsSection(ProductModel product, bool isOwner) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Avis (${product.reviews.length})',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            if (!isOwner)
+              TextButton(
+                onPressed: () => _showAddReviewDialog(product),
+                child: const Text('Donner mon avis'),
+              ),
+          ],
+        ),
+        if (product.reviews.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Aucun avis pour le moment',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: product.reviews.length,
+            separatorBuilder: (context, index) => const Divider(),
+            itemBuilder: (context, index) {
+              final review = product.reviews[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Row(
+                          children: List.generate(5, (i) {
+                            return Icon(
+                              Icons.star,
+                              size: 16,
+                              color: i < review.rating
+                                  ? Colors.amber
+                                  : Colors.grey[300],
+                            );
+                          }),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          review.user?.fullName ?? 'Utilisateur',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          Formatters.date(review.createdAt),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (review.comment != null && review.comment!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          review.comment!,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildCommentsSection(ProductModel product, bool isOwner) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Questions (${product.comments.length})',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            if (!isOwner)
+              TextButton(
+                onPressed: () => _showAddCommentDialog(product),
+                child: const Text('Poser une question'),
+              ),
+          ],
+        ),
+        if (product.comments.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Aucune question pour le moment',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
+          )
+        else
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: product.comments.length,
+            separatorBuilder: (context, index) => const Divider(),
+            itemBuilder: (context, index) {
+              final comment = product.comments[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          comment.user?.fullName ?? 'Utilisateur',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        Text(
+                          Formatters.relativeTime(comment.createdAt),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(comment.content, style: const TextStyle(fontSize: 14)),
+                  ],
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  void _showAddReviewDialog(ProductModel product) {
+    int rating = 5;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Donner votre avis'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return IconButton(
+                    icon: Icon(
+                      Icons.star,
+                      size: 32,
+                      color: index < rating ? Colors.amber : Colors.grey[300],
+                    ),
+                    onPressed: () => setState(() => rating = index + 1),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Votre commentaire (optionnel)',
+                  border: OutlineInputBorder(),
                 ),
               ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await ref
+                      .read(productsServiceProvider)
+                      .addReview(
+                        product.id,
+                        rating,
+                        commentController.text.trim(),
+                      );
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  ref.invalidate(productDetailProvider(product.id));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Avis ajouté !')),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                }
+              },
+              child: const Text('Envoyer'),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  void _showAddCommentDialog(ProductModel product) {
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Poser une question'),
+        content: TextField(
+          controller: commentController,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'Écrivez votre question ici...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final content = commentController.text.trim();
+              if (content.isEmpty) return;
+              try {
+                await ref
+                    .read(productsServiceProvider)
+                    .addComment(product.id, content);
+                if (!mounted) return;
+                Navigator.pop(context);
+                ref.invalidate(productDetailProvider(product.id));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Question envoyée !')),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+              }
+            },
+            child: const Text('Envoyer'),
+          ),
+        ],
       ),
     );
   }
@@ -276,8 +586,65 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           dialogContext,
           product,
           shippingAddress,
+          OrderStatus.pending,
         ),
         onCancel: () => Navigator.pop(dialogContext),
+      ),
+    );
+  }
+
+  void _showOfferDialog(BuildContext context, ProductModel product) {
+    final offerController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Offre'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Prix actuel : ${Formatters.price(product.price)}'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: offerController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Votre offre (DH)',
+                border: OutlineInputBorder(),
+                prefixText: 'DH ',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final val = double.tryParse(offerController.text.trim());
+              if (val == null || val <= 0) return;
+
+              Navigator.pop(context);
+              showDialog<void>(
+                context: context,
+                builder: (dialogContext) => _CheckoutDialog(
+                  product: product.copyWith(price: val),
+                  onConfirm: (shippingAddress) => _createOrderAfterCheckout(
+                    context,
+                    dialogContext,
+                    product.copyWith(price: val),
+                    shippingAddress,
+                    OrderStatus.offerPending,
+                  ),
+                  onCancel: () => Navigator.pop(dialogContext),
+                ),
+              );
+            },
+            child: const Text('Suivant'),
+          ),
+        ],
       ),
     );
   }
@@ -287,6 +654,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     BuildContext dialogContext,
     ProductModel product,
     String shippingAddress,
+    OrderStatus status,
   ) async {
     Navigator.pop(dialogContext);
     try {
@@ -299,7 +667,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               buyerId: '',
               sellerId: product.sellerId,
               totalPrice: product.price,
-              status: OrderStatus.pending,
+              status: status,
               shippingAddress: shippingAddress.trim(),
               createdAt: DateTime.now(),
               updatedAt: null,
@@ -308,8 +676,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           );
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Commande créée. Paiement à la livraison.'),
+        SnackBar(
+          content: Text(
+            status == OrderStatus.offerPending
+                ? 'Offre envoyée au vendeur !'
+                : 'Commande créée. Paiement à la livraison.',
+          ),
         ),
       );
       ref.invalidate(productsProvider);
@@ -387,19 +759,25 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
             children: [
               Text(
                 product.title,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 Formatters.price(product.price),
                 style: TextStyle(
-                  color: AppColors.primary,
+                  color: AppColors.cloviGreen,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 8,
+                  horizontal: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.amber.shade50,
                   borderRadius: BorderRadius.circular(8),
@@ -461,7 +839,7 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
                                 );
                               }
                               return DropdownButtonFormField<AddressModel>(
-                                value: _selectedAddress,
+                                initialValue: _selectedAddress,
                                 decoration: const InputDecoration(
                                   labelText: 'Adresse de livraison *',
                                   border: OutlineInputBorder(),
@@ -476,12 +854,14 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
                                     .toList(),
                                 onChanged: (a) =>
                                     setState(() => _selectedAddress = a),
-                                validator: (v) =>
-                                    v == null ? 'Sélectionnez une adresse' : null,
+                                validator: (v) => v == null
+                                    ? 'Sélectionnez une adresse'
+                                    : null,
                               );
                             },
-                            loading: () =>
-                                const Center(child: CircularProgressIndicator()),
+                            loading: () => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
                             error: (e, _) => Text('Erreur: $e'),
                           );
                     },
@@ -495,11 +875,17 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
               TextFormField(
                 controller: _phoneController,
                 decoration: const InputDecoration(
-                  labelText: 'Téléphone (optionnel)',
+                  labelText: 'Téléphone *',
                   hintText: 'Pour le livreur',
                   border: OutlineInputBorder(),
                 ),
                 keyboardType: TextInputType.phone,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Le téléphone est obligatoire';
+                  }
+                  return null;
+                },
               ),
             ],
           ),

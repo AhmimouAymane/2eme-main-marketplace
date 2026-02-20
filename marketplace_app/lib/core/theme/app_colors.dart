@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 
 /// Définition des couleurs de l'application marketplace
 class AppColors {
-  // Couleurs principales
-  static const Color primary = Color(0xFF00897B); // Teal
-  static const Color primaryLight = Color(0xFF4DB6AC);
-  static const Color primaryDark = Color(0xFF00695C);
-  
-  static const Color secondary = Color(0xFFFF6F00); // Orange
-  static const Color secondaryLight = Color(0xFFFF9E40);
-  static const Color secondaryDark = Color(0xFFC43E00);
-  
-  // Couleurs Clovie
+  // Couleurs principales (Clovie Theme)
   static const Color cloviGreen = Color(0xFF2D5F4F);
   static const Color cloviDarkGreen = Color(0xFF1B4332);
   static const Color cloviBeige = Color(0xFFF5F5F0);
+  
+  // Aliases pour le thème global
+  static const Color primary = cloviGreen;
+  static const Color primaryLight = Color(0xFF4B8573);
+  static const Color primaryDark = cloviDarkGreen;
+  
+  static const Color secondary = cloviDarkGreen;
+  static const Color secondaryLight = cloviGreen;
+  static const Color secondaryDark = Color(0xFF0D281D);
   
   // Couleurs de fond
   static const Color backgroundLight = Color(0xFFFAFAFA);

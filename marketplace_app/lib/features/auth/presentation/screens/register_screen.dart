@@ -2,10 +2,16 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
+import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/core/utils/validators.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/shared/services/api_client.dart';
+import 'package:flutter/gestures.dart';
+import '../../../profile/presentation/screens/legal_screen.dart';
+import 'package:marketplace_app/shared/providers/shop_providers.dart';
 
 /// Écran d'inscription
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -25,6 +31,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _acceptedCgu = false;
 
   @override
   void dispose() {
@@ -80,19 +87,81 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Compte créé avec succès ! Connectez-vous.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        context.pop(); // Retour au login
+        // Mettre à jour les providers pour forcer la relecture car register synchronise déjà
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString(AppConstants.keyAuthToken);
+
+        if (token != null) {
+          ref.read(authTokenProvider.notifier).state = token;
+          ref.invalidate(userEmailProvider);
+          ref.invalidate(userIdProvider);
+          ref.invalidate(isAuthenticatedProvider);
+          ref.invalidate(userAvatarUrlProvider);
+          ref.invalidate(userProfileProvider);
+
+          ApiClient.reset();
+          context.go(AppRoutes.home);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Compte créé avec succès ! Connectez-vous.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.pop();
+        }
       }
     } catch (e) {
       if (mounted) {
-        final message = _getUserFriendlyError(e);
+        final message = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(message), 
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _handleSocialLogin(String provider) async {
+    setState(() => _isLoading = true);
+    try {
+      final authService = ref.read(authServiceProvider);
+      Map<String, dynamic> result;
+      
+      if (provider == 'google') {
+        result = await authService.signInWithGoogle();
+      } else {
+        result = await authService.signInWithApple();
+      }
+
+      if (mounted) {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString(AppConstants.keyAuthToken);
+
+        ref.read(authTokenProvider.notifier).state = token;
+        ref.invalidate(userEmailProvider);
+        ref.invalidate(userIdProvider);
+        ref.invalidate(isAuthenticatedProvider);
+        ref.invalidate(userAvatarUrlProvider);
+        ref.invalidate(userProfileProvider);
+
+        ApiClient.reset();
+        context.go(AppRoutes.home);
+      }
+    } catch (e) {
+      if (mounted) {
+        final message = e.toString().replaceAll('Exception: ', '');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message), 
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     } finally {
@@ -105,7 +174,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F0), // Couleur de fond beige clair
+      // backgroundColor: AppColors.cloviBeige, // Inherited from theme
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -120,7 +189,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   onPressed: () => context.pop(),
                   icon: Icon(
                     Icons.arrow_back,
-                    color: const Color(0xFF2D5F4F),
+                    color: AppColors.cloviGreen,
                   ),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -138,7 +207,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 'Your second-hand\nfashion companion',
                 style: TextStyle(
                   fontSize: 16,
-                  color: const Color(0xFF2D5F4F),
+                  color: AppColors.cloviGreen,
                   fontWeight: FontWeight.w500,
                   height: 1.4,
                 ),
@@ -184,33 +253,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: 'First Name',
                           labelStyle: TextStyle(
-                            color: const Color(0xFF2D5F4F),
+                            color: AppColors.cloviGreen,
                             fontWeight: FontWeight.w500,
                           ),
                           prefixIcon: Icon(
                             Icons.person_outlined,
-                            color: const Color(0xFF2D5F4F),
+                            color: AppColors.cloviGreen,
                           ),
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 1.5,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 1.5,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 2,
                             ),
                           ),
@@ -225,33 +294,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: 'Last Name',
                           labelStyle: TextStyle(
-                            color: const Color(0xFF2D5F4F),
+                            color: AppColors.cloviGreen,
                             fontWeight: FontWeight.w500,
                           ),
                           prefixIcon: Icon(
                             Icons.person_outlined,
-                            color: const Color(0xFF2D5F4F),
+                            color: AppColors.cloviGreen,
                           ),
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 1.5,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 1.5,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 2,
                             ),
                           ),
@@ -267,33 +336,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: 'Email',
                           labelStyle: TextStyle(
-                            color: const Color(0xFF2D5F4F),
+                            color: AppColors.cloviGreen,
                             fontWeight: FontWeight.w500,
                           ),
                           prefixIcon: Icon(
                             Icons.email_outlined,
-                            color: const Color(0xFF2D5F4F),
+                            color: AppColors.cloviGreen,
                           ),
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 1.5,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 1.5,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 2,
                             ),
                           ),
@@ -309,19 +378,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: 'Password',
                           labelStyle: TextStyle(
-                            color: const Color(0xFF2D5F4F),
+                            color: AppColors.cloviGreen,
                             fontWeight: FontWeight.w500,
                           ),
                           prefixIcon: Icon(
                             Icons.lock_outlined,
-                            color: const Color(0xFF2D5F4F),
+                            color: AppColors.cloviGreen,
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
                                   ? Icons.visibility_outlined
                                   : Icons.visibility_off_outlined,
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                             ),
                             onPressed: () {
                               setState(() => _obscurePassword = !_obscurePassword);
@@ -332,21 +401,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 1.5,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 1.5,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 2,
                             ),
                           ),
@@ -362,19 +431,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: 'Confirm Password',
                           labelStyle: TextStyle(
-                            color: const Color(0xFF2D5F4F),
+                            color: AppColors.cloviGreen,
                             fontWeight: FontWeight.w500,
                           ),
                           prefixIcon: Icon(
                             Icons.lock_outlined,
-                            color: const Color(0xFF2D5F4F),
+                            color: AppColors.cloviGreen,
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscureConfirmPassword
                                   ? Icons.visibility_outlined
                                   : Icons.visibility_off_outlined,
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                             ),
                             onPressed: () {
                               setState(
@@ -386,21 +455,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 1.5,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 1.5,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: const Color(0xFF2D5F4F),
+                              color: AppColors.cloviGreen,
                               width: 2,
                             ),
                           ),
@@ -408,11 +477,60 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
 
+                      // CGU Acceptance
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          unselectedWidgetColor: AppColors.cloviGreen,
+                        ),
+                        child: CheckboxListTile(
+                          value: _acceptedCgu,
+                          onChanged: (val) =>
+                              setState(() => _acceptedCgu = val ?? false),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                          activeColor: AppColors.cloviGreen,
+                          title: Text.rich(
+                            TextSpan(
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondaryLight,
+                              ),
+                              children: [
+                                const TextSpan(
+                                  text: "J'accepte les ",
+                                ),
+                                TextSpan(
+                                  text: "Conditions Générales d'Utilisation",
+                                  style: const TextStyle(
+                                    color: AppColors.cloviGreen,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const CguScreen(),
+                                        ),
+                                      );
+                                    },
+                                ),
+                                const TextSpan(
+                                  text: " de Clovi.",
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
                       // Register button
                       ElevatedButton(
-                        onPressed: _isLoading ? null : _handleRegister,
+                        onPressed: (_isLoading || !_acceptedCgu) ? null : _handleRegister,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1B4332),
+                          backgroundColor: AppColors.cloviDarkGreen,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -441,11 +559,50 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 16),
 
                       // Divider
-                      Container(
-                        height: 1,
-                        color: const Color(0xFFE0E0E0),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          children: [
+                            const Expanded(child: Divider()),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Text(
+                                'Or continue with',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            const Expanded(child: Divider()),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 16),
+                      
+                      // Social Login Buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Google Button
+                          _buildSocialButton(
+                            icon: 'assets/images/google_logo.png',
+                            label: 'Google',
+                            onPressed: !_acceptedCgu ? null : () => _handleSocialLogin('google'),
+                            color: Colors.white,
+                            textColor: Colors.black87,
+                          ),
+                          const SizedBox(width: 16),
+                          // Apple Button
+                          _buildSocialButton(
+                            icon: 'assets/images/apple_logo.png',
+                            label: 'Apple',
+                            onPressed: !_acceptedCgu ? null : () => _handleSocialLogin('apple'),
+                            color: Colors.black,
+                            textColor: Colors.white,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
 
                       // Login link
                       TextButton(
@@ -465,7 +622,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 text: 'Log In',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF2D5F4F),
+                                  color: AppColors.cloviGreen,
                                 ),
                               ),
                             ],
@@ -499,12 +656,52 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           style: TextStyle(
             fontSize: 32,
             fontWeight: FontWeight.w400,
-            color: const Color(0xFF2D5F4F),
+            color: AppColors.cloviGreen,
             fontFamily: 'Cursive',
             letterSpacing: 1,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSocialButton({
+    required String icon,
+    required String label,
+    VoidCallback? onPressed,
+    required Color color,
+    required Color textColor,
+  }) {
+    return Expanded(
+      child: OutlinedButton(
+        onPressed: _isLoading ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: color,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          side: BorderSide(color: Colors.grey[300]!),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              label == 'Google' ? Icons.g_mobiledata_rounded : Icons.apple_rounded,
+              color: textColor,
+              size: 24,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -514,7 +711,7 @@ class HangerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF2D5F4F)
+      ..color = AppColors.cloviGreen
       ..strokeWidth = 2.5
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;

@@ -132,6 +132,16 @@ class AppTheme {
       thickness: 1,
       space: 1,
     ),
+    
+    // SnackBar
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: AppColors.cloviDarkGreen,
+      contentTextStyle: GoogleFonts.inter(color: Colors.white),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+    ),
   );
   
   // Thème sombre
@@ -261,6 +271,16 @@ class AppTheme {
       color: Colors.grey[800],
       thickness: 1,
       space: 1,
+    ),
+
+    // SnackBar
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: AppColors.primaryLight,
+      contentTextStyle: GoogleFonts.inter(color: Colors.black),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
     ),
   );
 }

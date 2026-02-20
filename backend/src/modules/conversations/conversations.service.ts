@@ -1,10 +1,14 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Conversation, Message } from '@prisma/client';
+import { Conversation, Message, NotificationType } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ConversationsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) { }
 
   async findOrCreateConversation(productId: string, userId: string): Promise<Conversation> {
     // Récupérer le produit pour identifier le vendeur
@@ -23,6 +27,46 @@ export class ConversationsService {
 
     const buyerId = userId;
     const sellerId = product.sellerId;
+
+    const existing = await this.prisma.conversation.findFirst({
+      where: {
+        productId,
+        buyerId,
+        sellerId,
+      },
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    return this.prisma.conversation.create({
+      data: {
+        productId,
+        buyerId,
+        sellerId,
+      },
+    });
+  }
+
+  async findOrCreateOrderConversation(orderId: string, userId: string): Promise<Conversation> {
+    // Récupérer la commande pour identifier les parties
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, productId: true, buyerId: true, sellerId: true },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    if (order.buyerId !== userId && order.sellerId !== userId) {
+      throw new ForbiddenException('You are not part of this order');
+    }
+
+    const productId = order.productId;
+    const buyerId = order.buyerId;
+    const sellerId = order.sellerId;
 
     const existing = await this.prisma.conversation.findFirst({
       where: {
@@ -104,25 +148,51 @@ export class ConversationsService {
     });
   }
 
-  async createMessage(conversationId: string, senderId: string, content: string): Promise<Message> {
-    const conversation = await this.getConversation(conversationId, senderId);
+  async createMessage(conversationId: string, senderId: string, content: string): Promise<any> {
+    try {
+      const conversation = await this.getConversation(conversationId, senderId);
 
-    const message = await this.prisma.message.create({
-      data: {
-        conversationId: conversation.id,
-        senderId,
-        content,
-      },
-    });
+      const message = await this.prisma.message.create({
+        data: {
+          conversationId: conversation.id,
+          senderId,
+          content,
+        },
+      });
 
-    await this.prisma.conversation.update({
-      where: { id: conversation.id },
-      data: {
-        lastMessageAt: message.createdAt,
-      },
-    });
+      await this.prisma.conversation.update({
+        where: { id: conversation.id },
+        data: {
+          lastMessageAt: message.createdAt,
+        },
+      });
 
-    return message;
+      // Create notification for recipient
+      const isBuyerSender = conversation.buyerId === senderId;
+      const recipientId = isBuyerSender ? conversation.sellerId : conversation.buyerId;
+      const sender = isBuyerSender ? (conversation as any).buyer : (conversation as any).seller;
+      const senderName = sender?.firstName || 'Un utilisateur';
+
+      await this.notificationsService.create({
+        userId: recipientId,
+        title: `💬 Message de ${senderName}`,
+        message: content.length > 50 ? `${content.substring(0, 50)}...` : content,
+        type: NotificationType.MESSAGE_RECEIVED,
+        data: {
+          conversationId: conversation.id,
+          senderId,
+          screen: 'chat',
+        },
+      });
+
+      return {
+        ...message,
+        senderName,
+      };
+    } catch (error) {
+      console.error('Error creating message:', error);
+      throw error;
+    }
   }
 
   async markAsRead(conversationId: string, userId: string): Promise<void> {
@@ -142,4 +212,3 @@ export class ConversationsService {
     });
   }
 }
-

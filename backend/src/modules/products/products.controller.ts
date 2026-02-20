@@ -119,4 +119,17 @@ export class ProductsController {
     ) {
         return this.productsService.addComment(id, userId, body.content);
     }
+
+    @Patch(':id/status')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
+    @Roles(Role.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Update product status (Admin only)' })
+    @ApiResponse({ status: 200, description: 'Product status successfully updated' })
+    updateStatus(
+        @Param('id') id: string,
+        @Body() body: { status: ProductStatus, moderationComment?: string },
+    ) {
+        return this.productsService.updateStatus(id, body.status, body.moderationComment);
+    }
 }

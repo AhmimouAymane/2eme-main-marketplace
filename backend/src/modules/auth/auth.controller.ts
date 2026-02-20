@@ -1,8 +1,9 @@
-import { Body, Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, Controller, Post, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -24,5 +25,25 @@ export class AuthController {
     @ApiResponse({ status: 401, description: 'Invalid credentials' })
     login(@Body() loginDto: LoginDto) {
         return this.authService.login(loginDto);
+    }
+
+    @Post('firebase')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Authenticate with Firebase token' })
+    @ApiResponse({ status: 200, description: 'Successfully authenticated' })
+    @ApiResponse({ status: 401, description: 'Invalid Firebase token' })
+    async signInWithFirebase(@Body() body: { token: string; firstName?: string; lastName?: string }) {
+        return this.authService.signInWithFirebase(body.token, {
+            firstName: body.firstName,
+            lastName: body.lastName,
+        });
+    }
+
+    @Post('fcm-token')
+    @UseGuards(AuthGuard('jwt'))
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Update FCM token' })
+    updateFcmToken(@Request() req: any, @Body('token') token: string) {
+        return this.authService.updateFcmToken(req.user.sub || req.user.id, token);
     }
 }

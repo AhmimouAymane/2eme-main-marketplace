@@ -60,6 +60,38 @@ class AddressesScreen extends ConsumerWidget {
                               context.push(AppRoutes.addressForm, extra: addr);
                             },
                           ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline,
+                                color: Colors.red),
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Supprimer l\'adresse ?'),
+                                  content: const Text(
+                                      'Voulez-vous vraiment supprimer cette adresse ?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, false),
+                                      child: const Text('Annuler'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      child: const Text('Supprimer',
+                                          style: TextStyle(color: Colors.red)),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                await ref
+                                    .read(addressesServiceProvider)
+                                    .deleteAddress(userId, addr.id);
+                                ref.invalidate(userAddressesProvider(userId));
+                              }
+                            },
+                          ),
                         ],
                       ),
                       onTap: () async {

@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/utils/formatters.dart';
+import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
+import 'package:marketplace_app/shared/models/conversation_model.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
-import 'package:marketplace_app/shared/widgets/clovi_bottom_nav.dart';
 
 class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
@@ -20,32 +21,11 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
 
-  void _onItemTapped(int index) {
-    switch (index) {
-      case 0:
-        context.go(AppRoutes.home);
-        break;
-      case 1:
-        context.go(AppRoutes.search);
-        break;
-      case 2:
-        context.push(AppRoutes.createProduct);
-        break;
-      case 3:
-        // Déjà sur messages
-        break;
-      case 4:
-        context.go(AppRoutes.profile);
-        break;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final conversationsAsync = ref.watch(conversationsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.cloviBeige,
       body: SafeArea(
         child: Column(
           children: [
@@ -77,9 +57,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (_isSearching)
-                            _buildSearchInput(),
-                          
+                          if (_isSearching) _buildSearchInput(),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -94,7 +72,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                               Row(
                                 children: [
                                   Text(
-                                    'See all',
+                                    'Voir tout',
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: AppColors.cloviGreen.withOpacity(0.8),
@@ -118,10 +96,6 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: CloviBottomNav(
-        selectedIndex: 3,
-        onItemTapped: _onItemTapped,
       ),
     );
   }
@@ -152,9 +126,9 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
               color: AppColors.cloviGreen,
             ),
           ),
-          const CircleAvatar(
-            backgroundColor: Colors.white,
-            child: Icon(Icons.person, color: Colors.grey),
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: AppColors.cloviGreen, size: 28),
+            onPressed: () => context.push(AppRoutes.notifications),
           ),
         ],
       ),
@@ -190,6 +164,14 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     );
   }
 
+  /// Compte les messages non lus pour l'utilisateur courant
+  int _countUnread(ConversationModel conv, String? currentUserId) {
+    if (currentUserId == null) return 0;
+    return conv.messages
+        .where((m) => m.senderId != currentUserId && !m.isRead)
+        .length;
+  }
+
   Widget _buildConversationsList(List filteredConversations) {
     if (filteredConversations.isEmpty) {
       return Center(
@@ -219,7 +201,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
           indent: 80,
         ),
         itemBuilder: (context, index) {
-          final conv = filteredConversations[index];
+          final conv = filteredConversations[index] as ConversationModel;
           final currentUserIdAsync = ref.watch(userIdProvider);
           final currentUserId = currentUserIdAsync.maybeWhen(
             data: (id) => id,
@@ -229,29 +211,100 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
               ? conv.seller
               : conv.buyer;
           final lastMessage = conv.messages.isNotEmpty ? conv.messages.last : null;
+          final unreadCount = _countUnread(conv, currentUserId);
 
           return ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            leading: const CircleAvatar(
-              radius: 30,
-              backgroundColor: Color(0xFFE0E0E0),
-              child: Icon(Icons.person, size: 35, color: Colors.white),
+            leading: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: AppColors.cloviGreen.withOpacity(0.1),
+                  backgroundImage: otherUser?.avatarUrl != null && otherUser!.avatarUrl!.isNotEmpty
+                      ? NetworkImage(
+                          otherUser.avatarUrl!.startsWith('http')
+                              ? otherUser.avatarUrl!
+                              : '${AppConstants.mediaBaseUrl}${otherUser.avatarUrl}',
+                        )
+                      : null,
+                  child: otherUser?.avatarUrl == null || otherUser!.avatarUrl!.isEmpty
+                      ? const Icon(Icons.person, size: 28, color: AppColors.cloviGreen)
+                      : null,
+                ),
+                // Badge non lu
+                if (unreadCount > 0)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                      decoration: BoxDecoration(
+                        color: AppColors.cloviGreen,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      child: Text(
+                        unreadCount > 9 ? '9+' : '$unreadCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             title: Text(
               otherUser?.fullName ?? 'Utilisateur',
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
+              style: TextStyle(
+                fontWeight: unreadCount > 0 ? FontWeight.w800 : FontWeight.bold,
                 fontSize: 16,
               ),
             ),
-            subtitle: Text(
-              lastMessage?.content ?? 'Message',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.blueGrey.withAlpha(178),
-                fontSize: 14,
-              ),
+            subtitle: Row(
+              children: [
+                // Icône ✓✓ si le dernier message est de l'utilisateur courant
+                if (lastMessage != null && lastMessage.senderId == currentUserId) ...[
+                  Icon(
+                    Icons.done_all,
+                    size: 16,
+                    color: lastMessage.isRead
+                        ? AppColors.cloviGreen
+                        : Colors.grey.shade400,
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Expanded(
+                  child: Text(
+                    lastMessage?.content ?? 'Nouvelle conversation',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: unreadCount > 0 ? Colors.black87 : Colors.blueGrey.withAlpha(178),
+                      fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            trailing: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  lastMessage != null ? _formatTime(lastMessage.createdAt) : '',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: unreadCount > 0 ? AppColors.cloviGreen : Colors.grey.shade500,
+                    fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ],
             ),
             onTap: () => context.push('/chat/${conv.id}'),
           );
@@ -265,7 +318,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: Colors.red),
+          const Icon(Icons.error_outline, size: 64, color: AppColors.error),
           const SizedBox(height: 16),
           Text(e.toString()),
           ElevatedButton(
@@ -282,19 +335,15 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     final difference = now.difference(date);
 
     if (difference.inDays == 0) {
-      // Aujourd'hui
       final hour = date.hour.toString().padLeft(2, '0');
       final minute = date.minute.toString().padLeft(2, '0');
       return '$hour:$minute';
     } else if (difference.inDays == 1) {
-      // Hier
       return 'Hier';
     } else if (difference.inDays < 7) {
-      // Cette semaine
       final weekday = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
       return weekday[date.weekday % 7];
     } else {
-      // Plus ancien
       return Formatters.date(date);
     }
   }

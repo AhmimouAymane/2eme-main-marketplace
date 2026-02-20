@@ -5,6 +5,10 @@ import 'user_model.dart';
 
 /// Statut d'une commande (Synchronisé avec le backend)
 enum OrderStatus {
+  @JsonValue('OFFER_PENDING')
+  offerPending,
+  @JsonValue('OFFER_REJECTED')
+  offerRejected,
   @JsonValue('PENDING')
   pending,
   @JsonValue('CONFIRMED')
@@ -15,6 +19,7 @@ enum OrderStatus {
   delivered,
   @JsonValue('CANCELLED')
   cancelled,
+  returnRequested,
 }
 
 /// Modèle de données pour une commande
@@ -34,6 +39,7 @@ class OrderModel extends Equatable {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final DateTime? deliveredAt;
+  final String? rejectionReason;
 
   const OrderModel({
     required this.id,
@@ -50,13 +56,16 @@ class OrderModel extends Equatable {
     required this.createdAt,
     this.updatedAt,
     this.deliveredAt,
+    this.rejectionReason,
   });
 
   // Getters
+  bool get isOffer => status == OrderStatus.offerPending;
   bool get isPending => status == OrderStatus.pending;
   bool get isCompleted => status == OrderStatus.delivered;
+  bool get isRejected => status == OrderStatus.offerRejected;
   bool get canCancel =>
-      status == OrderStatus.pending || status == OrderStatus.confirmed;
+      status == OrderStatus.pending || status == OrderStatus.confirmed || status == OrderStatus.offerPending;
 
   // JSON serialization
   factory OrderModel.fromJson(Map<String, dynamic> json) => OrderModel(
@@ -82,11 +91,19 @@ class OrderModel extends Equatable {
     deliveredAt: json['deliveredAt'] != null
         ? DateTime.parse(json['deliveredAt'])
         : null,
+    rejectionReason: json['rejectionReason'],
   );
 
   static OrderStatus _statusFromString(String status) {
     return OrderStatus.values.firstWhere(
-      (e) => e.name.toUpperCase() == status,
+      (e) {
+        // Mapping convention: offerPending -> OFFER_PENDING
+        final enumName = e.name.replaceAllMapped(
+          RegExp(r'([A-Z])'),
+          (match) => '_${match.group(1)}',
+        ).toUpperCase();
+        return enumName == status || e.name.toUpperCase() == status;
+      },
       orElse: () => OrderStatus.pending,
     );
   }
@@ -97,6 +114,18 @@ class OrderModel extends Equatable {
       'productId': productId,
       'totalPrice': totalPrice,
     };
+
+    if (status != OrderStatus.pending) {
+       // Only send status if it's explicitly set (like for offers)
+       final enumName = status.name.replaceAllMapped(
+         RegExp(r'([A-Z])'),
+         (match) => '_${match.group(1)}',
+       ).toUpperCase();
+       
+       if (status == OrderStatus.offerPending || status == OrderStatus.offerRejected) {
+         map['status'] = enumName;
+       }
+    }
 
     if (shippingAddress != null) {
       map['shippingAddress'] = shippingAddress;
@@ -124,6 +153,7 @@ class OrderModel extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deliveredAt,
+    String? rejectionReason,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -140,6 +170,7 @@ class OrderModel extends Equatable {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deliveredAt: deliveredAt ?? this.deliveredAt,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
     );
   }
 
@@ -159,5 +190,6 @@ class OrderModel extends Equatable {
     createdAt,
     updatedAt,
     deliveredAt,
+    rejectionReason,
   ];
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "735878764760",
+    "project_id": "clovi-17ec1",
+    "storage_bucket": "clovi-17ec1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:735878764760:android:a65ec6a7fcdd49549d1fad",
+        "android_client_info": {
+          "package_name": "com.example.marketplace_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBPGnbjNGlvczQMlgV9OTRC0MmrXSqJ5xE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

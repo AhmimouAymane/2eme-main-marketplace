@@ -4,6 +4,7 @@ import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import 'package:marketplace_app/shared/models/user_model.dart';
 
 class SellerProfileScreen extends ConsumerWidget {
   final String userId;
@@ -15,8 +16,12 @@ class SellerProfileScreen extends ConsumerWidget {
     final sellerAsync = ref.watch(sellerProfileProvider(userId));
 
     return Scaffold(
+      backgroundColor: AppColors.cloviBeige,
       appBar: AppBar(
         title: const Text('Profil du vendeur'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: sellerAsync.when(
         data: (seller) => CustomScrollView(
@@ -24,21 +29,29 @@ class SellerProfileScreen extends ConsumerWidget {
             // Header
             SliverToBoxAdapter(
               child: Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.05),
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(32),
+                    bottomRight: Radius.circular(32),
+                  ),
                 ),
                 child: Column(
                   children: [
                     CircleAvatar(
-                      radius: 50,
-                      backgroundColor: AppColors.primary,
-                      backgroundImage: seller.avatarUrl != null 
-                          ? NetworkImage(seller.avatarUrl!) 
-                          : null,
-                      child: seller.avatarUrl == null 
-                          ? const Icon(Icons.person, size: 50, color: Colors.white)
-                          : null,
+                      radius: 54,
+                      backgroundColor: AppColors.cloviGreen.withOpacity(0.1),
+                      child: CircleAvatar(
+                        radius: 50,
+                        backgroundColor: AppColors.cloviGreen,
+                        backgroundImage: seller.avatarUrl != null 
+                            ? NetworkImage(seller.avatarUrl!) 
+                            : null,
+                        child: seller.avatarUrl == null 
+                            ? const Icon(Icons.person_rounded, size: 50, color: Colors.white)
+                            : null,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -59,15 +72,23 @@ class SellerProfileScreen extends ConsumerWidget {
                         ),
                       ),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _buildStat(seller.products?.length.toString() ?? '0', 'Annonces'),
-                        const SizedBox(width: 32),
-                        _buildStat('—', 'Note'),
+                        _buildStat(seller.salesCount.toString(), 'Ventes'),
+                        _buildVerticalDivider(),
+                        _buildStat(seller.products?.length.toString() ?? '0', 'Articles'),
+                        _buildVerticalDivider(),
+                        _buildStat(
+                          seller.averageRating == 0 ? '—' : seller.averageRating.toStringAsFixed(1), 
+                          'Note',
+                          isRating: true,
+                        ),
                       ],
                     ),
+                    const SizedBox(height: 24),
+                    _buildRatingButton(context, ref, seller),
                   ],
                 ),
               ),
@@ -143,9 +164,10 @@ class SellerProfileScreen extends ConsumerWidget {
                                     const SizedBox(height: 4),
                                     Text(
                                       Formatters.price(product.price),
-                                      style: TextStyle(
-                                        color: AppColors.primary,
+                                      style: const TextStyle(
+                                        color: AppColors.cloviGreen,
                                         fontWeight: FontWeight.bold,
+                                        fontSize: 16,
                                       ),
                                     ),
                                   ],
@@ -169,24 +191,147 @@ class SellerProfileScreen extends ConsumerWidget {
     );
   }
 
-  static Widget _buildStat(String value, String label) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+  static Widget _buildStat(String value, String label, {bool isRating = false}) {
+    return Expanded(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.cloviGreen,
+                ),
+              ),
+              if (isRating && value != '—') ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+              ],
+            ],
           ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: AppColors.textSecondaryLight,
-            fontSize: 12,
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: AppColors.textSecondaryLight,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _buildVerticalDivider() {
+    return Container(
+      height: 30,
+      width: 1,
+      color: Colors.grey.shade200,
+    );
+  }
+
+  Widget _buildRatingButton(BuildContext context, WidgetRef ref, UserModel seller) {
+    return SizedBox(
+      width: 200,
+      child: OutlinedButton(
+        onPressed: () => _showRatingDialog(context, ref, seller),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.cloviGreen,
+          side: const BorderSide(color: AppColors.cloviGreen),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12),
         ),
-      ],
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.star_outline_rounded, size: 20),
+            SizedBox(width: 8),
+            Text('Laisser un avis', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showRatingDialog(BuildContext context, WidgetRef ref, UserModel seller) async {
+    int rating = 0;
+    final commentController = TextEditingController();
+
+    return showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text('Évaluer ${seller.firstName}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return IconButton(
+                    icon: Icon(
+                      index < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                      color: index < rating ? Colors.amber : Colors.grey,
+                      size: 32,
+                    ),
+                    onPressed: () => setState(() => rating = index + 1),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Votre commentaire (optionnel)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: rating == 0 ? null : () async {
+                try {
+                  await ref.read(usersServiceProvider).rateUser(
+                    seller.id,
+                    rating,
+                    commentController.text,
+                  );
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Merci pour votre avis !')),
+                    );
+                    ref.invalidate(sellerProfileProvider(seller.id));
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Erreur: $e')),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.cloviGreen,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Publier'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

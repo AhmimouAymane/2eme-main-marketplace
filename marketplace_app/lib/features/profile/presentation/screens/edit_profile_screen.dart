@@ -104,7 +104,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final user = ref.watch(userProfileProvider).value;
 
     return Scaffold(
-      backgroundColor: AppColors.cloviBeige,
+      // backgroundColor: AppColors.cloviBeige, // Inherited from theme
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,

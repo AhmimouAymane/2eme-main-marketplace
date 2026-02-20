@@ -7,7 +7,6 @@ import 'package:marketplace_app/shared/models/category_model.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/features/products/presentation/widgets/product_card.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
-import 'package:marketplace_app/shared/widgets/clovi_bottom_nav.dart';
 
 /// Écran de recherche et filtrage des produits
 class SearchScreen extends ConsumerStatefulWidget {
@@ -21,7 +20,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _searchController = TextEditingController();
   final _focusNode = FocusNode();
   Timer? _debounce;
-  int _selectedIndex = 1; // Onglet Recherche
 
   @override
   void initState() {
@@ -33,9 +31,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _focusNode.requestFocus();
-        try {
-          ref.read(productFilterProvider.notifier).clearPriceRange();
-        } catch (e) {}
       }
     });
   }
@@ -48,31 +43,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     super.dispose();
   }
 
-  void _onItemTapped(int index) {
-    if (index == 1) return; // Déjà sur recherche
-
-    switch (index) {
-      case 0:
-        context.go(AppRoutes.home);
-        break;
-      case 2:
-        context.push(AppRoutes.createProduct);
-        break;
-      case 3:
-        context.go(AppRoutes.conversations);
-        break;
-      case 4:
-        context.go(AppRoutes.profile);
-        break;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(productsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.cloviBeige,
       appBar: AppBar(
         title: const Text(
           'Search',
@@ -83,16 +58,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.cloviGreen),
-          onPressed: () {
-            context.pop();
-          },
-        ),
+        automaticallyImplyLeading: false,
       ),
       body: Column(
         children: [
-          // Barre de recherche stylisée (identique à l'accueil)
+          // Barre de recherche stylisée
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Container(
@@ -257,10 +227,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: CloviBottomNav(
-        selectedIndex: _selectedIndex,
-        onItemTapped: _onItemTapped,
-      ),
     );
   }
 
@@ -313,275 +279,325 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 
-  void _showCategoryFilter() {
-    ref
-        .read(categoriesProvider)
-        .maybeWhen(
-          data: (categories) {
-            showModalBottomSheet(
-              context: context,
-              backgroundColor: Colors.white,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              builder: (context) {
-                final selectedId = ref.watch(productFilterProvider).categoryId;
-                return Container(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Categories',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.cloviGreen,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Flexible(
-                        child: ListView(
-                          shrinkWrap: true,
-                          children: [
-                            ListTile(
-                              title: const Text('All'),
-                              trailing: selectedId == null
-                                  ? const Icon(
-                                      Icons.check,
-                                      color: AppColors.cloviGreen,
-                                    )
-                                  : null,
-                              onTap: () {
-                                Navigator.pop(context);
-                                Future.microtask(
-                                  () => ref
-                                      .read(productFilterProvider.notifier)
-                                      .updateCategory(null),
-                                );
-                              },
-                            ),
-                            ...categories.map((CategoryModel category) {
-                              return ListTile(
-                                title: Text(category.name),
-                                trailing: selectedId == category.id
-                                    ? const Icon(
-                                        Icons.check,
-                                        color: AppColors.cloviGreen,
-                                      )
-                                    : null,
-                                onTap: () {
-                                  final categoryId = category.id;
-                                  Navigator.pop(context);
-                                  Future.microtask(
-                                    () => ref
-                                        .read(productFilterProvider.notifier)
-                                        .updateCategory(categoryId),
-                                  );
-                                },
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-          orElse: () {},
-        );
+  void _showCategoryFilter() async {
+    FocusScope.of(context).unfocus();
+
+    final categoriesState = ref.read(categoriesProvider);
+    if (!categoriesState.hasValue) return;
+
+    final categories = categoriesState.value!;
+    final selectedId = ref.read(productFilterProvider).categoryId;
+
+    final String? result = await showModalBottomSheet<String?>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => _CategoryFilterSheet(
+        categories: categories,
+        selectedId: selectedId,
+      ),
+    );
+
+    if (result != null && mounted) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+
+      final categoryId = result == "" ? null : result;
+      ref.read(productFilterProvider.notifier).updateCategory(categoryId);
+    }
   }
 
-  void _showPriceFilter() {
-    final filters = ref.read(productFilterProvider);
-    final minController = TextEditingController(
-      text: filters.minPrice != null
-          ? filters.minPrice!.round().toString()
-          : '',
-    );
-    final maxController = TextEditingController(
-      text: filters.maxPrice != null
-          ? filters.maxPrice!.round().toString()
-          : '',
-    );
+  void _showPriceFilter() async {
+    FocusScope.of(context).unfocus();
 
-    showModalBottomSheet(
+    final filters = ref.read(productFilterProvider);
+
+    final result = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       backgroundColor: Colors.white,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          left: 24,
-          right: 24,
-          top: 24,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              'Prix (DH)',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: AppColors.cloviGreen,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Saisissez le prix minimum et maximum',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondaryLight,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: minController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Min',
-                      hintText: '0',
-                      suffixText: 'DH',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.divider),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.cloviGreen,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    '–',
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: AppColors.textSecondaryLight,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: TextField(
-                    controller: maxController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Max',
-                      hintText: '1000',
-                      suffixText: 'DH',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppColors.divider),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppColors.cloviGreen,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Future.microtask(
-                      () => ref
-                          .read(productFilterProvider.notifier)
-                          .clearPriceRange(),
-                    );
-                  },
-                  child: const Text('Effacer'),
-                ),
-                const Spacer(),
-                SizedBox(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final minStr = minController.text.trim();
-                      final maxStr = maxController.text.trim();
-                      if (minStr.isEmpty && maxStr.isEmpty) {
-                        Navigator.pop(context);
-                        Future.microtask(
-                          () => ref
-                              .read(productFilterProvider.notifier)
-                              .clearPriceRange(),
-                        );
-                        return;
-                      }
-                      final min = minStr.isEmpty
-                          ? 0.0
-                          : (double.tryParse(minStr) ?? 0.0);
-                      final max = maxStr.isEmpty
-                          ? 99999.0
-                          : (double.tryParse(maxStr) ?? 99999.0);
-                      if (min > max) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Le prix min ne peut pas être supérieur au max.',
-                            ),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                        return;
-                      }
-                      Navigator.pop(context);
-                      Future.microtask(
-                        () => ref
-                            .read(productFilterProvider.notifier)
-                            .updatePriceRange(min, max),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.cloviGreen,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 14,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text('Appliquer'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+      builder: (context) => _PriceFilterSheet(
+        initialMin: filters.minPrice,
+        initialMax: filters.maxPrice,
       ),
-    ).then((_) {
-      minController.dispose();
-      maxController.dispose();
-    });
+    );
+
+    if (result != null && mounted) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+
+      if (result['action'] == 'clear') {
+        ref.read(productFilterProvider.notifier).clearPriceRange();
+      } else if (result['action'] == 'apply') {
+        ref
+            .read(productFilterProvider.notifier)
+            .updatePriceRange(result['min'], result['max']);
+      }
+    }
+  }
+}
+
+class _CategoryFilterSheet extends StatelessWidget {
+  final List<CategoryModel> categories;
+  final String? selectedId;
+
+  const _CategoryFilterSheet({
+    required this.categories,
+    required this.selectedId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Categories',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                ListTile(
+                  title: const Text('All'),
+                  trailing: selectedId == null
+                      ? const Icon(
+                          Icons.check,
+                          color: AppColors.cloviGreen,
+                        )
+                      : null,
+                  onTap: () => Navigator.pop(context, ""),
+                ),
+                ...categories.map((CategoryModel category) {
+                  return ListTile(
+                    title: Text(category.name),
+                    trailing: selectedId == category.id
+                        ? const Icon(
+                            Icons.check,
+                            color: AppColors.cloviGreen,
+                          )
+                        : null,
+                    onTap: () => Navigator.pop(context, category.id),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PriceFilterSheet extends StatefulWidget {
+  final double? initialMin;
+  final double? initialMax;
+
+  const _PriceFilterSheet({
+    this.initialMin,
+    this.initialMax,
+  });
+
+  @override
+  State<_PriceFilterSheet> createState() => _PriceFilterSheetState();
+}
+
+class _PriceFilterSheetState extends State<_PriceFilterSheet> {
+  late final TextEditingController _minController;
+  late final TextEditingController _maxController;
+
+  @override
+  void initState() {
+    super.initState();
+    _minController = TextEditingController(
+      text: widget.initialMin != null
+          ? widget.initialMin!.round().toString()
+          : '',
+    );
+    _maxController = TextEditingController(
+      text: widget.initialMax != null
+          ? widget.initialMax!.round().toString()
+          : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _minController.dispose();
+    _maxController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Prix (DH)',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Saisissez le prix minimum et maximum',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondaryLight,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _minController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Min',
+                    hintText: '0',
+                    suffixText: 'DH',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.divider),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.cloviGreen,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  '–',
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _maxController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Max',
+                    hintText: '1000',
+                    suffixText: 'DH',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.divider),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppColors.cloviGreen,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, {'action': 'clear'}),
+                child: const Text('Effacer'),
+              ),
+              const Spacer(),
+              SizedBox(
+                child: ElevatedButton(
+                  onPressed: () {
+                    final minStr = _minController.text.trim();
+                    final maxStr = _maxController.text.trim();
+
+                    if (minStr.isEmpty && maxStr.isEmpty) {
+                      Navigator.pop(context, {'action': 'clear'});
+                      return;
+                    }
+
+                    final min = minStr.isEmpty
+                        ? 0.0
+                        : (double.tryParse(minStr) ?? 0.0);
+                    final max = maxStr.isEmpty
+                        ? 99999.0
+                        : (double.tryParse(maxStr) ?? 99999.0);
+
+                    if (min > max) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Le prix min ne peut pas être supérieur au max.',
+                          ),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      return;
+                    }
+
+                    Navigator.pop(context, {
+                      'action': 'apply',
+                      'min': min,
+                      'max': max,
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.cloviGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Appliquer'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

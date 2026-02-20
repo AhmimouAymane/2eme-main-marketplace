@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/shared/services/api_client.dart';
@@ -15,12 +16,17 @@ class CloviDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userEmail = ref.watch(userEmailProvider);
+    final userAvatarUrl = ref.watch(userAvatarUrlProvider);
     
     return Drawer(
-      backgroundColor: AppColors.cloviBeige,
+      // backgroundColor: AppColors.cloviBeige, // Inherited from theme
       child: Column(
         children: [
-          _buildHeader(context, userEmail.maybeWhen(data: (email) => email, orElse: () => null)),
+          _buildHeader(
+            context,
+            userEmail.maybeWhen(data: (email) => email, orElse: () => null),
+            userAvatarUrl.maybeWhen(data: (url) => url, orElse: () => null),
+          ),
           Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
@@ -31,6 +37,23 @@ class CloviDrawer extends ConsumerWidget {
                   onTap: () {
                     context.pop(); // Fermer le drawer
                     context.push(AppRoutes.profile);
+                  },
+                ),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final unreadCountAsync = ref.watch(unreadNotificationsCountProvider);
+                    return _buildMenuItem(
+                      icon: Icons.notifications_none_rounded,
+                      title: 'Notifications',
+                      badge: unreadCountAsync.maybeWhen(
+                        data: (count) => count > 0 ? count.toString() : null,
+                        orElse: () => null,
+                      ),
+                      onTap: () {
+                        context.pop();
+                        context.push(AppRoutes.notifications);
+                      },
+                    );
                   },
                 ),
                 _buildMenuItem(
@@ -61,10 +84,7 @@ class CloviDrawer extends ConsumerWidget {
                 _buildMenuItem(
                   icon: Icons.help_outline,
                   title: 'Aide & Support',
-                  onTap: () {
-                    // TODO
-                    context.pop();
-                  },
+                  onTap: () => context.push(AppRoutes.helpSupport),
                 ),
                 _buildMenuItem(
                   icon: Icons.settings_outlined,
@@ -84,7 +104,7 @@ class CloviDrawer extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, String? email) {
+  Widget _buildHeader(BuildContext context, String? email, String? avatarUrl) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(top: 60, bottom: 30, left: 24, right: 24),
@@ -101,10 +121,11 @@ class CloviDrawer extends ConsumerWidget {
           const SizedBox(height: 24),
           Row(
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 25,
                 backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: AppColors.cloviGreen),
+                backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                child: avatarUrl == null ? const Icon(Icons.person, color: AppColors.cloviGreen) : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -141,16 +162,39 @@ class CloviDrawer extends ConsumerWidget {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    String? badge,
   }) {
     return ListTile(
       leading: Icon(icon, color: AppColors.cloviGreen),
-      title: Text(
-        title,
-        style: const TextStyle(
-          color: AppColors.cloviGreen,
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
+      title: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.cloviGreen,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (badge != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.error,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                badge,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
@@ -163,13 +207,13 @@ class CloviDrawer extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: OutlinedButton.icon(
         onPressed: () => _handleLogout(context, ref),
-        icon: const Icon(Icons.logout, color: Colors.redAccent),
+        icon: const Icon(Icons.logout, color: AppColors.error),
         label: const Text(
           'Déconnexion',
-          style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+          style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
         ),
         style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Colors.redAccent),
+          side: const BorderSide(color: AppColors.error),
           minimumSize: const Size(double.infinity, 50),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         ),

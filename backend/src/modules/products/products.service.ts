@@ -60,12 +60,15 @@ export class ProductQuery {
 }
 
 import { MediaService } from '../media/media.service';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '@prisma/client';
 
 @Injectable()
 export class ProductsService {
     constructor(
         private prisma: PrismaService,
         private mediaService: MediaService,
+        private notificationsService: NotificationsService,
     ) { }
 
     async findAll(query: ProductQuery, userId?: string) {
@@ -104,6 +107,7 @@ export class ProductsService {
 
         const products = await this.prisma.product.findMany({
             where: {
+                deletedAt: null,
                 status: status || (sellerId ? undefined : ProductStatus.FOR_SALE),
                 categoryId: categoryIds.length > 0 ? { in: categoryIds } : undefined,
                 size: size || undefined,
@@ -129,6 +133,7 @@ export class ProductsService {
                         firstName: true,
                         lastName: true,
                         email: true,
+                        addresses: true,
                     },
                 },
             },
@@ -141,18 +146,18 @@ export class ProductsService {
                 select: { productId: true }
             });
             const favoriteIds = new Set(userFavorites.map(f => f.productId));
-            return products.map(p => ({
+            return (products as any).map((p: any) => ({
                 ...p,
                 isFavorite: favoriteIds.has(p.id)
             }));
         }
 
-        return products.map(p => ({ ...p, isFavorite: false }));
+        return (products as any).map((p: any) => ({ ...p, isFavorite: false }));
     }
 
     async findOne(id: string, userId?: string) {
-        const product = await this.prisma.product.findUnique({
-            where: { id },
+        const product = await this.prisma.product.findFirst({
+            where: { id, deletedAt: null },
             include: {
                 images: true,
                 category: true,
@@ -238,10 +243,10 @@ export class ProductsService {
             // Assuming stored images are full URLs
 
             // Get current images
-            const currentImages = product.images.map(img => img.url);
+            const currentImages = (product as any).images.map((img: any) => img.url);
 
             // Identify images to delete (present in current but not in new list)
-            const imagesToDelete = currentImages.filter(url => !imagesToSave.includes(url));
+            const imagesToDelete = currentImages.filter((url: string) => !imagesToSave.includes(url));
 
             if (imagesToDelete.length > 0) {
                 console.log(`Deleting ${imagesToDelete.length} images from Cloudinary`);
@@ -276,8 +281,9 @@ export class ProductsService {
         }
 
         try {
-            return await this.prisma.product.delete({
+            return await this.prisma.product.update({
                 where: { id },
+                data: { deletedAt: new Date() },
             });
         } catch (err) {
             // Prisma may throw for many reasons; log and wrap
@@ -287,9 +293,50 @@ export class ProductsService {
         }
     }
 
-    async addReview(productId: string, userId: string, rating: number, comment?: string) {
-        return this.prisma.review.create({
+    async updateStatus(id: string, status: ProductStatus, moderationComment?: string) {
+        const product = await this.prisma.product.update({
+            where: { id },
             data: {
+                status,
+                moderationComment,
+            },
+        });
+
+        // Trigger notification
+        if (status === ProductStatus.FOR_SALE) {
+            await this.notificationsService.create({
+                userId: product.sellerId,
+                title: '✅ Votre produit est en ligne !',
+                message: `Votre article '${product.title}' a été approuvé et est visible par tous les acheteurs.`,
+                type: NotificationType.PRODUCT_APPROVED,
+                data: { productId: product.id, screen: 'product_detail' },
+            });
+        } else if (status === ProductStatus.REJECTED) {
+            await this.notificationsService.create({
+                userId: product.sellerId,
+                title: '❌ Produit rejeté',
+                message: `Votre article '${product.title}' a été rejeté. Motif : ${moderationComment || 'Non spécifié'}.`,
+                type: NotificationType.PRODUCT_REJECTED,
+                data: { productId: product.id, screen: 'my_products' },
+            });
+        }
+
+        return product;
+    }
+
+    async addReview(productId: string, userId: string, rating: number, comment?: string) {
+        return (this.prisma as any).review.upsert({
+            where: {
+                userId_productId: {
+                    userId,
+                    productId,
+                },
+            },
+            update: {
+                rating,
+                comment,
+            },
+            create: {
                 rating,
                 comment,
                 userId,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:marketplace_app/core/theme/app_colors.dart';
 
 class CloviLogo extends StatelessWidget {
   final double size;
@@ -35,7 +36,7 @@ class CloviLogo extends StatelessWidget {
           style: TextStyle(
             fontSize: fontSize,
             fontWeight: FontWeight.w400,
-            color: color ?? const Color(0xFF2D5F4F),
+            color: color ?? AppColors.cloviGreen,
             fontFamily: 'Cursive',
             letterSpacing: 1,
           ),

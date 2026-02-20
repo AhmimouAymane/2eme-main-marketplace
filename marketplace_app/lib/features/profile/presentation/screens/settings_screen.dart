@@ -15,7 +15,7 @@ class SettingsScreen extends ConsumerWidget {
     final notificationsEnabled = ref.watch(notificationsEnabledProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.cloviBeige,
+      // backgroundColor: AppColors.cloviBeige, // Inherited from theme
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,

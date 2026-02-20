@@ -5,7 +5,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../shared/providers/shop_providers.dart';
-import '../../../../shared/widgets/clovi_bottom_nav.dart';
 
 /// Écran de profil utilisateur — design aligné avec le reste de l'app (Clovi)
 class ProfileScreen extends ConsumerWidget {
@@ -16,7 +15,7 @@ class ProfileScreen extends ConsumerWidget {
     final userAsync = ref.watch(userProfileProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.cloviBeige,
+      // backgroundColor: AppColors.cloviBeige, // Inherited from theme
       body: SafeArea(
         child: Column(
           children: [
@@ -60,26 +59,6 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: CloviBottomNav(
-        selectedIndex: 4,
-        onItemTapped: (index) {
-          if (index == 4) return;
-          switch (index) {
-            case 0:
-              context.go(AppRoutes.home);
-              break;
-            case 1:
-              context.go(AppRoutes.search);
-              break;
-            case 2:
-              context.push(AppRoutes.createProduct);
-              break;
-            case 3:
-              context.go(AppRoutes.conversations);
-              break;
-          }
-        },
       ),
     );
   }
@@ -216,11 +195,11 @@ class ProfileScreen extends ConsumerWidget {
       ),
       child: Column(
         children: [
-          _buildMenuTile(
+          /*_buildMenuTile(
             icon: Icons.chat_bubble_outline,
             title: 'Messages',
             onTap: () => context.push(AppRoutes.conversations),
-          ),
+          ),*/
           _buildDivider(),
           _buildMenuTile(
             icon: Icons.inventory_2_outlined,
@@ -240,12 +219,7 @@ class ProfileScreen extends ConsumerWidget {
             onTap: () => context.push(AppRoutes.orders),
           ),
           _buildDivider(),
-          _buildMenuTile(
-            icon: Icons.payment_outlined,
-            title: 'Moyens de paiement',
-            onTap: () {},
-          ),
-          _buildDivider(),
+          
           _buildMenuTile(
             icon: Icons.location_on_outlined,
             title: 'Adresses',
@@ -255,20 +229,28 @@ class ProfileScreen extends ConsumerWidget {
           _buildMenuTile(
             icon: Icons.help_outline,
             title: 'Aide & Support',
-            onTap: () {},
+            onTap: () => context.push(AppRoutes.helpSupport),
           ),
           _buildDivider(),
           _buildMenuTile(
             icon: Icons.info_outline,
             title: 'À propos',
-            onTap: () {},
+            onTap: () => context.push(AppRoutes.about),
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.delete_forever_outlined,
+            title: 'Supprimer mon compte',
+            textColor: AppColors.error,
+            iconColor: AppColors.error,
+            onTap: () => _showDeleteAccountDialog(context, ref),
           ),
           _buildDivider(),
           _buildMenuTile(
             icon: Icons.logout,
             title: 'Se déconnecter',
-            textColor: AppColors.error,
-            iconColor: AppColors.error,
+            textColor: AppColors.textPrimaryLight,
+            iconColor: AppColors.cloviGreen,
             onTap: () => _showLogoutDialog(context, ref),
           ),
         ],
@@ -334,6 +316,8 @@ class ProfileScreen extends ConsumerWidget {
               ref.invalidate(userEmailProvider);
               ref.invalidate(userIdProvider);
               ref.invalidate(isAuthenticatedProvider);
+              ref.invalidate(userAvatarUrlProvider);
+              ref.invalidate(userProfileProvider);
               if (context.mounted) {
                 context.go(AppRoutes.login);
               }
@@ -345,6 +329,67 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
             child: const Text('Se déconnecter'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Supprimer le compte'),
+        content: const Text(
+          'Cette action est irréversible. Votre compte sera supprimé de Clovi et de Firebase. Voulez-vous continuer ?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                // 1. Delete on backend (syncs with Firebase)
+                await ref.read(usersServiceProvider).deleteAccount();
+
+                // 2. Local logout
+                await ref.read(authServiceProvider).logout();
+                ref.read(authTokenProvider.notifier).state = null;
+                ref.invalidate(userEmailProvider);
+                ref.invalidate(userIdProvider);
+                ref.invalidate(isAuthenticatedProvider);
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Compte supprimé avec succès'),
+                      backgroundColor: AppColors.cloviGreen,
+                    ),
+                  );
+                  context.go(AppRoutes.login);
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Erreur lors de la suppression : $e'),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Supprimer définitivement'),
           ),
         ],
       ),

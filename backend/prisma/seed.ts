@@ -6,168 +6,147 @@ const prisma = new PrismaClient();
 async function main() {
     console.log('Seeding categories...');
 
-    // Reset categories (optional, be careful in prod)
-    // await prisma.category.deleteMany();
+    // Nettoyer les anciennes données pour éviter les conflits de clé étrangère
+    console.log('Cleaning up old data...');
+    await prisma.notification.deleteMany();
+    await prisma.message.deleteMany();
+    await prisma.conversation.deleteMany();
+    await prisma.order.deleteMany();
+    await prisma.userReview.deleteMany();
+    await prisma.review.deleteMany();
+    await prisma.favorite.deleteMany();
+    await prisma.comment.deleteMany();
+    await prisma.productImage.deleteMany();
+    await prisma.product.deleteMany();
+    await prisma.category.deleteMany();
 
-    const genres = [
-        { name: 'Femme', slug: 'women' },
-        { name: 'Homme', slug: 'men' },
-        { name: 'Enfant', slug: 'kids' },
+    const genreData = [
+        { name: 'Femme', slug: 'femme' },
+        { name: 'Homme', slug: 'homme' },
+        { name: 'Enfants', slug: 'enfants' },
     ];
 
-    for (const genreData of genres) {
+    for (const g of genreData) {
         const genre = await prisma.category.upsert({
-            where: { slug: genreData.slug },
-            update: {},
-            create: {
-                name: genreData.name,
-                slug: genreData.slug,
-                level: 0,
-            },
+            where: { slug: g.slug },
+            update: { name: g.name },
+            create: { name: g.name, slug: g.slug, level: 0 },
         });
 
-        // Detailed categories based on user request example
-        if (genre.slug === 'women') {
-            await createCategory(genre.id, 'Vêtements', 'women-clothing', [
-                { name: 'Robes', slug: 'women-dresses', sizeType: SizeType.ALPHA },
-                { name: 'T-shirts', slug: 'women-tshirts', sizeType: SizeType.ALPHA },
-                { name: 'Jeans', slug: 'women-jeans', sizeType: SizeType.NUMERIC_PANTS },
-                { name: 'Manteaux & Vestes', slug: 'women-coats', sizeType: SizeType.ALPHA },
+        if (g.slug === 'femme') {
+            await createCategoryWithSubs(genre.id, 'Vêtements', 'femme-vetements', [
+                { name: 'Hauts', slug: 'femme-vetements-hauts', sizeType: SizeType.ALPHA },
+                { name: 'Robes', slug: 'femme-vetements-robes', sizeType: SizeType.ALPHA },
+                { name: 'Pantalons', slug: 'femme-vetements-pantalons', sizeType: SizeType.NUMERIC_PANTS },
+                { name: 'Jupes', slug: 'femme-vetements-jupes', sizeType: SizeType.ALPHA },
+                { name: 'Vestes & Manteaux', slug: 'femme-vetements-vestes', sizeType: SizeType.ALPHA },
             ]);
-            await createCategory(genre.id, 'Chaussures', 'women-shoes', [
-                { name: 'Baskets', slug: 'women-sneakers', sizeType: SizeType.NUMERIC_SHOES },
-                { name: 'Escarpins', slug: 'women-heels', sizeType: SizeType.NUMERIC_SHOES },
-                { name: 'Bottes', slug: 'women-boots', sizeType: SizeType.NUMERIC_SHOES },
+            await createCategoryWithSubs(genre.id, 'Chaussures', 'femme-chaussures', [
+                { name: 'Sneakers', slug: 'femme-chaussures-sneakers', sizeType: SizeType.NUMERIC_SHOES },
+                { name: 'Talons', slug: 'femme-chaussures-talons', sizeType: SizeType.NUMERIC_SHOES },
+                { name: 'Sandales', slug: 'femme-chaussures-sandales', sizeType: SizeType.NUMERIC_SHOES },
+                { name: 'Bottes', slug: 'femme-chaussures-bottes', sizeType: SizeType.NUMERIC_SHOES },
             ]);
-        } else if (genre.slug === 'men') {
-            await createCategory(genre.id, 'Vêtements', 'men-clothing', [
-                { name: 'T-shirts', slug: 'men-tshirts', sizeType: SizeType.ALPHA },
-                { name: 'Pantalons', slug: 'men-pants', sizeType: SizeType.NUMERIC_PANTS },
-                { name: 'Costumes', slug: 'men-suits', sizeType: SizeType.NUMERIC_PANTS },
+            await createCategoryWithSubs(genre.id, 'Sacs & Accessoires', 'femme-accessoires', [
+                { name: 'Sacs', slug: 'femme-accessoires-sacs', sizeType: SizeType.ONE_SIZE },
+                { name: 'Bijoux', slug: 'femme-accessoires-bijoux', sizeType: SizeType.ONE_SIZE },
+                { name: 'Ceintures', slug: 'femme-accessoires-ceintures', sizeType: SizeType.ALPHA },
+                { name: 'Lunettes', slug: 'femme-accessoires-lunettes', sizeType: SizeType.ONE_SIZE },
             ]);
-            await createCategory(genre.id, 'Chaussures', 'men-shoes', [
-                { name: 'Baskets', slug: 'men-sneakers', sizeType: SizeType.NUMERIC_SHOES },
-                { name: 'Ville', slug: 'men-formal-shoes', sizeType: SizeType.NUMERIC_SHOES },
+            await createCategoryWithSubs(genre.id, 'Lingerie & Pyjama', 'femme-lingerie', [
+                { name: 'Lingerie', slug: 'femme-lingerie-lingerie', sizeType: SizeType.ALPHA },
+                { name: 'Pyjamas', slug: 'femme-lingerie-pyjamas', sizeType: SizeType.ALPHA },
             ]);
-        } else if (genre.slug === 'kids') {
-            await createCategory(genre.id, 'Fille', 'kids-girls', [
-                { name: 'Robes', slug: 'kids-girls-dresses', sizeType: SizeType.AGE },
-                { name: 'T-shirts', slug: 'kids-girls-tshirts', sizeType: SizeType.AGE },
+            await createCategoryWithSubs(genre.id, 'Activewear', 'femme-activewear', [
+                { name: 'Tenues sport', slug: 'femme-activewear-sport', sizeType: SizeType.ALPHA },
             ]);
-            await createCategory(genre.id, 'Garçon', 'kids-boys', [
-                { name: 'T-shirts', slug: 'kids-boys-tshirts', sizeType: SizeType.AGE },
-                { name: 'Pantalons', slug: 'kids-boys-pants', sizeType: SizeType.AGE },
+            await createCategoryWithSubs(genre.id, 'Maillots de bain', 'femme-maillots', [
+                { name: '2 pièces', slug: 'femme-maillots-2pieces', sizeType: SizeType.ALPHA },
+                { name: '1 pièce', slug: 'femme-maillots-1piece', sizeType: SizeType.ALPHA },
+            ]);
+            await createCategoryWithSubs(genre.id, 'Traditionnel', 'femme-traditionnel', [
+                { name: 'Caftan', slug: 'femme-traditionnel-caftan', sizeType: SizeType.ALPHA },
+                { name: 'Takchita', slug: 'femme-traditionnel-takchita', sizeType: SizeType.ALPHA },
+                { name: 'Djellaba', slug: 'femme-traditionnel-djellaba', sizeType: SizeType.ALPHA },
+            ]);
+        } else if (g.slug === 'homme') {
+            await createCategoryWithSubs(genre.id, 'Vêtements', 'homme-vetements', [
+                { name: 'Hauts', slug: 'homme-vetements-hauts', sizeType: SizeType.ALPHA },
+                { name: 'Pantalons', slug: 'homme-vetements-pantalons', sizeType: SizeType.NUMERIC_PANTS },
+                { name: 'Shorts', slug: 'homme-vetements-shorts', sizeType: SizeType.NUMERIC_PANTS },
+                { name: 'Vestes & Manteaux', slug: 'homme-vetements-vestes', sizeType: SizeType.ALPHA },
+                { name: 'Costumes', slug: 'homme-vetements-costumes', sizeType: SizeType.NUMERIC_PANTS },
+            ]);
+            await createCategoryWithSubs(genre.id, 'Chaussures', 'homme-chaussures', [
+                { name: 'Sneakers', slug: 'homme-chaussures-sneakers', sizeType: SizeType.NUMERIC_SHOES },
+                { name: 'Chaussures ville', slug: 'homme-chaussures-ville', sizeType: SizeType.NUMERIC_SHOES },
+                { name: 'Sandales', slug: 'homme-chaussures-sandales', sizeType: SizeType.NUMERIC_SHOES },
+            ]);
+            await createCategoryWithSubs(genre.id, 'Accessoires', 'homme-accessoires', [
+                { name: 'Sacs', slug: 'homme-accessoires-sacs', sizeType: SizeType.ONE_SIZE },
+                { name: 'Ceintures', slug: 'homme-accessoires-ceintures', sizeType: SizeType.ALPHA },
+                { name: 'Montres', slug: 'homme-accessoires-montres', sizeType: SizeType.ONE_SIZE },
+                { name: 'Casquettes', slug: 'homme-accessoires-casquettes', sizeType: SizeType.ONE_SIZE },
+            ]);
+            await createCategoryWithSubs(genre.id, 'Activewear', 'homme-activewear', [
+                { name: 'Tenues sport', slug: 'homme-activewear-sport', sizeType: SizeType.ALPHA },
+            ]);
+            await createCategoryWithSubs(genre.id, 'Traditionnel', 'homme-traditionnel', [
+                { name: 'Djellaba', slug: 'homme-traditionnel-djellaba', sizeType: SizeType.ALPHA },
+                { name: 'Jabador', slug: 'homme-traditionnel-jabador', sizeType: SizeType.ALPHA },
+            ]);
+        } else if (g.slug === 'enfants') {
+            const fille = await prisma.category.upsert({
+                where: { slug: 'enfants-fille' },
+                update: { name: 'FILLE' },
+                create: { name: 'FILLE', slug: 'enfants-fille', level: 1, parentId: genre.id },
+            });
+            await createSubs(fille.id, [
+                { name: 'Vêtements', slug: 'enfants-fille-vetements', sizeType: SizeType.AGE },
+                { name: 'Chaussures', slug: 'enfants-fille-chaussures', sizeType: SizeType.NUMERIC_SHOES },
+                { name: 'Accessoires', slug: 'enfants-fille-accessoires', sizeType: SizeType.ONE_SIZE },
+                { name: 'Traditionnel', slug: 'enfants-fille-traditionnel', sizeType: SizeType.AGE },
+            ]);
+
+            const garcon = await prisma.category.upsert({
+                where: { slug: 'enfants-garcon' },
+                update: { name: 'GARÇON' },
+                create: { name: 'GARÇON', slug: 'enfants-garcon', level: 1, parentId: genre.id },
+            });
+            await createSubs(garcon.id, [
+                { name: 'Vêtements', slug: 'enfants-garcon-vetements', sizeType: SizeType.AGE },
+                { name: 'Chaussures', slug: 'enfants-garcon-chaussures', sizeType: SizeType.NUMERIC_SHOES },
+                { name: 'Accessoires', slug: 'enfants-garcon-accessoires', sizeType: SizeType.ONE_SIZE },
+                { name: 'Traditionnel', slug: 'enfants-garcon-traditionnel', sizeType: SizeType.AGE },
             ]);
         }
     }
 
-    console.log('Seeding users...');
-    const hashedPassword = await bcrypt.hash('password123', 10);
-    const user = await prisma.user.upsert({
-        where: { email: 'test@example.com' },
-        update: {},
-        create: {
-            email: 'test@example.com',
-            password: hashedPassword,
-            firstName: 'Ayman',
-            lastName: 'Seller',
-            role: Role.USER,
-        },
-    });
-
-    console.log('Seeding products...');
-    const tshirts = await prisma.category.findUnique({ where: { slug: 'men-tshirts' } });
-    const jeans = await prisma.category.findUnique({ where: { slug: 'women-jeans' } });
-    const sneakers = await prisma.category.findUnique({ where: { slug: 'men-sneakers' } });
-
-    const products = [
-        {
-            title: 'T-shirt Nike coton',
-            description: 'Un t-shirt confortable 100% coton',
-            price: 25.0,
-            categoryId: tshirts!.id,
-            size: 'L',
-            brand: 'Nike',
-            condition: ProductCondition.VERY_GOOD,
-            status: ProductStatus.FOR_SALE,
-            sellerId: user.id,
-            images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500'],
-        },
-        {
-            title: 'Levi\'s 501 Original',
-            description: 'Jean levi\'s classique peu porté',
-            price: 55.0,
-            categoryId: jeans!.id,
-            size: 'W32 L32',
-            brand: 'Levi\'s',
-            condition: ProductCondition.GOOD,
-            status: ProductStatus.FOR_SALE,
-            sellerId: user.id,
-            images: ['https://images.unsplash.com/photo-1542272604-787c3835535d?w=500'],
-        },
-        {
-            title: 'Adidas Stan Smith',
-            description: 'Baskets blanches iconiques',
-            price: 45.0,
-            categoryId: sneakers!.id,
-            size: '42',
-            brand: 'Adidas',
-            condition: ProductCondition.NEW_WITHOUT_TAGS,
-            status: ProductStatus.FOR_SALE,
-            sellerId: user.id,
-            images: ['https://images.unsplash.com/photo-1587563871167-1ee9c731aefb?w=500'],
-        },
-        {
-            title: 'T-shirt Vintage Band',
-            description: 'Rare vintage band t-shirt',
-            price: 80.0,
-            categoryId: tshirts!.id,
-            size: 'M',
-            brand: 'Vintage',
-            condition: ProductCondition.FAIR,
-            status: ProductStatus.FOR_SALE,
-            sellerId: user.id,
-            images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=500'],
-        },
-    ];
-
-    for (const p of products) {
-        const { images, ...data } = p;
-        await prisma.product.create({
-            data: {
-                ...data,
-                images: {
-                    create: images.map(url => ({ url }))
-                }
-            }
-        });
-    }
-
+    // Le reste du seed (User, Produits) peut être adapté si besoin, 
+    // mais ici on se concentre sur les catégories.
     console.log('Seed completed successfully!');
 }
 
-async function createCategory(parentId: string, name: string, slug: string, subCategories: any[]) {
-    const category = await prisma.category.upsert({
+async function createCategoryWithSubs(parentId: string, name: string, slug: string, subs: any[]) {
+    const parent = await prisma.category.upsert({
         where: { slug },
-        update: {},
-        create: {
-            name,
-            slug,
-            level: 1,
-            parentId,
-        },
+        update: { name },
+        create: { name, slug, level: 1, parentId },
     });
+    await createSubs(parent.id, subs);
+}
 
-    for (const sub of subCategories) {
+async function createSubs(parentId: string, subs: any[]) {
+    for (const sub of subs) {
         await prisma.category.upsert({
             where: { slug: sub.slug },
-            update: {},
+            update: { name: sub.name, sizeType: sub.sizeType },
             create: {
                 name: sub.name,
                 slug: sub.slug,
                 level: 2,
-                parentId: category.id,
-                sizeType: sub.sizeType,
+                parentId,
+                sizeType: sub.sizeType
             },
         });
     }

@@ -4,6 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { WinstonModule } from 'nest-winston';
 import * as winston from 'winston';
+import { ProductsService } from './modules/products/products.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -80,6 +81,8 @@ async function bootstrap() {
     const IMAGE_SHOW = componentLoader.add('ImageShow', path.join(process.cwd(), 'src/admin/components/image-show'));
 
     const prisma = new PrismaClient();
+    const productsService = app.get(ProductsService);
+
     const getModel = (name: string) => Prisma.dmmf.datamodel.models.find((m: any) => m.name === name);
     console.log('[AdminJS] Step 3: Creating AdminJS instance...');
 
@@ -103,7 +106,7 @@ async function bootstrap() {
                 icon: 'Check',
                 handler: async (request: any, response: any, context: any) => {
                   const { record, resource } = context;
-                  await record.update({ status: 'FOR_SALE' });
+                  await productsService.updateStatus(record.id(), 'FOR_SALE' as any);
                   return {
                     record: record.toJSON(context.currentAdmin),
                     notice: { message: 'Produit approuvé avec succès', type: 'success' },
@@ -127,7 +130,7 @@ async function bootstrap() {
                       notice: { message: 'Un motif est requis pour rejeter le produit', type: 'error' },
                     };
                   }
-                  await record.update({ status: 'REJECTED', moderationComment });
+                  await productsService.updateStatus(record.id(), 'REJECTED' as any, moderationComment);
                   return {
                     record: record.toJSON(context.currentAdmin),
                     notice: { message: 'Produit rejeté', type: 'success' },
@@ -227,7 +230,18 @@ async function bootstrap() {
     const adminRouter = AdminJSExpress.buildAuthenticatedRouter(admin, {
       authenticate: async (email: string, password: string) => {
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || user.role !== 'ADMIN') return null;
+        if (!user) {
+          console.warn(`[AdminJS] Login attempt failed: User ${email} not found.`);
+          return null;
+        }
+        if (user.role !== 'ADMIN') {
+          console.warn(`[AdminJS] Login attempt failed: User ${email} is not an ADMIN.`);
+          return null;
+        }
+        if (!user.password || user.password === '') {
+          console.warn(`[AdminJS] Login attempt failed: User ${email} has no local password (Social/Firebase login). Use admin-setup script.`);
+          return null;
+        }
         const valid = await bcrypt.compare(password, user.password);
         return valid ? { email: user.email, id: user.id } : null;
       },
@@ -237,6 +251,11 @@ async function bootstrap() {
       resave: false,
       saveUninitialized: false,
       secret: process.env.JWT_ACCESS_SECRET || 'secret-key-change-in-production',
+      cookie: {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      }
     });
     console.log('[AdminJS] Step 5: Mounting router...');
 

@@ -17,6 +17,11 @@ class ChatService {
     return ConversationModel.fromJson(response.data);
   }
 
+  Future<ConversationModel> createOrGetOrderConversation(String orderId) async {
+    final response = await _dio.post('/conversations/order/$orderId');
+    return ConversationModel.fromJson(response.data);
+  }
+
   Future<List<MessageModel>> getMessages(String conversationId) async {
     final response = await _dio.get('/conversations/$conversationId/messages');
     final List<dynamic> data = response.data;

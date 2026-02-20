@@ -23,6 +23,9 @@ class AppRoutes {
   static const String addresses = '/addresses';
   static const String addressForm = '/addresses/:id'; // id = new|existing
   static const String sellerProfile = '/seller/:id';
+  static const String notifications = '/notifications';
+  static const String helpSupport = '/help-support';
+  static const String about = '/about';
 
   // Chat
   static const String conversations = '/conversations';
