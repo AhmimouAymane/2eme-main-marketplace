@@ -21,8 +21,8 @@ RUN npx prisma generate
 # Build the application
 RUN npm run build
 
-# Expose port (railway will override if needed)
-EXPOSE 8080
+# Expose port (Hugging Face expects 7860 by default)
+EXPOSE 7860
 
 # Start command
 CMD ["npm", "run", "start:prod"]
