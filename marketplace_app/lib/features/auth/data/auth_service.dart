@@ -6,6 +6,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+
 
 /// Service gérant l'authentification côté frontend
 class AuthService {
@@ -13,7 +16,6 @@ class AuthService {
 
   AuthService(this._dio);
 
-  /// Inscription d'un nouvel utilisateur via Firebase
   Future<Map<String, dynamic>> register({
     required String email,
     required String password,
@@ -21,59 +23,101 @@ class AuthService {
     required String lastName,
   }) async {
     try {
-      // 1. Créer le compte dans Firebase
-      final UserCredential userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      // 2. Mettre à jour le profil Firebase (optionnel)
-      await userCredential.user?.updateDisplayName('$firstName $lastName');
-
-      // 3. Obtenir le token ID
-      final String? idToken = await userCredential.user?.getIdToken();
-      if (idToken == null) throw 'Impossible d\'obtenir le token Firebase';
-
-      // 4. Synchroniser avec notre backend
-      return await syncWithBackend(idToken, firstName: firstName, lastName: lastName);
-    } on FirebaseAuthException catch (e) {
-      throw _handleFirebaseAuthError(e);
+      final response = await _dio.post('/auth/register', data: {
+        'email': email,
+        'password': password,
+        'firstName': firstName,
+        'lastName': lastName,
+      });
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
     } catch (e) {
       throw e.toString();
     }
   }
 
-  /// Connexion de l'utilisateur via Firebase
+  /// Connexion de l'utilisateur via notre backend
   Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
     try {
-      // 1. Se connecter avec Firebase
-      final UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      // 2. Obtenir le token ID
-      final String? idToken = await userCredential.user?.getIdToken();
-      if (idToken == null) throw 'Impossible d\'obtenir le token Firebase';
-
-      // 3. Synchroniser avec notre backend
-      return await syncWithBackend(idToken);
-    } on FirebaseAuthException catch (e) {
-      throw _handleFirebaseAuthError(e);
+      final response = await _dio.post('/auth/login', data: {
+        'email': email,
+        'password': password,
+      });
+      
+      final data = response.data;
+      if (data['accessToken'] != null) {
+        await _saveAuthData(data);
+      }
+      
+      return data;
+    } on DioException catch (e) {
+      throw _handleError(e);
     } catch (e) {
       throw e.toString();
     }
   }
 
-  /// Mot de passe oublié (Envoi d'email via Firebase)
-  Future<void> forgotPassword(String email) async {
+  /// Mot de passe oublié (Envoi de code OTP via notre backend)
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-    } on FirebaseAuthException catch (e) {
-      throw _handleFirebaseAuthError(e);
+      final response = await _dio.post('/auth/forgot-password', data: {
+        'email': email,
+      });
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
+  /// Vérification du code OTP
+  Future<Map<String, dynamic>> verifyOtp({
+    required String email,
+    required String code,
+    required String type, // 'REGISTRATION' ou 'PASSWORD_RESET'
+  }) async {
+    try {
+      final response = await _dio.post('/auth/verify-otp', data: {
+        'email': email,
+        'code': code,
+        'type': type,
+      });
+      
+      final data = response.data;
+      
+      // Si c'est une vérification d'inscription, on reçoit les tokens
+      if (type == 'REGISTRATION' && data['accessToken'] != null) {
+        await _saveAuthData(data);
+      }
+      
+      return data;
+    } on DioException catch (e) {
+      throw _handleError(e);
+    } catch (e) {
+      throw e.toString();
+    }
+  }
+
+  /// Réinitialisation du mot de passe
+  Future<Map<String, dynamic>> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await _dio.post('/auth/reset-password', data: {
+        'email': email,
+        'code': code,
+        'newPassword': newPassword,
+      });
+      return response.data;
+    } on DioException catch (e) {
+      throw _handleError(e);
     } catch (e) {
       throw e.toString();
     }
@@ -183,24 +227,32 @@ class AuthService {
       final user = data['user'];
       
       if (token != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(AppConstants.keyAuthToken, token);
-        if (user != null) {
-          await prefs.setString(AppConstants.keyUserId, user['id']);
-          await prefs.setString(AppConstants.keyUserEmail, user['email']);
-          if (user['avatarUrl'] != null) {
-            await prefs.setString(AppConstants.keyUserAvatarUrl, user['avatarUrl']);
-          }
-        }
-        
-        // Synchroniser le token FCM
-        await syncFcmToken(token);
+        await _saveAuthData(data);
       }
       
       return data;
     } on DioException catch (e) {
       throw _handleError(e);
     }
+  }
+
+  /// Sauvegarde les données d'authentification localement
+  Future<void> _saveAuthData(Map<String, dynamic> data) async {
+    final token = data['accessToken'];
+    final user = data['user'];
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(AppConstants.keyAuthToken, token);
+    if (user != null) {
+      await prefs.setString(AppConstants.keyUserId, user['id']);
+      await prefs.setString(AppConstants.keyUserEmail, user['email']);
+      if (user['avatarUrl'] != null) {
+        await prefs.setString(AppConstants.keyUserAvatarUrl, user['avatarUrl']);
+      }
+    }
+    
+    // Synchroniser le token FCM
+    await syncFcmToken(token);
   }
 
   /// Synchroniser le token FCM avec le backend

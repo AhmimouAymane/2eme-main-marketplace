@@ -7,6 +7,7 @@ import { UsersModule } from '../users/users.module';
 import { AtStrategy } from './strategies/at.strategy';
 import { FirebaseModule } from '../firebase/firebase.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     JwtModule.register({}),
     FirebaseModule,
     NotificationsModule,
+    MailModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, AtStrategy],

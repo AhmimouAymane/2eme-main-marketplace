@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/constants/app_constants.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/features/auth/data/auth_service.dart';
 
 /// Routes qui ne doivent pas recevoir le token (authentification en cours)
 const _publicPaths = ['/auth/register', '/auth/login'];

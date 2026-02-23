@@ -22,6 +22,7 @@ model User {
   role      Role      @default(USER)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  isEmailVerified Boolean @default(false)
   comments  Comment[] @relation("UserComments")
   products  Product[] @relation("UserProducts")
   reviews   Review[]  @relation("UserReviews")
@@ -295,4 +296,21 @@ enum NotificationType {
   WELCOME
   SECURITY_ALERT
   PROMOTION
+}
+
+enum VerificationType {
+  REGISTRATION
+  PASSWORD_RESET
+}
+
+model VerificationCode {
+  id        String           @id @default(uuid())
+  email     String
+  code      String
+  type      VerificationType
+  expiresAt DateTime
+  createdAt DateTime         @default(now())
+
+  @@index([email])
+  @@map("verification_codes")
 }

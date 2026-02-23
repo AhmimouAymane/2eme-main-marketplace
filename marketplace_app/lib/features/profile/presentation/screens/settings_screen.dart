@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/shared/providers/settings_providers.dart';
+import 'package:marketplace_app/core/routes/app_routes.dart';
 
 /// Écran Paramètres : thème, notifications, à propos
 class SettingsScreen extends ConsumerWidget {
@@ -71,7 +72,7 @@ class SettingsScreen extends ConsumerWidget {
                     icon: Icons.info_outline,
                     title: 'À propos',
                     subtitle: '${AppConstants.appName} v${AppConstants.appVersion}',
-                    onTap: () => _showAboutDialog(context),
+                    onTap: () => context.push(AppRoutes.about),
                   ),
                 ],
               ),

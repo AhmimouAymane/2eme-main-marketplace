@@ -1,8 +1,10 @@
 import { Body, Controller, Post, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import { VerificationType } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { LoginDto } from './dto/login.dto';
+import { ForgotPasswordDto, VerifyOtpDto, ResetPasswordDto } from './dto/otp-auth.dto';
 import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('auth')
@@ -25,6 +27,35 @@ export class AuthController {
     @ApiResponse({ status: 401, description: 'Invalid credentials' })
     login(@Body() loginDto: LoginDto) {
         return this.authService.login(loginDto);
+    }
+
+    @Post('forgot-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Request password reset OTP' })
+    forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+        return this.authService.forgotPassword(forgotPasswordDto.email);
+    }
+
+    @Post('verify-otp')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Verify OTP code' })
+    verifyOtp(@Body() verifyOtpDto: VerifyOtpDto) {
+        return this.authService.verifyCode(
+            verifyOtpDto.email,
+            verifyOtpDto.code,
+            verifyOtpDto.type,
+        );
+    }
+
+    @Post('reset-password')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Reset password using OTP' })
+    resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+        return this.authService.resetPassword(
+            resetPasswordDto.email,
+            resetPasswordDto.code,
+            resetPasswordDto.newPassword,
+        );
     }
 
     @Post('firebase')
