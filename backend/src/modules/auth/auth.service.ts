@@ -21,6 +21,9 @@ export class AuthService {
     ) { }
 
     async signInWithFirebase(token: string, metadata?: { firstName?: string; lastName?: string }) {
+        if (this.firebaseAdmin.apps.length === 0) {
+            throw new BadRequestException('Social login is currently disabled (Firebase not initialized). Please check the server configuration.');
+        }
         try {
             const decodedToken = await this.firebaseAdmin.auth().verifyIdToken(token);
             const { email, name, picture, uid } = decodedToken;
