@@ -37,7 +37,7 @@ export class CreateProductDto {
     @IsEnum(ProductCondition)
     condition: ProductCondition;
 
-    @ApiProperty({ enum: ProductStatus, example: ProductStatus.FOR_SALE, default: ProductStatus.FOR_SALE })
+    @ApiProperty({ enum: ProductStatus, example: ProductStatus.PUBLISHED, default: ProductStatus.PUBLISHED })
     @IsEnum(ProductStatus)
     @IsOptional()
     status?: ProductStatus;

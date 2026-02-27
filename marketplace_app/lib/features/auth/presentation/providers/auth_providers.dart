@@ -5,6 +5,8 @@ import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/shared/services/api_client.dart';
 import 'package:marketplace_app/features/auth/data/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:marketplace_app/shared/models/user_model.dart';
+import 'package:marketplace_app/features/users/data/users_service.dart';
 
 /// Provider pour le token (synchrone pour l'intercepteur)
 final authTokenProvider = StateProvider<String?>((ref) => null);
@@ -19,7 +21,7 @@ final dioProvider = Provider<Dio>((ref) {
 /// Provider pour le service d'authentification
 final authServiceProvider = Provider((ref) {
   final dio = ref.watch(dioProvider);
-  return AuthService(dio);
+  return AuthService(dio, ref);
 });
 
 /// État de l'authentification
@@ -78,4 +80,19 @@ final userIdProvider = FutureProvider<String?>((ref) async {
 final userAvatarUrlProvider = FutureProvider<String?>((ref) async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getString(AppConstants.keyUserAvatarUrl);
+});
+
+/// Provider pour le service des utilisateurs
+final usersServiceProvider = Provider((ref) {
+  final dio = ref.watch(dioProvider);
+  return UsersService(dio);
+});
+
+/// Provider pour récupérer le profil de l'utilisateur actuel
+final userProfileProvider = FutureProvider.autoDispose<UserModel?>((ref) async {
+  final service = ref.watch(usersServiceProvider);
+  final userId = await ref.watch(userIdProvider.future);
+  if (userId == null) return null;
+
+  return service.getMe();
 });

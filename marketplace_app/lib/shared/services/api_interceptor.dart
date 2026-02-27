@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/constants/app_constants.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
-import 'package:marketplace_app/features/auth/data/auth_service.dart';
 
 /// Routes qui ne doivent pas recevoir le token (authentification en cours)
 const _publicPaths = ['/auth/register', '/auth/login'];
@@ -61,8 +60,21 @@ class ApiInterceptor extends Interceptor {
               final options = err.requestOptions;
               options.headers['Authorization'] = 'Bearer $newToken';
               
-              final dio = Dio(); // Utiliser une instance propre pour éviter les boucles d'intercepteurs
-              final response = await dio.fetch(options);
+              // Ensure we use the full URL if it's not already absolute
+              final fullPath = options.path.startsWith('http') 
+                  ? options.path 
+                  : '${AppConstants.apiBaseUrl}${options.path}';
+              
+              final dio = Dio(); 
+              final response = await dio.request(
+                fullPath,
+                data: options.data,
+                queryParameters: options.queryParameters,
+                options: Options(
+                  method: options.method,
+                  headers: options.headers,
+                ),
+              );
               return handler.resolve(response);
             }
           }

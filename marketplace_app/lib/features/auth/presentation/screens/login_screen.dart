@@ -2,14 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/core/utils/validators.dart';
-import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
-import 'package:marketplace_app/shared/services/api_client.dart';
-import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'forgot_password_screen.dart';
 import 'verify_otp_screen.dart';
 
@@ -48,19 +44,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
 
       if (mounted) {
-        // Mettre à jour les providers pour forcer la relecture
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString(AppConstants.keyAuthToken);
-
-        ref.read(authTokenProvider.notifier).state = token;
-        ref.invalidate(userEmailProvider);
-        ref.invalidate(userIdProvider);
-        ref.invalidate(isAuthenticatedProvider);
-        ref.invalidate(userAvatarUrlProvider);
-        ref.invalidate(userProfileProvider);
-
-        // Réinitialiser le client API pour prendre en compte le nouveau token
-        ApiClient.reset();
         context.go(AppRoutes.home);
       }
     } catch (e) {
@@ -120,17 +103,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       if (mounted) {
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString(AppConstants.keyAuthToken);
-
-        ref.read(authTokenProvider.notifier).state = token;
-        ref.invalidate(userEmailProvider);
-        ref.invalidate(userIdProvider);
-        ref.invalidate(isAuthenticatedProvider);
-        ref.invalidate(userAvatarUrlProvider);
-        ref.invalidate(userProfileProvider);
-
-        ApiClient.reset();
         context.go(AppRoutes.home);
       }
     } catch (e) {

@@ -9,12 +9,14 @@ import 'comment_model.dart';
 enum ProductStatus {
   @JsonValue('PENDING_APPROVAL')
   pendingApproval,
-  @JsonValue('FOR_SALE')
-  forSale,
+  @JsonValue('PUBLISHED')
+  published,
   @JsonValue('REJECTED')
   rejected,
   @JsonValue('RESERVED')
   reserved,
+  @JsonValue('CONFIRMED')
+  confirmed,
   @JsonValue('SOLD')
   sold,
 }
@@ -95,7 +97,12 @@ class ProductModel extends Equatable {
     return '${AppConstants.mediaBaseUrl}$url';
   }
 
-  bool get isAvailable => status == ProductStatus.forSale;
+  bool get isAvailable => status == ProductStatus.published;
+
+  /// Whether the product can be edited/deleted by its owner
+  bool get isEditable => status != ProductStatus.reserved &&
+      status != ProductStatus.confirmed &&
+      status != ProductStatus.sold;
   
   // JSON serialization
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -171,7 +178,7 @@ class ProductModel extends Equatable {
   static ProductStatus _statusFromString(String value) {
     return ProductStatus.values.firstWhere(
       (e) => e.name.replaceAll(RegExp(r'(?=[A-Z])'), '_').toUpperCase() == value.toUpperCase(),
-      orElse: () => ProductStatus.forSale,
+      orElse: () => ProductStatus.published,
     );
   }
 
@@ -201,9 +208,10 @@ class ProductModel extends Equatable {
   static String _statusToString(ProductStatus status) {
     switch (status) {
       case ProductStatus.pendingApproval: return 'PENDING_APPROVAL';
-      case ProductStatus.forSale: return 'FOR_SALE';
+      case ProductStatus.published: return 'PUBLISHED';
       case ProductStatus.rejected: return 'REJECTED';
       case ProductStatus.reserved: return 'RESERVED';
+      case ProductStatus.confirmed: return 'CONFIRMED';
       case ProductStatus.sold: return 'SOLD';
     }
   }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
-import 'package:marketplace_app/shared/providers/shop_providers.dart';
+import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/utils/validators.dart';
 
 /// Écran d'édition du profil — même design que la page profil (Clovi)

@@ -1,5 +1,6 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { OrderStatus } from '@prisma/client';
 
 export class CreateOrderDto {
     @ApiProperty({ example: 'uuid-of-product' })
@@ -17,8 +18,8 @@ export class CreateOrderDto {
     @IsNotEmpty({ message: 'L\'adresse de livraison est requise pour le paiement à la livraison' })
     shippingAddress: string;
 
-    @ApiProperty({ example: 'OFFER_PENDING', required: false })
+    @ApiProperty({ enum: OrderStatus, example: OrderStatus.AWAITING_SELLER_CONFIRMATION, required: false })
     @IsOptional()
-    @IsString()
-    status?: any; // Using any for now to avoid Prisma import issues during generation
+    @IsEnum(OrderStatus)
+    status?: OrderStatus;
 }

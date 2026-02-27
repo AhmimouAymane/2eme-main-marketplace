@@ -412,13 +412,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           imageUrl: product.fullMainImageUrl,
                           title: product.title,
                           price: product.price,
-                          isFavorite: product.isFavorite,
+                          product: product,
                           onTap: () => context.push('/product/${product.id}'),
-                          onFavoriteToggle: () {
-                            ref
-                                .read(favoritesProvider.notifier)
-                                .toggleFavorite(product);
-                          },
                         ),
                       );
                     },

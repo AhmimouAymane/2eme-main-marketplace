@@ -158,28 +158,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDelivered
-                                ? AppColors.cloviGreen.withOpacity(0.1)
-                                : AppColors.warning.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            statusText,
-                            style: TextStyle(
-                              color: isDelivered
-                                  ? AppColors.cloviGreen
-                                  : AppColors.warning,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+                        _buildStatusChip(order.status),
                         const SizedBox(width: 8),
                         Text(
                           Formatters.date(order.createdAt),
@@ -196,6 +175,73 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
               const Icon(Icons.chevron_right),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(OrderStatus status) {
+    Color color;
+    String label;
+
+    switch (status) {
+      case OrderStatus.offerMade:
+        color = Colors.blue;
+        label = 'Offre faite';
+        break;
+      case OrderStatus.awaitingSellerConfirmation:
+        color = Colors.orange;
+        label = 'En attente';
+        break;
+      case OrderStatus.confirmed:
+        color = Colors.teal;
+        label = 'Confirmé';
+        break;
+      case OrderStatus.shipped:
+        color = Colors.purple;
+        label = 'Expédié';
+        break;
+      case OrderStatus.delivered:
+        color = AppColors.cloviGreen;
+        label = 'Livré';
+        break;
+      case OrderStatus.returnWindow48h:
+        color = Colors.lime[800]!;
+        label = 'Fenêtre de retour';
+        break;
+      case OrderStatus.returnRequested:
+        color = Colors.deepOrange;
+        label = 'Retour demandé';
+        break;
+      case OrderStatus.returned:
+        color = Colors.brown;
+        label = 'Retourné';
+        break;
+      case OrderStatus.cancelled:
+        color = AppColors.error;
+        label = 'Annulé';
+        break;
+      case OrderStatus.completed:
+        color = Colors.indigo;
+        label = 'Terminé';
+        break;
+      default:
+        color = Colors.grey;
+        label = status.name.toUpperCase();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

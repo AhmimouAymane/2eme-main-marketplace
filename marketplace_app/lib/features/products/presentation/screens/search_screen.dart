@@ -6,7 +6,6 @@ import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/category_model.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/features/products/presentation/widgets/product_card.dart';
-import 'package:marketplace_app/core/routes/app_routes.dart';
 
 /// Écran de recherche et filtrage des produits
 class SearchScreen extends ConsumerStatefulWidget {

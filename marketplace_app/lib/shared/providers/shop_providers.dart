@@ -10,7 +10,6 @@ import 'package:marketplace_app/shared/services/media_service.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/shared/models/category_model.dart';
-import 'package:marketplace_app/features/users/data/users_service.dart';
 import 'package:marketplace_app/shared/models/order_model.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
 import 'package:marketplace_app/shared/models/conversation_model.dart';
@@ -19,10 +18,8 @@ import 'package:marketplace_app/shared/models/address_model.dart';
 import 'package:marketplace_app/features/addresses/data/addresses_service.dart';
 
 // Services
-final usersServiceProvider = Provider((ref) {
-  final dio = ref.watch(dioProvider);
-  return UsersService(dio);
-});
+// (usersServiceProvider moved to auth_providers.dart)
+
 
 final productsServiceProvider = Provider((ref) {
   final dio = ref.watch(dioProvider);
@@ -237,6 +234,15 @@ final userAddressesProvider = FutureProvider.autoDispose
 class FavoritesNotifier extends AsyncNotifier<List<ProductModel>> {
   @override
   Future<List<ProductModel>> build() async {
+    // Watch the token so this notifier re-runs when auth state changes
+    // (e.g., token restored from SharedPreferences on app start or login)
+    final token = ref.watch(authTokenProvider);
+
+    // If not authenticated, return empty list immediately without calling the API
+    if (token == null || token.isEmpty) {
+      return [];
+    }
+
     final service = ref.watch(favoritesServiceProvider);
     return service.getFavorites();
   }
@@ -244,16 +250,22 @@ class FavoritesNotifier extends AsyncNotifier<List<ProductModel>> {
   Future<void> toggleFavorite(ProductModel product) async {
     final service = ref.read(favoritesServiceProvider);
 
-    // Optimistic update
-    final previousState = state;
-    final isAdding = !product.isFavorite;
+    // Use the current state value as the source of truth for the toggle action
+    final currentList = state.value ?? [];
+    final alreadyInFavorites = currentList.any((p) => p.id == product.id);
+    final isAdding = !alreadyInFavorites;
 
-    // Create new list for state
+    // Save state for rollback
+    final previousState = state;
+
     if (state.hasValue) {
-      final currentList = state.value!;
       if (isAdding) {
-        state = AsyncData([...currentList, product.copyWith(isFavorite: true)]);
+        // Optimistically add and guard against duplicates
+        if (!alreadyInFavorites) {
+          state = AsyncData([...currentList, product.copyWith(isFavorite: true)]);
+        }
       } else {
+        // Optimistically remove
         state = AsyncData(
           currentList.where((p) => p.id != product.id).toList(),
         );
@@ -261,11 +273,16 @@ class FavoritesNotifier extends AsyncNotifier<List<ProductModel>> {
     }
 
     try {
+      // 2. Perform API call
       await service.toggleFavorite(product.id);
-      // Refresh after toggle to be sure
-      ref.invalidateSelf();
 
-      // Also invalidate productsProvider to update isFavorite flag there
+      // 3. Instead of invalidateSelf (which causes a loading spinner), 
+      // we only refresh other dependent providers in the background
+      // to keep the isFavorite flag in sync elsewhere.
+      
+      // We don't invalidateSelf() here to keep the optimistic transition smooth.
+      // If we really need a fresh list, we can use ref.refresh() or just let it be.
+      
       ref.invalidate(homeProductsProvider);
       ref.invalidate(productsProvider);
       ref.invalidate(productDetailProvider(product.id));
@@ -277,14 +294,8 @@ class FavoritesNotifier extends AsyncNotifier<List<ProductModel>> {
   }
 }
 
-// User Profile Provider (Current User)
-final userProfileProvider = FutureProvider.autoDispose<UserModel?>((ref) async {
-  final service = ref.watch(usersServiceProvider);
-  final userId = await ref.watch(userIdProvider.future);
-  if (userId == null) return null;
+// User Profile Provider (moved to auth_providers.dart)
 
-  return service.getMe();
-});
 
 // Seller Profile Provider (Public)
 final sellerProfileProvider = FutureProvider.autoDispose
@@ -297,6 +308,15 @@ final favoritesProvider =
     AsyncNotifierProvider<FavoritesNotifier, List<ProductModel>>(() {
       return FavoritesNotifier();
     });
+
+/// Provider pour vérifier si un produit est dans les favoris
+final isFavoriteProvider = Provider.family<bool, String>((ref, productId) {
+  final favoritesAsync = ref.watch(favoritesProvider);
+  return favoritesAsync.maybeWhen(
+    data: (favorites) => favorites.any((p) => p.id == productId),
+    orElse: () => false,
+  );
+});
 
 // Dernier message reçu via socket (global)
 final lastIncomingMessageProvider = StateProvider<MessageModel?>((ref) => null);

@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
@@ -9,6 +10,15 @@ import { UpdateUserDto } from './dto/update-user.dto';
 @Controller('users')
 export class UsersController {
     constructor(private usersService: UsersService) { }
+
+    @Get()
+    @ApiOperation({ summary: 'List all users (Admin only)' })
+    async findAll(@Res() res: Response, @Query() query: { _start?: number, _end?: number }) {
+        const { data, total } = await this.usersService.findAll(query);
+        res.setHeader('X-Total-Count', total);
+        res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count');
+        return res.json(data);
+    }
 
     @Get('me')
     @UseGuards(AuthGuard('jwt'))

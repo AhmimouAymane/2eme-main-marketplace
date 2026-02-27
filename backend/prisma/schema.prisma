@@ -9,61 +9,67 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  password  String
-  firstName String
-  lastName  String
-  phone     String?
-  // address field removed; use Address model to store multiple
-  avatarUrl String?
-  bio       String?
-  fcmToken  String?
-  role      Role      @default(USER)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  isEmailVerified Boolean @default(false)
-  comments  Comment[] @relation("UserComments")
-  products  Product[] @relation("UserProducts")
-  reviews   Review[]  @relation("UserReviews")
-  buyerOrders Order[] @relation("BuyerOrders")
-  sellerOrders Order[] @relation("SellerOrders")
-  favorites   Favorite[]
+  id                  String         @id @default(uuid())
+  email               String         @unique
+  password            String
+  firstName           String
+  lastName            String
+  phone               String?
+  avatarUrl           String?
+  bio                 String?
+  fcmToken            String?
+  role                Role           @default(USER)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  isEmailVerified     Boolean        @default(false)
+  document_id         String?        @db.VarChar(255)
+  locale              String?        @db.VarChar(255)
+  published_at        String?        @db.VarChar(255)
+  addresses           Address[]
+  comments            Comment[]      @relation("UserComments")
   buyerConversations  Conversation[] @relation("BuyerConversations")
   sellerConversations Conversation[] @relation("SellerConversations")
+  favorites           Favorite[]
   messages            Message[]      @relation("UserMessages")
-  addresses Address[]
-  receivedReviews     UserReview[]   @relation("TargetUser")
-  givenReviews        UserReview[]   @relation("Reviewer")
   notifications       Notification[]
+  buyerOrders         Order[]        @relation("BuyerOrders")
+  sellerOrders        Order[]        @relation("SellerOrders")
+  products            Product[]      @relation("UserProducts")
+  reviews             Review[]       @relation("UserReviews")
+  givenReviews        UserReview[]   @relation("Reviewer")
+  receivedReviews     UserReview[]   @relation("TargetUser")
 
   @@map("users")
 }
 
 model Product {
-  id          String           @id @default(uuid())
-  title       String
-  description String
-  price       Float
-  categoryId  String
-  category    Category         @relation(fields: [categoryId], references: [id])
-  size        String
-  brand       String
-  condition   ProductCondition
-  status      ProductStatus    @default(PENDING_APPROVAL)
+  id                String           @id @default(uuid())
+  title             String
+  description       String
+  price             Float
+  categoryId        String
+  size              String
+  brand             String
+  condition         ProductCondition
+  status            ProductStatus    @default(PENDING_APPROVAL)
   moderationComment String?
-  sellerId    String
-  deletedAt   DateTime?      // Soft delete timestamp
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  comments    Comment[]
-  images      ProductImage[]
-  seller      User             @relation("UserProducts", fields: [sellerId], references: [id])
-  reviews     Review[]
-  orders      Order[]
-  favorites   Favorite[]
-  conversations Conversation[]
+  sellerId          String
+  deletedAt         DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  document_id       String?          @db.VarChar(255)
+  locale            String?          @db.VarChar(255)
+  published_at      String?          @db.VarChar(255)
+  comments          Comment[]
+  conversations     Conversation[]
+  favorites         Favorite[]
+  orders            Order[]
+  images            ProductImage[]
+  category          Category         @relation(fields: [categoryId], references: [id])
+  seller            User             @relation("UserProducts", fields: [sellerId], references: [id])
+  reviews           Review[]
 
+  @@index([deletedAt])
   @@map("products")
 }
 
@@ -72,9 +78,8 @@ model Favorite {
   userId    String
   productId String
   createdAt DateTime @default(now())
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
   @@map("favorites")
@@ -86,49 +91,57 @@ model Order {
   buyerId         String
   sellerId        String
   totalPrice      Float
-  status          OrderStatus @default(PENDING)
+  status          OrderStatus @default(AWAITING_SELLER_CONFIRMATION)
   shippingAddress String?
-  pickupAddress   String?     // Adresse fournie par le vendeur lors de la confirmation
-  rejectionReason String?     // Motif du refus (vendeur) ou de l'annulation
+  pickupAddress   String?
+  rejectionReason String? // For admin/seller rejection
+  cancellationReason String? // For buyer cancellation
+  returnReason    String? // For return requests
+  
+  // Timestamps for each milestone
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  confirmedAt     DateTime?
+  shippedAt       DateTime?
   deliveredAt     DateTime?
+  returnRequestedAt DateTime?
+  returnedAt      DateTime?
+  completedAt     DateTime?
+  expiresAt       DateTime? // For auto-cancelation if not confirmed
   
-  product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   seller          User        @relation("SellerOrders", fields: [sellerId], references: [id])
 
   @@map("orders")
 }
 
 model Conversation {
-  id        String   @id @default(uuid())
-  productId String
-  buyerId   String
-  sellerId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  lastMessageAt DateTime @default(now())
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  buyer   User    @relation("BuyerConversations", fields: [buyerId], references: [id])
-  seller  User    @relation("SellerConversations", fields: [sellerId], references: [id])
-  messages Message[]
+  id            String    @id @default(uuid())
+  productId     String
+  buyerId       String
+  sellerId      String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastMessageAt DateTime  @default(now())
+  buyer         User      @relation("BuyerConversations", fields: [buyerId], references: [id])
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  seller        User      @relation("SellerConversations", fields: [sellerId], references: [id])
+  messages      Message[]
 
   @@unique([buyerId, sellerId, productId])
   @@map("conversations")
 }
 
 model Message {
-  id             String   @id @default(uuid())
+  id             String       @id @default(uuid())
   conversationId String
   senderId       String
   content        String
-  createdAt      DateTime @default(now())
-  isRead         Boolean  @default(false)
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation("UserMessages", fields: [senderId], references: [id])
+  createdAt      DateTime     @default(now())
+  isRead         Boolean      @default(false)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("UserMessages", fields: [senderId], references: [id])
 
   @@map("messages")
 }
@@ -144,8 +157,7 @@ model Address {
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("addresses")
@@ -161,14 +173,17 @@ model ProductImage {
 }
 
 model Review {
-  id        String   @id @default(uuid())
-  rating    Int
-  comment   String?
-  userId    String
-  productId String
-  createdAt DateTime @default(now())
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user      User     @relation("UserReviews", fields: [userId], references: [id])
+  id           String   @id @default(uuid())
+  rating       Int
+  comment      String?
+  userId       String
+  productId    String
+  createdAt    DateTime @default(now())
+  document_id  String?  @db.VarChar(255)
+  locale       String?  @db.VarChar(255)
+  published_at String?  @db.VarChar(255)
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user         User     @relation("UserReviews", fields: [userId], references: [id])
 
   @@unique([userId, productId])
   @@map("reviews")
@@ -182,7 +197,6 @@ model UserReview {
   targetUserId String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-
   reviewer     User     @relation("Reviewer", fields: [reviewerId], references: [id])
   targetUser   User     @relation("TargetUser", fields: [targetUserId], references: [id])
 
@@ -202,58 +216,19 @@ model Comment {
   @@map("comments")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
-enum ProductStatus {
-  PENDING_APPROVAL
-  FOR_SALE
-  REJECTED
-  RESERVED
-  SOLD
-}
-
-enum ProductCondition {
-  NEW_WITH_TAGS
-  NEW_WITHOUT_TAGS
-  VERY_GOOD
-  GOOD
-  FAIR
-}
-
-enum SizeType {
-  ALPHA           // XS, S, M, L, XL...
-  NUMERIC_SHOES   // 36-46
-  NUMERIC_PANTS   // 28-38 (US) or 36-48 (FR)
-  AGE             // 2ans - 14ans
-  ONE_SIZE        // Unique
-}
-
 model Category {
-  id        String      @id @default(uuid())
-  name      String
-  slug      String      @unique
-  level     Int         // 0=Genre, 1=Category, 2=SubCategory
-  parentId  String?
-  parent    Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children  Category[]  @relation("CategoryHierarchy")
-  sizeType  SizeType?   // Enum: ALPHA, NUMERIC_SHOES, etc. (only for leaves)
-  products  Product[]
+  id       String     @id @default(uuid())
+  name     String
+  slug     String     @unique
+  level    Int
+  parentId String?
+  sizeType SizeType?
+  possibleSizes String[]
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
 
   @@map("categories")
-}
-
-enum OrderStatus {
-  OFFER_PENDING
-  OFFER_REJECTED
-  PENDING
-  CONFIRMED
-  SHIPPED
-  DELIVERED
-  CANCELLED
-  RETURN_REQUESTED
 }
 
 model Notification {
@@ -262,45 +237,13 @@ model Notification {
   title     String
   message   String
   type      NotificationType
-  data      Json?            // Payload data (productId, conversationId, screen, etc.)
+  data      Json?
   isRead    Boolean          @default(false)
   createdAt DateTime         @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("notifications")
-}
-
-enum NotificationType {
-  // PRODUIT
-  PRODUCT_APPROVED
-  PRODUCT_REJECTED
-  PRODUCT_PENDING
-  SIMILAR_PRODUCT_POSTED
-
-  // MESSAGERIE
-  MESSAGE_RECEIVED
-  MESSAGE_READ
-  CONVERSATION_REPLY
-
-  // COMMANDE
-  ORDER_CONFIRMED
-  ORDER_SHIPPED
-  ORDER_DELIVERED
-  NEW_ORDER_RECEIVED
-  PAYMENT_RECEIVED
-  RATING_REQUEST
-
-  // SYSTÈME
-  WELCOME
-  SECURITY_ALERT
-  PROMOTION
-}
-
-enum VerificationType {
-  REGISTRATION
-  PASSWORD_RESET
 }
 
 model VerificationCode {
@@ -313,4 +256,83 @@ model VerificationCode {
 
   @@index([email])
   @@map("verification_codes")
+}
+
+model strapi_migrations {
+  id   Int       @id @default(autoincrement())
+  name String?   @db.VarChar(255)
+  time DateTime? @db.Timestamp(6)
+}
+
+model strapi_migrations_internal {
+  id   Int       @id @default(autoincrement())
+  name String?   @db.VarChar(255)
+  time DateTime? @db.Timestamp(6)
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ProductStatus {
+  PENDING_APPROVAL
+  PUBLISHED
+  REJECTED
+  RESERVED
+  CONFIRMED
+  SOLD
+}
+
+enum ProductCondition {
+  NEW_WITH_TAGS
+  NEW_WITHOUT_TAGS
+  VERY_GOOD
+  GOOD
+  FAIR
+}
+
+enum SizeType {
+  ALPHA
+  NUMERIC_SHOES
+  NUMERIC_PANTS
+  AGE
+  ONE_SIZE
+}
+
+enum OrderStatus {
+  OFFER_MADE
+  AWAITING_SELLER_CONFIRMATION
+  CONFIRMED
+  SHIPPED
+  DELIVERED
+  RETURN_WINDOW_48H
+  RETURN_REQUESTED
+  RETURNED
+  CANCELLED
+  COMPLETED
+}
+
+enum NotificationType {
+  PRODUCT_APPROVED
+  PRODUCT_REJECTED
+  PRODUCT_PENDING
+  SIMILAR_PRODUCT_POSTED
+  MESSAGE_RECEIVED
+  MESSAGE_READ
+  CONVERSATION_REPLY
+  ORDER_CONFIRMED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  NEW_ORDER_RECEIVED
+  PAYMENT_RECEIVED
+  RATING_REQUEST
+  WELCOME
+  SECURITY_ALERT
+  PROMOTION
+}
+
+enum VerificationType {
+  REGISTRATION
+  PASSWORD_RESET
 }

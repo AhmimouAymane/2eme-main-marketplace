@@ -10,11 +10,31 @@ export class UsersService {
         @Inject('FIREBASE_ADMIN') private firebaseAdmin: any,
     ) { }
 
+    async findAll(query: { _start?: number, _end?: number }) {
+        const where = {};
+        const total = await this.prisma.user.count({ where });
+        const users = await this.prisma.user.findMany({
+            where,
+            skip: query._start ? Number(query._start) : undefined,
+            take: (query._end && query._start) ? (Number(query._end) - Number(query._start)) : undefined,
+            orderBy: { createdAt: 'desc' },
+        });
+
+        return {
+            data: users.map(user => {
+                const { password, ...userData } = user;
+                return userData;
+            }),
+            total
+        };
+    }
+
     async findOne(id: string, includeProducts = false) {
         const user = await this.prisma.user.findUnique({
             where: { id },
             include: {
                 products: includeProducts ? {
+                    where: { deletedAt: null },
                     include: {
                         images: true,
                         category: true,

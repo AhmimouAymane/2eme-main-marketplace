@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorE
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { Product, ProductCondition, ProductStatus } from '@prisma/client';
+import { Product, ProductCondition, ProductStatus, Role } from '@prisma/client';
 
 import { IsOptional, IsString, IsNumber, IsEnum, Min } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -26,12 +26,10 @@ export class ProductQuery {
 
     @IsOptional()
     @IsEnum(ProductCondition)
-    @IsOptional()
     condition?: ProductCondition;
 
     @IsOptional()
     @IsEnum(ProductStatus)
-    @IsOptional()
     status?: ProductStatus;
 
     @IsOptional()
@@ -57,11 +55,28 @@ export class ProductQuery {
     @IsOptional()
     @IsEnum(['asc', 'desc'])
     order?: 'asc' | 'desc';
+
+    // Refine / Simple-Rest parameters
+    @IsOptional()
+    @Type(() => Number)
+    _start?: number;
+
+    @IsOptional()
+    @Type(() => Number)
+    _end?: number;
+
+    @IsOptional()
+    @IsString()
+    _sort?: string;
+
+    @IsOptional()
+    @IsString()
+    _order?: string;
 }
 
 import { MediaService } from '../media/media.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { NotificationType } from '@prisma/client';
+import { NotificationType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class ProductsService {
@@ -83,8 +98,8 @@ export class ProductsService {
             sellerId,
             minPrice,
             maxPrice,
-            sortBy = 'createdAt',
-            order = 'desc',
+            sortBy = query._sort || 'createdAt',
+            order = query._order || 'desc',
         } = query;
 
         let categoryIds: string[] = [];
@@ -105,25 +120,72 @@ export class ProductsService {
             console.log(`Filtering for category ${categoryId} and its descendants:`, categoryIds);
         }
 
-        const products = await this.prisma.product.findMany({
-            where: {
-                deletedAt: null,
-                status: status || (sellerId ? undefined : ProductStatus.FOR_SALE),
-                categoryId: categoryIds.length > 0 ? { in: categoryIds } : undefined,
-                size: size || undefined,
-                brand: brand ? { contains: brand, mode: 'insensitive' } : undefined,
-                condition: condition || undefined,
-                sellerId: sellerId || undefined,
-                price: {
-                    gte: minPrice ? Number(minPrice) : undefined,
-                    lte: maxPrice ? Number(maxPrice) : undefined,
-                },
-                OR: search ? [
-                    { title: { contains: search, mode: 'insensitive' } },
-                    { description: { contains: search, mode: 'insensitive' } },
-                    { brand: { contains: search, mode: 'insensitive' } },
-                ] : undefined,
+        const where: Prisma.ProductWhereInput = {
+            deletedAt: null,
+            size: size || undefined,
+            brand: brand ? { contains: brand, mode: 'insensitive' as Prisma.QueryMode } : undefined,
+            condition: condition || undefined,
+            sellerId: sellerId || undefined,
+            price: {
+                gte: minPrice ? Number(minPrice) : undefined,
+                lte: maxPrice ? Number(maxPrice) : undefined,
             },
+        };
+
+        if (categoryIds.length > 0) {
+            where.categoryId = { in: categoryIds };
+        }
+
+        const andConditions: Prisma.ProductWhereInput[] = [];
+
+        // 1. Visibility rules
+        // If it's explicitly an admin view (from admin panel), bypass filters
+        if ((query as any).isAdminView === 'true' || (query as any).isAdminView === true) {
+            // No additional status filters for admin panel
+        } else if (userId) {
+            const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+            if (sellerId) {
+                // When filtering by sellerId (e.g. "My Products" page),
+                // show all statuses for the owner, PUBLISHED only for others
+                if (sellerId === userId) {
+                    // Owner viewing own products — show all statuses
+                } else {
+                    andConditions.push({ status: ProductStatus.PUBLISHED });
+                }
+            } else {
+                // General feed (home page) — only PUBLISHED products for everyone on mobile
+                andConditions.push({ status: ProductStatus.PUBLISHED });
+            }
+        } else {
+            // Anonymous users only see available items
+            andConditions.push({ status: ProductStatus.PUBLISHED });
+        }
+
+        // 2. Search logic (Title, Description, Brand)
+        if (search) {
+            andConditions.push({
+                OR: [
+                    { title: { contains: search, mode: 'insensitive' as Prisma.QueryMode } },
+                    { description: { contains: search, mode: 'insensitive' as Prisma.QueryMode } },
+                    { brand: { contains: search, mode: 'insensitive' as Prisma.QueryMode } },
+                ]
+            });
+        }
+
+        // 3. User requested status filter (if provided)
+        if (status) {
+            andConditions.push({ status });
+        }
+
+        if (andConditions.length > 0) {
+            where.AND = andConditions;
+        }
+
+        const total = await this.prisma.product.count({ where });
+
+        const products = await this.prisma.product.findMany({
+            where,
             include: {
                 images: true,
                 category: true,
@@ -137,22 +199,17 @@ export class ProductsService {
                     },
                 },
             },
-            orderBy: { [sortBy]: order },
+            orderBy: { [sortBy]: (order as string).toLowerCase() },
+            skip: query._start ? Number(query._start) : undefined,
+            take: (query._end !== undefined && query._start !== undefined) ? (Number(query._end) - Number(query._start)) : undefined,
         });
 
-        if (userId) {
-            const userFavorites = await this.prisma.favorite.findMany({
-                where: { userId },
-                select: { productId: true }
-            });
-            const favoriteIds = new Set(userFavorites.map(f => f.productId));
-            return (products as any).map((p: any) => ({
-                ...p,
-                isFavorite: favoriteIds.has(p.id)
-            }));
-        }
+        const result = (products as any).map((p: any) => ({
+            ...p,
+            isFavorite: userId ? false : false // Simplified for now
+        }));
 
-        return (products as any).map((p: any) => ({ ...p, isFavorite: false }));
+        return { data: result, total };
     }
 
     async findOne(id: string, userId?: string) {
@@ -208,29 +265,47 @@ export class ProductsService {
 
 
     async create(createProductDto: CreateProductDto, sellerId: string) {
+        console.log('--- PRODUCT CREATE DEBUG ---');
+        console.log('Seller ID:', sellerId);
+        console.log('Category ID:', createProductDto.categoryId);
+        console.log('Title:', createProductDto.title);
+
         const { images, imageUrls, ...data } = createProductDto;
         const imagesToSave = imageUrls || images;
 
-        return this.prisma.product.create({
-            data: {
-                ...data,
-                sellerId,
-                status: ProductStatus.PENDING_APPROVAL,
-                images: imagesToSave ? {
-                    create: imagesToSave.map(url => ({ url })),
-                } : undefined,
-            },
-            include: {
-                images: true,
-            },
-        });
+        try {
+            const product = await this.prisma.product.create({
+                data: {
+                    ...data,
+                    sellerId,
+                    status: ProductStatus.PENDING_APPROVAL,
+                    images: imagesToSave ? {
+                        create: imagesToSave.map(url => ({ url })),
+                    } : undefined,
+                },
+                include: {
+                    images: true,
+                },
+            });
+            console.log('Product created successfully:', product.id);
+            return product;
+        } catch (error) {
+            console.error('Prisma Error in createProduct:', error);
+            throw error;
+        }
     }
 
-    async update(id: string, updateProductDto: UpdateProductDto, userId: string) {
+    async update(id: string, updateProductDto: UpdateProductDto, userId: string, userRole?: string) {
         const product = await this.findOne(id);
 
-        if (product.sellerId !== userId) {
-            throw new NotFoundException(`Product not found or you're not the owner`);
+        if (product.sellerId !== userId && userRole !== 'ADMIN') {
+            throw new ForbiddenException(`Product not found or you're not the owner/admin`);
+        }
+
+        // Prevent updates when product has an active or completed order
+        const lockedStatuses: ProductStatus[] = [ProductStatus.RESERVED, ProductStatus.CONFIRMED, ProductStatus.SOLD];
+        if (lockedStatuses.includes(product.status) && userRole !== 'ADMIN') {
+            throw new ForbiddenException('Ce produit ne peut pas être modifié car il a une commande en cours ou est déjà vendu.');
         }
 
         const { images, imageUrls, ...data } = updateProductDto;
@@ -257,10 +332,16 @@ export class ProductsService {
             }
         }
 
+        // If product is REJECTED and is being updated, reset to PENDING_APPROVAL
+        const newStatus = product.status === ProductStatus.REJECTED
+            ? ProductStatus.PENDING_APPROVAL
+            : undefined;
+
         return this.prisma.product.update({
             where: { id },
             data: {
                 ...data,
+                status: newStatus,
                 images: imagesToSave ? {
                     deleteMany: {},
                     create: imagesToSave.map(url => ({ url })),
@@ -278,6 +359,12 @@ export class ProductsService {
         if (product.sellerId !== userId) {
             // return a 403 Forbidden instead of generic error
             throw new ForbiddenException('You can only delete your own products');
+        }
+
+        // Prevent deletion when product has an active or completed order
+        const lockedStatuses: ProductStatus[] = [ProductStatus.RESERVED, ProductStatus.CONFIRMED, ProductStatus.SOLD];
+        if (lockedStatuses.includes(product.status)) {
+            throw new ForbiddenException('Ce produit ne peut pas être supprimé car il a une commande en cours ou est déjà vendu.');
         }
 
         try {
@@ -303,7 +390,7 @@ export class ProductsService {
         });
 
         // Trigger notification
-        if (status === ProductStatus.FOR_SALE) {
+        if (status === ProductStatus.PUBLISHED) {
             await this.notificationsService.create({
                 userId: product.sellerId,
                 title: '✅ Votre produit est en ligne !',

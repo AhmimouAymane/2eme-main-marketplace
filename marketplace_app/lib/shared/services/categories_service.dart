@@ -5,12 +5,12 @@ import 'package:marketplace_app/shared/models/category_model.dart';
 // Assuming dioProvider is here or I can use Dio directly if simple
 
 // Simple provider for CategoriesService
-final categoriesServiceProvider = Provider<CategoriesService>((ref) {
+final categoriesServiceProvider = Provider.autoDispose<CategoriesService>((ref) {
   return CategoriesService();
 });
 
-// Future provider to fetch the tree once
-final categoriesTreeProvider = FutureProvider<List<CategoryModel>>((ref) async {
+// Future provider to fetch the tree
+final categoriesTreeProvider = FutureProvider.autoDispose<List<CategoryModel>>((ref) async {
   final service = ref.watch(categoriesServiceProvider);
   return service.getCategoriesTree();
 });

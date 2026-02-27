@@ -5,21 +5,26 @@ import 'user_model.dart';
 
 /// Statut d'une commande (Synchronisé avec le backend)
 enum OrderStatus {
-  @JsonValue('OFFER_PENDING')
-  offerPending,
-  @JsonValue('OFFER_REJECTED')
-  offerRejected,
-  @JsonValue('PENDING')
-  pending,
+  @JsonValue('OFFER_MADE')
+  offerMade,
+  @JsonValue('AWAITING_SELLER_CONFIRMATION')
+  awaitingSellerConfirmation,
   @JsonValue('CONFIRMED')
   confirmed,
   @JsonValue('SHIPPED')
   shipped,
   @JsonValue('DELIVERED')
   delivered,
+  @JsonValue('RETURN_WINDOW_48H')
+  returnWindow48h,
+  @JsonValue('RETURN_REQUESTED')
+  returnRequested,
+  @JsonValue('RETURNED')
+  returned,
   @JsonValue('CANCELLED')
   cancelled,
-  returnRequested,
+  @JsonValue('COMPLETED')
+  completed,
 }
 
 /// Modèle de données pour une commande
@@ -36,10 +41,18 @@ class OrderModel extends Equatable {
   final OrderStatus status;
   final String? shippingAddress;
   final String? pickupAddress;
+  final String? rejectionReason;
+  final String? cancellationReason;
+  final String? returnReason;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final DateTime? confirmedAt;
+  final DateTime? shippedAt;
   final DateTime? deliveredAt;
-  final String? rejectionReason;
+  final DateTime? returnRequestedAt;
+  final DateTime? returnedAt;
+  final DateTime? completedAt;
+  final DateTime? expiresAt;
 
   const OrderModel({
     required this.id,
@@ -53,19 +66,31 @@ class OrderModel extends Equatable {
     required this.status,
     this.shippingAddress,
     this.pickupAddress,
+    this.rejectionReason,
+    this.cancellationReason,
+    this.returnReason,
     required this.createdAt,
     this.updatedAt,
+    this.confirmedAt,
+    this.shippedAt,
     this.deliveredAt,
-    this.rejectionReason,
+    this.returnRequestedAt,
+    this.returnedAt,
+    this.completedAt,
+    this.expiresAt,
   });
 
   // Getters
-  bool get isOffer => status == OrderStatus.offerPending;
-  bool get isPending => status == OrderStatus.pending;
-  bool get isCompleted => status == OrderStatus.delivered;
-  bool get isRejected => status == OrderStatus.offerRejected;
+  bool get isOffer => status == OrderStatus.offerMade;
+  bool get isAwaitingConfirmation => status == OrderStatus.awaitingSellerConfirmation;
+  bool get isConfirmed => status == OrderStatus.confirmed;
+  bool get isShipped => status == OrderStatus.shipped;
+  bool get isDelivered => status == OrderStatus.delivered || status == OrderStatus.returnWindow48h;
+  bool get isCompleted => status == OrderStatus.completed;
+  bool get isCancelled => status == OrderStatus.cancelled;
   bool get canCancel =>
-      status == OrderStatus.pending || status == OrderStatus.confirmed || status == OrderStatus.offerPending;
+      status == OrderStatus.awaitingSellerConfirmation || status == OrderStatus.confirmed || status == OrderStatus.offerMade;
+  bool get isInReturnWindow => status == OrderStatus.returnWindow48h;
 
   // JSON serialization
   factory OrderModel.fromJson(Map<String, dynamic> json) => OrderModel(
@@ -79,53 +104,72 @@ class OrderModel extends Equatable {
     sellerId: json['sellerId'] ?? '',
     seller: json['seller'] != null ? UserModel.fromJson(json['seller']) : null,
     totalPrice: (json['totalPrice'] ?? 0.0).toDouble(),
-    status: _statusFromString(json['status'] ?? 'PENDING'),
+    status: _statusFromString(json['status'] ?? 'AWAITING_SELLER_CONFIRMATION'),
     shippingAddress: json['shippingAddress'],
     pickupAddress: json['pickupAddress'],
+    rejectionReason: json['rejectionReason'],
+    cancellationReason: json['cancellationReason'],
+    returnReason: json['returnReason'],
     createdAt: json['createdAt'] != null
         ? DateTime.parse(json['createdAt'])
         : DateTime.now(),
     updatedAt: json['updatedAt'] != null
         ? DateTime.parse(json['updatedAt'])
         : null,
+    confirmedAt: json['confirmedAt'] != null
+        ? DateTime.parse(json['confirmedAt'])
+        : null,
+    shippedAt: json['shippedAt'] != null
+        ? DateTime.parse(json['shippedAt'])
+        : null,
     deliveredAt: json['deliveredAt'] != null
         ? DateTime.parse(json['deliveredAt'])
         : null,
-    rejectionReason: json['rejectionReason'],
+    returnRequestedAt: json['returnRequestedAt'] != null
+        ? DateTime.parse(json['returnRequestedAt'])
+        : null,
+    returnedAt: json['returnedAt'] != null
+        ? DateTime.parse(json['returnedAt'])
+        : null,
+    completedAt: json['completedAt'] != null
+        ? DateTime.parse(json['completedAt'])
+        : null,
+    expiresAt: json['expiresAt'] != null
+        ? DateTime.parse(json['expiresAt'])
+        : null,
   );
 
   static OrderStatus _statusFromString(String status) {
     return OrderStatus.values.firstWhere(
       (e) {
-        // Mapping convention: offerPending -> OFFER_PENDING
-        final enumName = e.name.replaceAllMapped(
-          RegExp(r'([A-Z])'),
-          (match) => '_${match.group(1)}',
-        ).toUpperCase();
-        return enumName == status || e.name.toUpperCase() == status;
+        // Convert camelCase (e.g. returnWindow48h) to SCREAMING_SNAKE_CASE (e.g. RETURN_WINDOW_48_H)
+        // Note: Backend has RETURN_WINDOW_48H, our previous logic gave RETURN_WINDOW48_H
+        final enumName = e.name
+            .replaceAllMapped(RegExp(r'([A-Z])'), (match) => '_${match.group(1)}')
+            .replaceAllMapped(RegExp(r'(\d+)'), (match) => '_${match.group(1)}')
+            .toUpperCase();
+            
+        return enumName == status || 
+               e.name.toUpperCase() == status || 
+               // Also check for cases where the digit doesn't have an underscore (flexible matching)
+               enumName.replaceAll('_', '') == status.replaceAll('_', '');
       },
-      orElse: () => OrderStatus.pending,
+      orElse: () => OrderStatus.awaitingSellerConfirmation,
     );
   }
 
-  /// Payload pour la création de commande (le backend définit status lui-même)
   Map<String, dynamic> toJson() {
     final map = <String, dynamic>{
       'productId': productId,
       'totalPrice': totalPrice,
     };
 
-    if (status != OrderStatus.pending) {
-       // Only send status if it's explicitly set (like for offers)
-       final enumName = status.name.replaceAllMapped(
-         RegExp(r'([A-Z])'),
-         (match) => '_${match.group(1)}',
-       ).toUpperCase();
-       
-       if (status == OrderStatus.offerPending || status == OrderStatus.offerRejected) {
-         map['status'] = enumName;
-       }
-    }
+    final enumName = status.name.replaceAllMapped(
+      RegExp(r'([A-Z])'),
+      (match) => '_${match.group(1)}',
+    ).toUpperCase();
+    
+    map['status'] = enumName;
 
     if (shippingAddress != null) {
       map['shippingAddress'] = shippingAddress;
@@ -150,10 +194,18 @@ class OrderModel extends Equatable {
     OrderStatus? status,
     String? shippingAddress,
     String? pickupAddress,
+    String? rejectionReason,
+    String? cancellationReason,
+    String? returnReason,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? confirmedAt,
+    DateTime? shippedAt,
     DateTime? deliveredAt,
-    String? rejectionReason,
+    DateTime? returnRequestedAt,
+    DateTime? returnedAt,
+    DateTime? completedAt,
+    DateTime? expiresAt,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -167,10 +219,18 @@ class OrderModel extends Equatable {
       status: status ?? this.status,
       shippingAddress: shippingAddress ?? this.shippingAddress,
       pickupAddress: pickupAddress ?? this.pickupAddress,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      cancellationReason: cancellationReason ?? this.cancellationReason,
+      returnReason: returnReason ?? this.returnReason,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      confirmedAt: confirmedAt ?? this.confirmedAt,
+      shippedAt: shippedAt ?? this.shippedAt,
       deliveredAt: deliveredAt ?? this.deliveredAt,
-      rejectionReason: rejectionReason ?? this.rejectionReason,
+      returnRequestedAt: returnRequestedAt ?? this.returnRequestedAt,
+      returnedAt: returnedAt ?? this.returnedAt,
+      completedAt: completedAt ?? this.completedAt,
+      expiresAt: expiresAt ?? this.expiresAt,
     );
   }
 
@@ -187,9 +247,17 @@ class OrderModel extends Equatable {
     status,
     shippingAddress,
     pickupAddress,
+    rejectionReason,
+    cancellationReason,
+    returnReason,
     createdAt,
     updatedAt,
+    confirmedAt,
+    shippedAt,
     deliveredAt,
-    rejectionReason,
+    returnRequestedAt,
+    returnedAt,
+    completedAt,
+    expiresAt,
   ];
 }

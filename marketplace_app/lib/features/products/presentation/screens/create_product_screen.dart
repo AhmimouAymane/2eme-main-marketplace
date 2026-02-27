@@ -185,7 +185,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
           size: sizeToSend,
           brand: _brandController.text,
           condition: _conditionFromBackendString(_selectedCondition),
-          status: ProductStatus.forSale,
+          status: ProductStatus.pendingApproval,
           imageUrls: allImageUrls,
           sellerId: '',
           createdAt: DateTime.now(),
@@ -356,29 +356,16 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   Widget _buildSizeSelector() {
     if (_selectedSubCategory == null) return const SizedBox.shrink();
 
-    final sizeType = _selectedSubCategory!.sizeType;
-    List<String> sizes = [];
-
-    switch (sizeType) {
-      case 'ALPHA':
-        sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
-        break;
-      case 'NUMERIC_SHOES':
-        sizes = List.generate(11, (index) => (36 + index).toString()); // 36-46
-        break;
-      case 'NUMERIC_PANTS':
-        sizes = List.generate(13, (index) => (36 + index).toString()); // 36-48
-        break;
-      case 'AGE':
-        sizes = ['2 ans', '3 ans', '4 ans', '5 ans', '6 ans', '8 ans', '10 ans', '12 ans', '14 ans'];
-        break;
-      case 'ONE_SIZE':
+    final sizes = _selectedSubCategory!.possibleSizes ?? [];
+    
+    if (sizes.isEmpty) {
+      if (_selectedSubCategory!.sizeType == 'ONE_SIZE') {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 16),
           child: Chip(label: const Text('Taille Unique')),
         );
-      default:
-        sizes = ['Taille Unique'];
+      }
+      return const SizedBox.shrink();
     }
 
     return Column(

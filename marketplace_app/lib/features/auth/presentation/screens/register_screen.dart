@@ -12,7 +12,6 @@ import 'package:marketplace_app/features/auth/presentation/providers/auth_provid
 import 'package:marketplace_app/shared/services/api_client.dart';
 import 'package:flutter/gestures.dart';
 import '../../../profile/presentation/screens/legal_screen.dart';
-import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'verify_otp_screen.dart';
 
 /// Écran d'inscription

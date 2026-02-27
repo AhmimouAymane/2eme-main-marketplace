@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
-import '../../../../shared/providers/shop_providers.dart';
 
 /// Écran de profil utilisateur — design aligné avec le reste de l'app (Clovi)
 class ProfileScreen extends ConsumerWidget {
@@ -238,19 +237,19 @@ class ProfileScreen extends ConsumerWidget {
             onTap: () => context.push(AppRoutes.about),
           ),
           _buildDivider(),
-          _buildMenuTile(
+          /*_buildMenuTile(
             icon: Icons.delete_forever_outlined,
             title: 'Supprimer mon compte',
             textColor: AppColors.error,
             iconColor: AppColors.error,
             onTap: () => _showDeleteAccountDialog(context, ref),
-          ),
+          ),*/
           _buildDivider(),
           _buildMenuTile(
             icon: Icons.logout,
             title: 'Se déconnecter',
-            textColor: AppColors.textPrimaryLight,
-            iconColor: AppColors.cloviGreen,
+            textColor: AppColors.error,
+            iconColor: AppColors.error,
             onTap: () => _showLogoutDialog(context, ref),
           ),
         ],

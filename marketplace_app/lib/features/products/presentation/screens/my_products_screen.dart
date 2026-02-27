@@ -162,25 +162,34 @@ class _ProductListTile extends ConsumerWidget {
                       const Spacer(),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            onPressed: () async {
-                              final result = await context.push(
-                                AppRoutes.createProduct,
-                                extra: product,
-                              );
-                              if (result == true) {
-                                ref.invalidate(userProductsProvider);
-                              }
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20),
-                            color: AppColors.error,
-                            onPressed: () => _showDeleteDialog(context, ref),
-                          ),
-                        ],
+                        children: product.isEditable
+                            ? [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined, size: 20),
+                                  onPressed: () async {
+                                    final result = await context.push(
+                                      AppRoutes.createProduct,
+                                      extra: product,
+                                    );
+                                    if (result == true) {
+                                      ref.invalidate(userProductsProvider);
+                                    }
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 20),
+                                  color: AppColors.error,
+                                  onPressed: () => _showDeleteDialog(context, ref),
+                                ),
+                              ]
+                            : [
+                                const Icon(Icons.lock_outline, size: 16, color: Colors.grey),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'Verrouillé',
+                                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                                ),
+                              ],
                       ),
                     ],
                   ),
@@ -213,6 +222,9 @@ class _ProductListTile extends ConsumerWidget {
                     .deleteProduct(product.id);
                 // Force refresh of the list
                 ref.invalidate(userProductsProvider);
+                // Also invalidate seller profile so product count/list is updated
+                ref.invalidate(sellerProfileProvider(product.sellerId));
+
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Annonce supprimée')),
@@ -252,7 +264,7 @@ class _StatusChip extends StatelessWidget {
         color = Colors.orange;
         label = 'En attente';
         break;
-      case ProductStatus.forSale:
+      case ProductStatus.published:
         color = Colors.green;
         label = 'Publié';
         break;
@@ -263,6 +275,10 @@ class _StatusChip extends StatelessWidget {
       case ProductStatus.reserved:
         color = Colors.purple;
         label = 'Réservé';
+        break;
+      case ProductStatus.confirmed:
+        color = Colors.teal;
+        label = 'Confirmé';
         break;
       case ProductStatus.sold:
         color = Colors.blue;

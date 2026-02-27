@@ -13,8 +13,9 @@ import 'package:marketplace_app/features/auth/presentation/providers/auth_provid
 /// Service gérant l'authentification côté frontend
 class AuthService {
   final Dio _dio;
+  final Ref _ref;
 
-  AuthService(this._dio);
+  AuthService(this._dio, this._ref);
 
   Future<Map<String, dynamic>> register({
     required String email,
@@ -243,6 +244,10 @@ class AuthService {
     
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.keyAuthToken, token);
+    
+    // Update Riverpod state immediately
+    _ref.read(authTokenProvider.notifier).state = token;
+    
     if (user != null) {
       await prefs.setString(AppConstants.keyUserId, user['id']);
       await prefs.setString(AppConstants.keyUserEmail, user['email']);
@@ -250,6 +255,12 @@ class AuthService {
         await prefs.setString(AppConstants.keyUserAvatarUrl, user['avatarUrl']);
       }
     }
+    
+    // Invalidate user-related providers to force refresh everywhere
+    _ref.invalidate(userEmailProvider);
+    _ref.invalidate(userIdProvider);
+    _ref.invalidate(userAvatarUrlProvider);
+    _ref.invalidate(userProfileProvider);
     
     // Synchroniser le token FCM
     await syncFcmToken(token);
@@ -276,10 +287,16 @@ class AuthService {
   /// Déconnexion
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(AppConstants.keyAuthToken);
-    await prefs.remove(AppConstants.keyUserId);
-    await prefs.remove(AppConstants.keyUserEmail);
     await prefs.remove(AppConstants.keyUserAvatarUrl);
+    
+    // Clear Riverpod state
+    _ref.read(authTokenProvider.notifier).state = null;
+    _ref.invalidate(userEmailProvider);
+    _ref.invalidate(userIdProvider);
+    _ref.invalidate(userAvatarUrlProvider);
+    _ref.invalidate(userProfileProvider);
+    _ref.invalidate(isAuthenticatedProvider);
+    
     ApiClient.reset();
   }
 

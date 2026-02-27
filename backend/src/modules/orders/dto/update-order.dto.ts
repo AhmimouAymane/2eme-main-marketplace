@@ -22,4 +22,14 @@ export class UpdateOrderDto {
     @IsString()
     @IsOptional()
     rejectionReason?: string;
+
+    @ApiProperty({ example: 'Erreur de commande', required: false })
+    @IsString()
+    @IsOptional()
+    cancellationReason?: string;
+
+    @ApiProperty({ example: 'Ne convient pas', required: false })
+    @IsString()
+    @IsOptional()
+    returnReason?: string;
 }

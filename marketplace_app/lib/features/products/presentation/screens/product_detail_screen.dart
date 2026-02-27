@@ -33,10 +33,59 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           data: (product) => _buildContent(context, product),
           loading: () =>
               const Scaffold(body: Center(child: CircularProgressIndicator())),
-          error: (error, stack) => Scaffold(
-            appBar: AppBar(),
-            body: Center(child: Text('Erreur: $error')),
-          ),
+          error: (error, stack) {
+            String errorMessage = 'Une erreur est survenue';
+            bool is404 = false;
+
+            if (error is DioException) {
+              if (error.response?.statusCode == 404) {
+                errorMessage = 'Cette annonce n\'est plus disponible (supprimée ou vendue).';
+                is404 = true;
+              } else {
+                errorMessage = error.message ?? errorMessage;
+              }
+            } else {
+              errorMessage = error.toString();
+            }
+
+            return Scaffold(
+              appBar: AppBar(
+                title: const Text('Annonce indisponible'),
+              ),
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        is404 ? Icons.search_off : Icons.error_outline,
+                        size: 80,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        errorMessage,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => context.pop(),
+                          child: const Text('Retour'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         );
   }
 
@@ -125,17 +174,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                       ),
-                      IconButton(
-                        icon: Icon(
-                          product.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: product.isFavorite ? AppColors.error : null,
-                        ),
-                        onPressed: () {
-                          ref
-                              .read(favoritesProvider.notifier)
-                              .toggleFavorite(product);
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final isFavorite = ref.watch(isFavoriteProvider(product.id));
+                          return IconButton(
+                            icon: Icon(
+                              isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: isFavorite ? AppColors.error : null,
+                            ),
+                            onPressed: () {
+                              ref
+                                  .read(favoritesProvider.notifier)
+                                  .toggleFavorite(product);
+                            },
+                          );
                         },
                       ),
                     ],
@@ -284,17 +336,40 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     ),
                   ),
                 ),
-              ] else
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => context.push(
-                      AppRoutes.createProduct,
-                      extra: product,
+              ] else ...[
+                if (product.isEditable)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => context.push(
+                        AppRoutes.createProduct,
+                        extra: product,
+                      ),
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Modifier mon annonce'),
                     ),
-                    icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Modifier mon annonce'),
+                  )
+                else
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.lock_outline, color: Colors.grey, size: 18),
+                          SizedBox(width: 8),
+                          Text(
+                            'Modification impossible (commande en cours)',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+              ],
             ],
           ),
         ),
@@ -586,7 +661,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           dialogContext,
           product,
           shippingAddress,
-          OrderStatus.pending,
+          OrderStatus.awaitingSellerConfirmation,
         ),
         onCancel: () => Navigator.pop(dialogContext),
       ),
@@ -636,7 +711,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     dialogContext,
                     product.copyWith(price: val),
                     shippingAddress,
-                    OrderStatus.offerPending,
+                    OrderStatus.offerMade,
                   ),
                   onCancel: () => Navigator.pop(dialogContext),
                 ),
@@ -678,7 +753,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            status == OrderStatus.offerPending
+            status == OrderStatus.offerMade
                 ? 'Offre envoyée au vendeur !'
                 : 'Commande créée. Paiement à la livraison.',
           ),
@@ -838,25 +913,38 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
                                   orElse: () => addrs.first,
                                 );
                               }
-                              return DropdownButtonFormField<AddressModel>(
-                                initialValue: _selectedAddress,
-                                decoration: const InputDecoration(
-                                  labelText: 'Adresse de livraison *',
-                                  border: OutlineInputBorder(),
-                                ),
-                                items: addrs
-                                    .map(
-                                      (a) => DropdownMenuItem(
-                                        value: a,
-                                        child: Text(a.label),
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonFormField<AddressModel>(
+                                      initialValue: _selectedAddress,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Adresse de livraison *',
+                                        border: OutlineInputBorder(),
                                       ),
-                                    )
-                                    .toList(),
-                                onChanged: (a) =>
-                                    setState(() => _selectedAddress = a),
-                                validator: (v) => v == null
-                                    ? 'Sélectionnez une adresse'
-                                    : null,
+                                      items: addrs
+                                          .map(
+                                            (a) => DropdownMenuItem(
+                                              value: a,
+                                              child: Text(a.label),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged: (a) =>
+                                          setState(() => _selectedAddress = a),
+                                      validator: (v) => v == null
+                                          ? 'Sélectionnez une adresse'
+                                          : null,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () =>
+                                        context.push(AppRoutes.addresses),
+                                    icon: const Icon(Icons.add_circle_outline,
+                                        color: AppColors.cloviGreen),
+                                    tooltip: 'Ajouter une adresse',
+                                  ),
+                                ],
                               );
                             },
                             loading: () => const Center(
@@ -894,19 +982,20 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
       actions: [
         TextButton(onPressed: widget.onCancel, child: const Text('Annuler')),
         ElevatedButton(
-          onPressed: () {
-            if (_formKey.currentState?.validate() ?? false) {
-              final addressText = _selectedAddress != null
-                  ? '${_selectedAddress!.street}, ${_selectedAddress!.postal} ${_selectedAddress!.city}'
-                  : '';
-              final phone = _phoneController.text.trim();
-              var payload = addressText;
-              if (phone.isNotEmpty) {
-                payload = '$payload — Tél: $phone';
-              }
-              widget.onConfirm(payload);
-            }
-          },
+          onPressed: _selectedAddress == null
+              ? null
+              : () {
+                  if (_formKey.currentState?.validate() ?? false) {
+                    final addressText =
+                        '${_selectedAddress!.street}, ${_selectedAddress!.postal} ${_selectedAddress!.city}';
+                    final phone = _phoneController.text.trim();
+                    var payload = addressText;
+                    if (phone.isNotEmpty) {
+                      payload = '$payload — Tél: $phone';
+                    }
+                    widget.onConfirm(payload);
+                  }
+                },
           child: const Text('Confirmer la commande'),
         ),
       ],

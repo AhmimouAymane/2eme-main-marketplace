@@ -9,7 +9,9 @@ import {
     UseGuards,
     Query,
     Req,
+    Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { ProductsService, ProductQuery } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -40,11 +42,13 @@ export class ProductsController {
     @ApiQuery({ name: 'sortBy', enum: ['price', 'createdAt'], required: false })
     @ApiQuery({ name: 'order', enum: ['asc', 'desc'], required: false })
     @ApiQuery({ name: 'sellerId', required: false })
-    findAll(@Req() req: Request, @Query() query: ProductQuery) {
-        console.log('Raw Query Params:', req.query);
-        console.log('Mapped Query DTO:', query);
+    async findAll(@Req() req: Request, @Res() res: Response, @Query() query: ProductQuery) {
         const userId = (req.user as any)?.sub;
-        return this.productsService.findAll(query, userId);
+        const { data, total } = await this.productsService.findAll(query, userId);
+
+        res.setHeader('X-Total-Count', total);
+        res.setHeader('Access-Control-Expose-Headers', 'X-Total-Count');
+        return res.json(data);
     }
 
     @Get(':id')
@@ -77,9 +81,9 @@ export class ProductsController {
     update(
         @Param('id') id: string,
         @Body() updateProductDto: UpdateProductDto,
-        @GetCurrentUser('sub') userId: string,
+        @GetCurrentUser() user: any,
     ) {
-        return this.productsService.update(id, updateProductDto, userId);
+        return this.productsService.update(id, updateProductDto, user.sub, user.role);
     }
 
     @Delete(':id')

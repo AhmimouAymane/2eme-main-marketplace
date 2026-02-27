@@ -7,6 +7,8 @@ import '../../../../shared/providers/shop_providers.dart';
 import '../../../../shared/models/order_model.dart';
 import '../../../../shared/models/address_model.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/core/routes/app_routes.dart';
+
 
 /// Écran de détail d'une commande
 class OrderDetailScreen extends ConsumerWidget {
@@ -17,6 +19,7 @@ class OrderDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orderAsync = ref.watch(orderDetailProvider(orderId));
+    final userIdAsync = ref.watch(userIdProvider);
 
     return Scaffold(
       backgroundColor: AppColors.cloviBeige,
@@ -37,7 +40,11 @@ class OrderDetailScreen extends ConsumerWidget {
         ],
       ),
       body: orderAsync.when(
-        data: (order) => _buildContent(context, ref, order),
+        data: (order) => userIdAsync.when(
+          data: (userId) => _buildContent(context, ref, order, userId),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (err, _) => _buildContent(context, ref, order, null),
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
           child: Column(
@@ -78,10 +85,7 @@ class OrderDetailScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, OrderModel order) {
-    final currentUserId = ref
-        .watch(userIdProvider)
-        .maybeWhen(data: (id) => id, orElse: () => null);
+  Widget _buildContent(BuildContext context, WidgetRef ref, OrderModel order, String? currentUserId) {
     final isSeller = currentUserId == order.sellerId;
 
     return ListView(
@@ -102,6 +106,88 @@ class OrderDetailScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 20),
+                if (order.returnReason != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.error.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.assignment_return_outlined, color: AppColors.error, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Motif du retour',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  order.returnReason!,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (order.cancellationReason != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.error.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.cancel_outlined, color: AppColors.error, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Motif de l\'annulation',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  order.cancellationReason!,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 if (order.rejectionReason != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 20),
@@ -146,45 +232,47 @@ class OrderDetailScreen extends ConsumerWidget {
                     ),
                   ),
                 _buildStatusStep('Commandé', true, order.createdAt),
-                if (order.status == OrderStatus.offerPending)
-                  _buildStatusStep('Offre en attente', true, order.createdAt),
-                if (order.status == OrderStatus.offerRejected)
-                  _buildStatusStep('Offre rejetée', true, order.updatedAt),
+                _buildStatusStep(
+                  'Offre faite',
+                  order.status != OrderStatus.awaitingSellerConfirmation && 
+                  order.status != OrderStatus.offerMade,
+                  order.status == OrderStatus.offerMade ? order.createdAt : null,
+                ),
                 _buildStatusStep(
                   'Confirmé',
-                  order.status != OrderStatus.pending &&
-                      order.status != OrderStatus.offerPending &&
-                      order.status != OrderStatus.offerRejected &&
-                      order.status != OrderStatus.cancelled,
-                  (order.status != OrderStatus.pending &&
-                          order.status != OrderStatus.offerPending)
-                      ? (order.updatedAt ?? order.createdAt)
-                      : null,
+                  order.confirmedAt != null,
+                  order.confirmedAt,
                 ),
                 _buildStatusStep(
                   'Expédié',
-                  order.status == OrderStatus.shipped ||
-                      order.status == OrderStatus.delivered,
-                  order.status == OrderStatus.shipped ||
-                          order.status == OrderStatus.delivered
-                      ? (order.updatedAt)
-                      : null,
+                  order.shippedAt != null,
+                  order.shippedAt,
                 ),
                 _buildStatusStep(
                   'Livré',
-                  order.status == OrderStatus.delivered,
+                  order.deliveredAt != null,
                   order.deliveredAt,
                 ),
-                if (order.status == OrderStatus.cancelled)
-                  _buildStatusStep('Annulé', true, order.updatedAt),
+                if (order.status == OrderStatus.returnWindow48h)
+                  _buildStatusStep('Période de retour (48h)', true, order.deliveredAt),
                 if (order.status == OrderStatus.returnRequested)
-                  _buildStatusStep('Retour demandé', true, order.updatedAt),
+                  _buildStatusStep('Retour demandé', true, order.returnRequestedAt),
+                if (order.status == OrderStatus.returned)
+                  _buildStatusStep('Retourné', true, order.returnedAt),
+                if (order.status == OrderStatus.completed)
+                  _buildStatusStep('Terminé', true, order.completedAt),
+                if (order.status == OrderStatus.cancelled)
+                  _buildStatusStep(
+                    'Annulé', 
+                    true, 
+                    order.updatedAt,
+                  ),
               ],
             ),
           ),
         ),
-        if (order.status == OrderStatus.delivered && !isSeller)
-          _buildReturnWindowInfo(order),
+        if (order.isDelivered)
+          _buildReturnWindowInfo(order, isSeller),
         const SizedBox(height: 16),
 
         // Produit
@@ -374,60 +462,11 @@ class OrderDetailScreen extends ConsumerWidget {
         const SizedBox(height: 32),
 
         // Actions
-        if (isSeller &&
-            (order.status == OrderStatus.pending ||
-                order.status == OrderStatus.offerPending))
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ElevatedButton(
-                  onPressed: () => _showConfirmDialog(context, ref, order),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppColors.cloviGreen,
-                  ),
-                  child: Text(
-                    order.status == OrderStatus.offerPending
-                        ? 'Accepter l\'offre'
-                        : 'Confirmer la commande',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () => _showRejectDialog(context, ref, order),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    foregroundColor: AppColors.error,
-                    side: const BorderSide(color: AppColors.error),
-                  ),
-                  child: Text(
-                    order.status == OrderStatus.offerPending
-                        ? 'Rejeter l\'offre'
-                        : 'Refuser la commande',
-                  ),
-                ),
-              ],
-            ),
-          )
-        else if (!isSeller && order.canCancel)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: OutlinedButton(
-              onPressed: () => _showCancelDialog(context, ref, order),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                foregroundColor: AppColors.error,
-                side: const BorderSide(color: AppColors.error),
-              ),
-              child: const Text('Annuler la commande'),
-            ),
-          )
-        else if (!isSeller && order.status == OrderStatus.shipped)
-          _buildConfirmReceiptAction(context, ref, order)
-        else if (!isSeller && order.status == OrderStatus.delivered)
-          _buildReturnAction(context, ref, order),
+        // Actions basees sur le role et le statut
+        if (isSeller)
+          _buildSellerActions(context, ref, order, currentUserId)
+        else
+          _buildBuyerActions(context, ref, order, currentUserId),
       ],
     );
   }
@@ -491,13 +530,16 @@ class OrderDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildReturnWindowInfo(OrderModel order) {
+  Widget _buildReturnWindowInfo(OrderModel order, bool isSeller) {
     if (order.deliveredAt == null) return const SizedBox.shrink();
     
     final now = DateTime.now();
     final difference = now.difference(order.deliveredAt!);
-    final remainingHours = 48 - difference.inHours;
-    final isExpired = remainingHours <= 0;
+    final remaining = const Duration(hours: 48) - difference;
+    final h = remaining.inHours;
+    final m = remaining.inMinutes % 60;
+    final timeStr = h > 0 ? '${h}h ${m}m' : '${m}min';
+    final isExpired = remaining.isNegative;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -521,8 +563,12 @@ class OrderDetailScreen extends ConsumerWidget {
             Expanded(
               child: Text(
                 isExpired
-                    ? 'Le délai de retour de 48h est expiré.'
-                    : 'Il vous reste ${remainingHours.clamp(0, 48)} heures pour demander un retour.',
+                    ? (isSeller 
+                        ? 'Le délai de 48h est expiré. La commande va être clôturée.' 
+                        : 'Le délai de retour de 48h est expiré.')
+                    : (isSeller
+                        ? 'Il reste $timeStr avant la validation automatique de la vente.'
+                        : 'Il vous reste $timeStr pour demander un retour.'),
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -561,14 +607,16 @@ class OrderDetailScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     OrderModel order,
+    String? currentUserId,
   ) {
     AddressModel? selectedAddress;
     final phoneController = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    final parentMessenger = ScaffoldMessenger.of(context);
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Confirmer la commande'),
         content: Form(
           key: formKey,
@@ -587,9 +635,18 @@ class OrderDetailScreen extends ConsumerWidget {
                       .when(
                         data: (addresses) {
                           if (addresses.isEmpty) {
-                            return const Text(
-                              'Aucune adresse enregistrée. Veuillez en ajouter une dans votre profil.',
-                              style: TextStyle(color: AppColors.error),
+                            return Column(
+                              children: [
+                                const Text(
+                                  'Aucune adresse enregistrée. Veuillez en ajouter une.',
+                                  style: TextStyle(color: AppColors.error),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => context.push(AppRoutes.addresses),
+                                  icon: const Icon(Icons.add),
+                                  label: const Text('Gérer mes adresses'),
+                                ),
+                              ],
                             );
                           }
 
@@ -598,24 +655,35 @@ class OrderDetailScreen extends ConsumerWidget {
                             orElse: () => addresses.first,
                           );
 
-                          return DropdownButtonFormField<AddressModel>(
-                            initialValue: selectedAddress,
-                            decoration: const InputDecoration(
-                              labelText: 'Adresse de collecte *',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: addresses
-                                .map(
-                                  (a) => DropdownMenuItem(
-                                    value: a,
-                                    child: Text(a.label),
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<AddressModel>(
+                                  initialValue: selectedAddress,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Adresse de collecte *',
+                                    border: OutlineInputBorder(),
                                   ),
-                                )
-                                .toList(),
-                            onChanged: (val) => selectedAddress = val,
-                            validator: (val) => val == null
-                                ? 'L\'adresse est obligatoire'
-                                : null,
+                                  items: addresses
+                                      .map(
+                                        (a) => DropdownMenuItem(
+                                          value: a,
+                                          child: Text(a.label),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (val) => selectedAddress = val,
+                                  validator: (val) => val == null
+                                      ? 'L\'adresse est obligatoire'
+                                      : null,
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () => context.push(AppRoutes.addresses),
+                                icon: const Icon(Icons.add_circle_outline, color: AppColors.cloviGreen),
+                                tooltip: 'Ajouter une adresse',
+                              ),
+                            ],
                           );
                         },
                         loading: () =>
@@ -642,41 +710,53 @@ class OrderDetailScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Annuler'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              if (!(formKey.currentState?.validate() ?? false)) return;
+          Consumer(
+            builder: (consumerContext, consumerRef, child) {
+              final addressesAsync = consumerRef.watch(userAddressesProvider(order.sellerId));
+              final ordersService = consumerRef.read(ordersServiceProvider);
+              return ElevatedButton(
+                onPressed: addressesAsync.maybeWhen(
+                  data: (addrs) => addrs.isEmpty
+                      ? null
+                      : () async {
+                          if (!(formKey.currentState?.validate() ?? false)) return;
+                          if (selectedAddress == null) return;
 
-              final phone = phoneController.text.trim();
-              final addressStr =
-                  '${selectedAddress!.street}, ${selectedAddress!.postal} ${selectedAddress!.city} — Tél: $phone';
+                          final phone = phoneController.text.trim();
+                          final addressStr =
+                              '${selectedAddress!.street}, ${selectedAddress!.postal} ${selectedAddress!.city} — Tél: $phone';
 
-              Navigator.pop(context);
-              try {
-                await ref
-                    .read(ordersServiceProvider)
-                    .updateOrderStatus(
-                      order.id,
-                      OrderStatus.confirmed,
-                      pickupAddress: addressStr,
-                    );
-                ref.invalidate(orderDetailProvider(order.id));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Commande confirmée')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                }
-              }
+                          Navigator.pop(dialogContext);
+                          try {
+                            print('[CONFIRM] Sending confirm: orderId=${order.id}');
+                            await ordersService.updateOrderStatus(
+                                  order.id,
+                                  OrderStatus.confirmed,
+                                  pickupAddress: addressStr,
+                                );
+                            print('[CONFIRM] Success!');
+                            // Use parent ref (not Consumer's ref which is disposed after pop)
+                            ref.invalidate(orderDetailProvider(order.id));
+                            ref.invalidate(productsProvider);
+                            ref.invalidate(homeProductsProvider);
+                            parentMessenger.showSnackBar(
+                              const SnackBar(content: Text('Commande confirmée !')),
+                            );
+                          } catch (e) {
+                            print('[CONFIRM] Error: $e');
+                            parentMessenger.showSnackBar(
+                              SnackBar(content: Text('Erreur: $e')),
+                            );
+                          }
+                        },
+                  orElse: () => null,
+                ),
+                child: const Text('Confirmer'),
+              );
             },
-            child: const Text('Confirmer'),
           ),
         ],
       ),
@@ -687,13 +767,18 @@ class OrderDetailScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     OrderModel order,
+    String? currentUserId,
   ) {
     final reasonController = TextEditingController();
+    // Capture the parent scaffold messenger BEFORE opening the dialog
+    final parentMessenger = ScaffoldMessenger.of(context);
+    final ordersService = ref.read(ordersServiceProvider);
+    final isSeller = order.sellerId == currentUserId;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(order.status == OrderStatus.offerPending
+      builder: (dialogContext) => AlertDialog(
+        title: Text(order.status == OrderStatus.offerMade
             ? 'Rejeter l\'offre ?'
             : 'Refuser la commande ?'),
         content: Column(
@@ -716,42 +801,40 @@ class OrderDetailScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Fermer'),
           ),
           ElevatedButton(
             onPressed: () async {
               final reason = reasonController.text.trim();
               if (reason.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                parentMessenger.showSnackBar(
                   const SnackBar(content: Text('Veuillez saisir une raison')),
                 );
                 return;
               }
 
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               try {
-                final status = order.status == OrderStatus.offerPending
-                    ? OrderStatus.offerRejected
-                    : OrderStatus.cancelled;
-
-                await ref.read(ordersServiceProvider).updateOrderStatus(
+                print('[REJECT] Sending rejection: orderId=${order.id}, isSeller=$isSeller, reason=$reason');
+                await ordersService.updateOrderStatus(
                       order.id,
-                      status,
-                      rejectionReason: reason,
+                      OrderStatus.cancelled,
+                      rejectionReason: isSeller ? reason : null,
+                      cancellationReason: !isSeller ? reason : null,
                     );
+                print('[REJECT] Success!');
                 ref.invalidate(orderDetailProvider(order.id));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Action effectuée')),
-                  );
-                }
+                ref.invalidate(productsProvider);
+                ref.invalidate(homeProductsProvider);
+                parentMessenger.showSnackBar(
+                  const SnackBar(content: Text('Offre rejetée avec succès')),
+                );
               } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                }
+                print('[REJECT] Error: $e');
+                parentMessenger.showSnackBar(
+                  SnackBar(content: Text('Erreur: $e')),
+                );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
@@ -766,12 +849,15 @@ class OrderDetailScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     OrderModel order,
+    String? currentUserId,
   ) {
     final reasonController = TextEditingController();
+    final parentMessenger = ScaffoldMessenger.of(context);
+    final ordersService = ref.read(ordersServiceProvider);
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Annuler la commande ?'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -793,38 +879,37 @@ class OrderDetailScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Retour'),
           ),
           ElevatedButton(
             onPressed: () async {
               final reason = reasonController.text.trim();
               if (reason.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                parentMessenger.showSnackBar(
                   const SnackBar(content: Text('Veuillez saisir une raison')),
                 );
                 return;
               }
 
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               try {
-                await ref.read(ordersServiceProvider).updateOrderStatus(
+                await ordersService.updateOrderStatus(
                       order.id,
                       OrderStatus.cancelled,
-                      rejectionReason: reason,
+                      cancellationReason: reason,
                     );
                 ref.invalidate(orderDetailProvider(order.id));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Commande annulée')),
-                  );
-                }
+                ref.invalidate(productsProvider);
+                ref.invalidate(homeProductsProvider);
+                parentMessenger.showSnackBar(
+                  const SnackBar(content: Text('Commande annulée')),
+                );
               } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                }
+                print('[CANCEL] Error: $e');
+                parentMessenger.showSnackBar(
+                  SnackBar(content: Text('Erreur: $e')),
+                );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
@@ -841,10 +926,12 @@ class OrderDetailScreen extends ConsumerWidget {
     OrderModel order,
   ) {
     final reasonController = TextEditingController();
+    final parentMessenger = ScaffoldMessenger.of(context);
+    final ordersService = ref.read(ordersServiceProvider);
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Demander un retour (48h)'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -871,38 +958,35 @@ class OrderDetailScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Annuler'),
           ),
           ElevatedButton(
             onPressed: () async {
               final reason = reasonController.text.trim();
               if (reason.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                parentMessenger.showSnackBar(
                   const SnackBar(content: Text('Veuillez saisir un motif')),
                 );
                 return;
               }
 
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
               try {
-                await ref.read(ordersServiceProvider).updateOrderStatus(
+                await ordersService.updateOrderStatus(
                       order.id,
                       OrderStatus.returnRequested,
-                      rejectionReason: reason,
+                      returnReason: reason,
                     );
                 ref.invalidate(orderDetailProvider(order.id));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Demande de retour envoyée')),
-                  );
-                }
+                parentMessenger.showSnackBar(
+                  const SnackBar(content: Text('Demande de retour envoyée')),
+                );
               } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
-                }
+                print('[RETURN] Error: $e');
+                parentMessenger.showSnackBar(
+                  SnackBar(content: Text('Erreur: $e')),
+                );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
@@ -1013,5 +1097,241 @@ class OrderDetailScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildSellerActions(BuildContext context, WidgetRef ref, OrderModel order, String? currentUserId) {
+    if (order.status == OrderStatus.offerMade || 
+        order.status == OrderStatus.awaitingSellerConfirmation) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ElevatedButton(
+              onPressed: () => _showConfirmDialog(context, ref, order, currentUserId),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: AppColors.cloviGreen,
+              ),
+              child: Text(
+                order.status == OrderStatus.offerMade
+                    ? 'Accepter l\'offre'
+                    : 'Confirmer la commande',
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () => _showRejectDialog(context, ref, order, currentUserId),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                foregroundColor: AppColors.error,
+                side: const BorderSide(color: AppColors.error),
+              ),
+              child: Text(
+                order.status == OrderStatus.offerMade
+                    ? 'Rejeter l\'offre'
+                    : 'Refuser la commande',
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (order.status == OrderStatus.confirmed) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: ElevatedButton.icon(
+          onPressed: () => _handleMarkAsShipped(context, ref, order),
+          icon: const Icon(Icons.local_shipping_outlined),
+          label: const Text('Marquer comme expédié'),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: AppColors.cloviGreen,
+          ),
+        ),
+      );
+    }
+
+    if (order.status == OrderStatus.returnRequested) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: ElevatedButton(
+          onPressed: () => _handleAcceptReturn(context, ref, order),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            backgroundColor: AppColors.cloviGreen,
+          ),
+          child: const Text('Confirmer la réception du retour'),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildBuyerActions(BuildContext context, WidgetRef ref, OrderModel order, String? currentUserId) {
+    if (order.canCancel) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: OutlinedButton(
+          onPressed: () => _showCancelDialog(context, ref, order, currentUserId),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            foregroundColor: AppColors.error,
+            side: const BorderSide(color: AppColors.error),
+          ),
+          child: const Text('Annuler la commande'),
+        ),
+      );
+    }
+
+    if (order.status == OrderStatus.shipped) {
+      return _buildConfirmReceiptAction(context, ref, order);
+    }
+
+    if (order.status == OrderStatus.delivered || 
+        order.status == OrderStatus.returnWindow48h) {
+      return _buildReturnAction(context, ref, order);
+    }
+
+    if (order.status == OrderStatus.completed) {
+      return _buildCompletedAction(context, ref, order);
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Future<void> _handleMarkAsShipped(BuildContext context, WidgetRef ref, OrderModel order) async {
+    try {
+      await ref.read(ordersServiceProvider).updateOrderStatus(
+        order.id,
+        OrderStatus.shipped,
+      );
+      ref.invalidate(orderDetailProvider(order.id));
+      ref.invalidate(productsProvider);
+      ref.invalidate(homeProductsProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Colis marqué comme expédié !')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildCompletedAction(BuildContext context, WidgetRef ref, OrderModel order) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: ElevatedButton.icon(
+        onPressed: () => _showReviewDialog(context, ref, order),
+        icon: const Icon(Icons.star_outline),
+        label: const Text('Laisser un avis'),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          backgroundColor: AppColors.cloviGreen,
+        ),
+      ),
+    );
+  }
+
+  void _showReviewDialog(BuildContext context, WidgetRef ref, OrderModel order) {
+    int rating = 5;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Votre avis'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Avez-vous aimé votre achat ?'),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  return IconButton(
+                    icon: Icon(
+                      index < rating ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 32,
+                    ),
+                    onPressed: () => setState(() => rating = index + 1),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Laissez un commentaire (optionnel)...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  await ref.read(productsServiceProvider).addReview(
+                        order.productId,
+                        rating,
+                        commentController.text.trim(),
+                      );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Merci pour votre avis !')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Erreur: $e')),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.cloviGreen),
+              child: const Text('Envoyer'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleAcceptReturn(BuildContext context, WidgetRef ref, OrderModel order) async {
+    try {
+      await ref.read(ordersServiceProvider).updateOrderStatus(
+            order.id,
+            OrderStatus.returned,
+          );
+      ref.invalidate(orderDetailProvider(order.id));
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Retour réceptionné. Le produit est à nouveau disponible.')),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
   }
 }

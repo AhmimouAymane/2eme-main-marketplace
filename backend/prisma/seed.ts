@@ -136,17 +136,31 @@ async function createCategoryWithSubs(parentId: string, name: string, slug: stri
     await createSubs(parent.id, subs);
 }
 
+const DEFAULT_SIZES = {
+    [SizeType.ALPHA]: ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'],
+    [SizeType.NUMERIC_SHOES]: ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45'],
+    [SizeType.NUMERIC_PANTS]: ['32', '34', '36', '38', '40', '42', '44', '46', '48', '50'],
+    [SizeType.AGE]: ['Naissance', '1 mois', '3 mois', '6 mois', '9 mois', '12 mois', '18 mois', '2 ans', '3 ans', '4 ans', '5 ans', '6 ans', '8 ans', '10 ans', '12 ans'],
+    [SizeType.ONE_SIZE]: [],
+};
+
 async function createSubs(parentId: string, subs: any[]) {
     for (const sub of subs) {
+        const possibleSizes = sub.sizeType ? DEFAULT_SIZES[sub.sizeType as SizeType] : [];
         await prisma.category.upsert({
             where: { slug: sub.slug },
-            update: { name: sub.name, sizeType: sub.sizeType },
+            update: {
+                name: sub.name,
+                sizeType: sub.sizeType,
+                possibleSizes: possibleSizes
+            },
             create: {
                 name: sub.name,
                 slug: sub.slug,
                 level: 2,
                 parentId,
-                sizeType: sub.sizeType
+                sizeType: sub.sizeType,
+                possibleSizes: possibleSizes
             },
         });
     }

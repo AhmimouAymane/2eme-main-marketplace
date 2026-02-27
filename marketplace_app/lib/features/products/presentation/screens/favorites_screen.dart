@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/features/products/presentation/widgets/product_card.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
+import 'package:marketplace_app/core/theme/app_colors.dart';
 
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});
@@ -50,21 +51,58 @@ class FavoritesScreen extends ConsumerWidget {
                 imageUrl: product.fullMainImageUrl,
                 title: product.title,
                 price: product.price,
-                isFavorite: true,
+                product: product,
                 onTap: () => context.push(
                   AppRoutes.productDetail.replaceAll(':id', product.id),
                 ),
-                onFavoriteToggle: () {
-                  ref.read(favoritesProvider.notifier).toggleFavorite(product);
-                },
               );
             },
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('Erreur: $error'),
-        ),
+        error: (error, stack) {
+          final errorStr = error.toString();
+          final isUnauthorized = errorStr.contains('401') || errorStr.contains('Unauthorized');
+          
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isUnauthorized ? Icons.lock_outline : Icons.error_outline,
+                    size: 64,
+                    color: Colors.red[300],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    isUnauthorized 
+                        ? 'Veuillez vous connecter pour voir vos favoris' 
+                        : 'Une erreur est survenue : $error',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 24),
+                  if (isUnauthorized)
+                    ElevatedButton(
+                      onPressed: () => context.go(AppRoutes.login),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.cloviGreen,
+                        minimumSize: const Size(200, 48),
+                      ),
+                      child: const Text('Se connecter', style: TextStyle(color: Colors.white)),
+                    )
+                  else
+                    ElevatedButton(
+                      onPressed: () => ref.invalidate(favoritesProvider),
+                      child: const Text('Réessayer'),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

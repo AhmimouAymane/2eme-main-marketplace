@@ -5,9 +5,6 @@ import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:marketplace_app/core/constants/app_constants.dart';
-import 'package:marketplace_app/shared/services/api_client.dart';
 import 'package:marketplace_app/shared/widgets/clovi_logo.dart';
 
 class CloviDrawer extends ConsumerWidget {
@@ -222,18 +219,20 @@ class CloviDrawer extends ConsumerWidget {
   }
 
   Future<void> _handleLogout(BuildContext context, WidgetRef ref) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(AppConstants.keyAuthToken);
+    final authService = ref.read(authServiceProvider);
     
-    ref.read(authTokenProvider.notifier).state = null;
-    ref.invalidate(isAuthenticatedProvider);
-    ref.invalidate(userEmailProvider);
-    ref.invalidate(userIdProvider);
-    
-    ApiClient.reset();
-    
-    if (context.mounted) {
-      context.go(AppRoutes.login);
+    try {
+      await authService.logout();
+      
+      if (context.mounted) {
+        context.go(AppRoutes.login);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la déconnexion: $e')),
+        );
+      }
     }
   }
 }

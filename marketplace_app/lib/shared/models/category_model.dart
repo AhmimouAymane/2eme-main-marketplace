@@ -8,6 +8,7 @@ class CategoryModel extends Equatable {
   final String? parentId;
   final List<CategoryModel> children;
   final String? sizeType;
+  final List<String>? possibleSizes;
 
   const CategoryModel({
     required this.id,
@@ -17,6 +18,7 @@ class CategoryModel extends Equatable {
     this.parentId,
     this.children = const [],
     this.sizeType,
+    this.possibleSizes,
   });
 
   factory CategoryModel.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,9 @@ class CategoryModel extends Equatable {
       level: json['level'],
       parentId: json['parentId'],
       sizeType: json['sizeType'],
+      possibleSizes: json['possibleSizes'] != null
+          ? List<String>.from(json['possibleSizes'])
+          : null,
       children: json['children'] != null
           ? (json['children'] as List)
                 .map((c) => CategoryModel.fromJson(c))
@@ -44,5 +49,6 @@ class CategoryModel extends Equatable {
     parentId,
     children,
     sizeType,
+    possibleSizes,
   ];
 }
