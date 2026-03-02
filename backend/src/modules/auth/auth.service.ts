@@ -108,6 +108,7 @@ export class AuthService {
     }
 
     async register(createUserDto: CreateUserDto) {
+        createUserDto.email = createUserDto.email.toLowerCase();
         const existingUser = await this.usersService.findByEmail(createUserDto.email);
 
         if (existingUser) {
@@ -144,14 +145,14 @@ export class AuthService {
     }
 
     async forgotPassword(email: string) {
-        const user = await this.usersService.findByEmail(email);
+        const normalizedEmail = email.toLowerCase();
+        const user = await this.usersService.findByEmail(normalizedEmail);
         if (!user) {
-            // We don't throw to avoid email enumeration, but we tell the UI "if user exists..."
-            return { message: 'Si un compte existe pour cet email, un code sera envoyé.' };
+            throw new NotFoundException('Aucun compte n\'est associé à cet email.');
         }
 
-        const code = await this.generateAndSaveCode(email, VerificationType.PASSWORD_RESET);
-        await this.mailService.sendVerificationCode(email, code);
+        const code = await this.generateAndSaveCode(normalizedEmail, VerificationType.PASSWORD_RESET);
+        await this.mailService.sendVerificationCode(normalizedEmail, code);
 
         return { message: 'Un code de réinitialisation a été envoyé.' };
     }
@@ -238,7 +239,8 @@ export class AuthService {
     }
 
     async login(loginDto: LoginDto) {
-        const user = await this.usersService.findByEmail(loginDto.email);
+        const normalizedEmail = loginDto.email.toLowerCase();
+        const user = await this.usersService.findByEmail(normalizedEmail);
         if (!user) {
             throw new UnauthorizedException('Identifiants invalides');
         }

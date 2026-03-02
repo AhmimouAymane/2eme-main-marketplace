@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'product_model.dart';
 import 'address_model.dart';
+import 'user_review_model.dart';
 
 enum UserRole {
   @JsonValue('USER')
@@ -22,6 +23,7 @@ class UserModel extends Equatable {
   final String? avatarUrl;
   final String? bio;
   final List<ProductModel>? products;
+  final List<UserReviewModel>? receivedReviews;
   final int salesCount;
   final double averageRating;
   final UserRole role;
@@ -38,6 +40,7 @@ class UserModel extends Equatable {
     this.avatarUrl,
     this.bio,
     this.products,
+    this.receivedReviews,
     this.salesCount = 0,
     this.averageRating = 0.0,
     required this.role,
@@ -66,6 +69,11 @@ class UserModel extends Equatable {
         products: json['products'] != null
             ? (json['products'] as List)
                 .map((p) => ProductModel.fromJson(p))
+                .toList()
+            : null,
+        receivedReviews: json['receivedReviews'] != null
+            ? (json['receivedReviews'] as List)
+                .map((r) => UserReviewModel.fromJson(r as Map<String, dynamic>))
                 .toList()
             : null,
         salesCount: json['salesCount'] as int? ?? 0,
@@ -107,6 +115,7 @@ class UserModel extends Equatable {
     String? avatarUrl,
     String? bio,
     List<ProductModel>? products,
+    List<UserReviewModel>? receivedReviews,
     int? salesCount,
     double? averageRating,
     UserRole? role,
@@ -123,6 +132,7 @@ class UserModel extends Equatable {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       bio: bio ?? this.bio,
       products: products ?? this.products,
+      receivedReviews: receivedReviews ?? this.receivedReviews,
       salesCount: salesCount ?? this.salesCount,
       averageRating: averageRating ?? this.averageRating,
       role: role ?? this.role,
@@ -142,6 +152,7 @@ class UserModel extends Equatable {
         avatarUrl,
         bio,
         products,
+        receivedReviews,
         createdAt,
         updatedAt,
       ];

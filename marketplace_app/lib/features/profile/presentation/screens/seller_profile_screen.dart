@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:go_router/go_router.dart';
+import '../../data/user_reviews_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
@@ -184,6 +185,91 @@ class SellerProfileScreen extends ConsumerWidget {
                 ),
               ),
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
+
+            // Reviews Section Title
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Text(
+                  'Avis',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+
+            // Reviews List
+            if (seller.receivedReviews == null || seller.receivedReviews!.isEmpty)
+              const SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Text('Aucun avis pour le moment'),
+                  ),
+                ),
+              )
+            else
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final review = seller.receivedReviews![index];
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                review.reviewer?.fullName ?? 'Utilisateur Clovi',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Row(
+                                children: List.generate(5, (starIndex) {
+                                  return Icon(
+                                    starIndex < review.rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                                    color: starIndex < review.rating ? Colors.amber : Colors.grey[300],
+                                    size: 16,
+                                  );
+                                }),
+                              ),
+                            ],
+                          ),
+                          if (review.comment != null && review.comment!.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              review.comment!,
+                              style: TextStyle(color: Colors.grey[800], fontSize: 13),
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          Text(
+                            Formatters.date(review.createdAt),
+                            style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  childCount: seller.receivedReviews!.length,
+                ),
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 32)),
           ],
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -315,6 +401,7 @@ class SellerProfileScreen extends ConsumerWidget {
                       const SnackBar(content: Text('Merci pour votre avis !')),
                     );
                     ref.invalidate(sellerProfileProvider(seller.id));
+                    ref.invalidate(topSellersProvider);
                   }
                 } catch (e) {
                   if (context.mounted) {

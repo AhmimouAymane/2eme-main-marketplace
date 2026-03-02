@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/shared/models/address_model.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
@@ -20,6 +21,7 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
   late TextEditingController _cityController;
   late TextEditingController _postalController;
   late TextEditingController _countryController;
+  late TextEditingController _phoneController;
   bool _isDefault = false;
 
   @override
@@ -31,6 +33,7 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
     _cityController = TextEditingController(text: a?.city);
     _postalController = TextEditingController(text: a?.postal);
     _countryController = TextEditingController(text: a?.country);
+    _phoneController = TextEditingController(text: a?.phone);
     _isDefault = a?.isDefault ?? false;
   }
 
@@ -41,6 +44,7 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
     _cityController.dispose();
     _postalController.dispose();
     _countryController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -56,6 +60,7 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
       city: _cityController.text.trim(),
       postal: _postalController.text.trim(),
       country: _countryController.text.trim(),
+      phone: _phoneController.text.trim(),
       isDefault: _isDefault,
     );
 
@@ -127,6 +132,20 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
               TextFormField(
                 controller: _countryController,
                 decoration: const InputDecoration(labelText: 'Pays'),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Champ requis' : null,
+              ),
+              TextFormField(
+                controller: _phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Téléphone',
+                  hintText: 'Ex: 0612345678',
+                ),
+                keyboardType: TextInputType.phone,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(10),
+                ],
                 validator: (v) =>
                     v == null || v.isEmpty ? 'Champ requis' : null,
               ),

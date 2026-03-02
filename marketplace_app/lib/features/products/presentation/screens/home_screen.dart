@@ -10,6 +10,7 @@ import 'package:marketplace_app/shared/widgets/clovi_drawer.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import '../../../profile/data/user_reviews_service.dart';
 
 /// Écran d'accueil avec liste de produits
 class HomeScreen extends ConsumerStatefulWidget {
@@ -72,6 +73,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                       // Trending Categories
                       _buildCategoriesSection(),
+                      const SizedBox(height: 32),
+
+                      // Top Sellers
+                      _buildTopSellersSection(),
                       const SizedBox(height: 32),
 
                       // Fresh Arrivals
@@ -168,7 +173,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: AbsorbPointer(
                         child: TextField(
                           decoration: InputDecoration(
-                            hintText: 'Search items...',
+                            hintText: 'Chercher un article...',
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
@@ -369,6 +374,134 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Icons.category;
   }
 
+  Widget _buildTopSellersSection() {
+    final topSellersAsync = ref.watch(topSellersProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Vendeurs à la une',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 120,
+          child: topSellersAsync.when(
+            data: (sellers) => ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: sellers.length,
+              itemBuilder: (context, index) {
+                final seller = sellers[index];
+                final avatarUrl = seller['avatarUrl'] as String?;
+                final fullName = '${seller['firstName']} ${seller['lastName']}';
+                final rating = (seller['averageRating'] as num).toDouble();
+                final reviewCount = seller['reviewCount'] as int;
+
+                return GestureDetector(
+                  onTap: () => context.push('/seller/${seller['id']}'),
+                  child: Container(
+                    width: 90,
+                    margin: const EdgeInsets.only(right: 16),
+                    child: Column(
+                      children: [
+                        Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.cloviGreen.withOpacity(0.3),
+                                  width: 2,
+                                ),
+                              ),
+                              child: CircleAvatar(
+                                radius: 30,
+                                backgroundColor: Colors.grey[200],
+                                backgroundImage: avatarUrl != null
+                                    ? NetworkImage(avatarUrl.startsWith('http')
+                                        ? avatarUrl
+                                        : '${AppConstants.mediaBaseUrl}$avatarUrl')
+                                    : null,
+                                child: avatarUrl == null
+                                    ? const Icon(Icons.person, color: Colors.grey)
+                                    : null,
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.star, color: Colors.amber, size: 10),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      rating.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          fullName,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          '$reviewCount avis',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, _) => const SizedBox(),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFreshArrivalsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,7 +512,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Fresh Arrivals',
+                'Juste arrivé',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -388,7 +521,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               TextButton(
                 onPressed: () => context.push(AppRoutes.search),
-                child: const Text('See all'),
+                child: const Text('voir tout'),
               ),
             ],
           ),
@@ -434,7 +567,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Community Activity',
+            'Derniers échanges',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,

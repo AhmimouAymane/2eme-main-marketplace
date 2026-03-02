@@ -34,7 +34,12 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
+          onPressed: () => context.pop(),
+        ),
         title: const Text('Mes commandes'),
+        centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.primary,

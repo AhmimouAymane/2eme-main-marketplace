@@ -14,9 +14,33 @@ class AddressesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Mes adresses')),
       body: _buildBody(context, ref),
-      floatingActionButton: FloatingActionButton(
-        child: const Icon(Icons.add),
-        onPressed: () => context.push(AppRoutes.addressForm, extra: null),
+      floatingActionButton: Consumer(
+        builder: (context, ref, child) {
+          final userAsync = ref.watch(userIdProvider);
+          final addressesAsync = userAsync.maybeWhen(
+            data: (userId) => userId != null ? ref.watch(userAddressesProvider(userId)) : null,
+            orElse: () => null,
+          );
+
+          final count = addressesAsync?.maybeWhen(
+            data: (addrs) => addrs.length,
+            orElse: () => 0,
+          ) ?? 0;
+
+          return FloatingActionButton(
+            backgroundColor: count >= 5 ? Colors.grey : null,
+            onPressed: count >= 5
+                ? () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Vous ne pouvez pas ajouter plus de 5 adresses.'),
+                      ),
+                    );
+                  }
+                : () => context.push(AppRoutes.addressForm, extra: null),
+            child: const Icon(Icons.add),
+          );
+        },
       ),
     );
   }

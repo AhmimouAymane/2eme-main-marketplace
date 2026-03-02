@@ -1,3 +1,10 @@
+export enum ProductCondition {
+    NEW = 'NEW',
+    VERY_GOOD = 'VERY_GOOD',
+    GOOD = 'GOOD',
+    SATISFACTORY = 'SATISFACTORY',
+}
+
 export enum ProductStatus {
     PENDING_APPROVAL = 'PENDING_APPROVAL',
     PUBLISHED = 'PUBLISHED',
@@ -41,6 +48,10 @@ export interface Product {
     category: Category;
     seller: User;
     images: ProductImage[];
+    imageUrls?: string[];
+    brand: string;
+    size: string;
+    condition: ProductCondition;
     createdAt: string;
 }
 
@@ -65,4 +76,34 @@ export interface Order {
     buyer: User;
     seller: User;
     product: Product;
+    shippingAddress?: string;
+    pickupAddress?: string;
+    rejectionReason?: string;
+    cancellationReason?: string;
+    returnReason?: string;
+}
+
+export interface DashboardActivity {
+    id: string;
+    user: string;
+    action: string;
+    item: string;
+    time: string;
+    status: 'SUCCESS' | 'PENDING' | 'REJECTED';
+}
+
+export interface DashboardStats {
+    stats: {
+        title: string;
+        value: string;
+        icon: string;
+        color: string;
+        trend: string;
+    }[];
+    activities: DashboardActivity[];
+    salesGrowth: {
+        month: string;
+        value: number;
+    }[];
+    pendingCount: number;
 }

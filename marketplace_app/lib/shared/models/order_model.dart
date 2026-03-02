@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'product_model.dart';
 import 'user_model.dart';
+import 'user_review_model.dart';
 
 /// Statut d'une commande (Synchronisé avec le backend)
 enum OrderStatus {
@@ -53,6 +54,7 @@ class OrderModel extends Equatable {
   final DateTime? returnedAt;
   final DateTime? completedAt;
   final DateTime? expiresAt;
+  final List<UserReviewModel>? userReviews;
 
   const OrderModel({
     required this.id,
@@ -78,6 +80,7 @@ class OrderModel extends Equatable {
     this.returnedAt,
     this.completedAt,
     this.expiresAt,
+    this.userReviews,
   });
 
   // Getters
@@ -137,6 +140,9 @@ class OrderModel extends Equatable {
     expiresAt: json['expiresAt'] != null
         ? DateTime.parse(json['expiresAt'])
         : null,
+    userReviews: (json['userReviews'] as List?)
+        ?.map((x) => UserReviewModel.fromJson(x))
+        .toList(),
   );
 
   static OrderStatus _statusFromString(String status) {
@@ -206,6 +212,7 @@ class OrderModel extends Equatable {
     DateTime? returnedAt,
     DateTime? completedAt,
     DateTime? expiresAt,
+    List<UserReviewModel>? userReviews,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -231,6 +238,7 @@ class OrderModel extends Equatable {
       returnedAt: returnedAt ?? this.returnedAt,
       completedAt: completedAt ?? this.completedAt,
       expiresAt: expiresAt ?? this.expiresAt,
+      userReviews: userReviews ?? this.userReviews,
     );
   }
 
@@ -259,5 +267,6 @@ class OrderModel extends Equatable {
     returnedAt,
     completedAt,
     expiresAt,
+    userReviews,
   ];
 }

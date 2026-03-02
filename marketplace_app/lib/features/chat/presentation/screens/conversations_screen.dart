@@ -8,6 +8,7 @@ import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/conversation_model.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
+import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
 
 class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
@@ -53,38 +54,44 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                     },
                     child: SingleChildScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (_isSearching) _buildSearchInput(),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Messages',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.cloviGreen,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  Text(
-                                    'Voir tout',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      color: AppColors.cloviGreen.withOpacity(0.8),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Messages',
+                                      style: TextStyle(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.cloviGreen,
+                                      ),
                                     ),
-                                  ),
-                                  Icon(Icons.chevron_right, color: AppColors.cloviGreen.withOpacity(0.8)),
-                                ],
-                              ),
-                            ],
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Voir tout',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: AppColors.cloviGreen.withOpacity(0.8),
+                                          ),
+                                        ),
+                                        Icon(Icons.chevron_right, color: AppColors.cloviGreen.withOpacity(0.8)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                _buildConversationsList(filteredConversations),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 16),
-                          _buildConversationsList(filteredConversations),
                         ],
                       ),
                     ),
@@ -101,13 +108,19 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
   }
 
   Widget _buildTopBar() {
+    final unreadCountAsync = ref.watch(unreadNotificationsCountProvider);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            icon: const Icon(Icons.search, size: 32, color: AppColors.cloviGreen),
+            icon: Icon(
+              _isSearching ? Icons.close : Icons.search,
+              size: 28,
+              color: AppColors.cloviGreen,
+            ),
             onPressed: () {
               setState(() {
                 _isSearching = !_isSearching;
@@ -121,13 +134,28 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
           const Text(
             'Conversations',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppColors.cloviGreen,
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: AppColors.cloviGreen, size: 28),
+            icon: Badge(
+              label: unreadCountAsync.maybeWhen(
+                data: (count) => count > 0 ? Text('$count') : null,
+                orElse: () => null,
+              ),
+              isLabelVisible: unreadCountAsync.maybeWhen(
+                data: (count) => count > 0,
+                orElse: () => false,
+              ),
+              backgroundColor: Colors.red,
+              child: const Icon(
+                Icons.notifications_outlined,
+                color: AppColors.cloviGreen,
+                size: 28,
+              ),
+            ),
             onPressed: () => context.push(AppRoutes.notifications),
           ),
         ],
@@ -137,25 +165,21 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
 
   Widget _buildSearchInput() {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.grey.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: TextField(
         controller: _searchController,
-        decoration: const InputDecoration(
-          hintText: 'Rechercher une conversation...',
+        autofocus: true,
+        style: const TextStyle(fontSize: 16),
+        decoration: InputDecoration(
+          hintText: 'Rechercher...',
+          hintStyle: TextStyle(color: Colors.grey.withOpacity(0.7)),
           border: InputBorder.none,
-          icon: Icon(Icons.search, color: AppColors.cloviGreen),
+          prefixIcon: const Icon(Icons.search, color: AppColors.cloviGreen, size: 20),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
         onChanged: (value) {
           setState(() => _searchQuery = value);

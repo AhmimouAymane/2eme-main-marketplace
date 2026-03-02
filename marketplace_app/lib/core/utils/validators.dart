@@ -28,6 +28,18 @@ class Validators {
     if (value.length < AppConstants.minPasswordLength) {
       return 'Le mot de passe doit contenir au moins ${AppConstants.minPasswordLength} caractères';
     }
+
+    if (!RegExp(r'(?=.*[A-Z])').hasMatch(value)) {
+      return 'Doit contenir au moins une majuscule';
+    }
+
+    if (!RegExp(r'(?=.*[a-z])').hasMatch(value)) {
+      return 'Doit contenir au moins une minuscule';
+    }
+
+    if (!RegExp(r'((?=.*\d)|(?=.*\W+))').hasMatch(value)) {
+      return 'Doit contenir au moins un chiffre ou caractère spécial';
+    }
     
     return null;
   }

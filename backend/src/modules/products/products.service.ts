@@ -72,6 +72,10 @@ export class ProductQuery {
     @IsOptional()
     @IsString()
     _order?: string;
+
+    @IsOptional()
+    @IsString()
+    isAdminView?: string;
 }
 
 import { MediaService } from '../media/media.service';

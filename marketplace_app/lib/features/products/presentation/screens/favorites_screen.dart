@@ -15,7 +15,12 @@ class FavoritesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
+          onPressed: () => context.pop(),
+        ),
         title: const Text('Mes Favoris'),
+        centerTitle: true,
       ),
       body: favoritesAsync.when(
         data: (favorites) {

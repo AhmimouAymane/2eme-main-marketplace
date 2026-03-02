@@ -378,6 +378,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         validator: Validators.password,
                         decoration: InputDecoration(
                           labelText: 'Mot de passe',
+                          helperText: '8+ caractères, Majuscule, Minuscule et (Chiffre ou Symbole)',
+                          helperMaxLines: 2,
                           labelStyle: TextStyle(
                             color: AppColors.cloviGreen,
                             fontWeight: FontWeight.w500,

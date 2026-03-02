@@ -19,7 +19,9 @@ const ProductListPage: React.FC = () => {
     const fetchProducts = async () => {
         setLoading(true);
         try {
-            const response: any = await apiClient.get('products').json();
+            const response: any = await apiClient.get('products', {
+                searchParams: { isAdminView: 'true' }
+            }).json();
             const data = Array.isArray(response) ? response : response.data || [];
             const count = response.total !== undefined ? response.total : data.length;
 
@@ -62,14 +64,23 @@ const ProductListPage: React.FC = () => {
         setRejectModalVisible(false);
     };
 
+    const [detailsModalVisible, setDetailsModalVisible] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+    const showDetailsModal = (product: Product) => {
+        setSelectedProduct(product);
+        setDetailsModalVisible(true);
+    };
+
     const columns = [
         {
             title: 'Image',
             dataIndex: 'images',
             key: 'image',
-            render: (images: any[]) => {
-                const mainImage = images?.find(img => img.isMain) || images?.[0];
-                return <Image src={mainImage?.url} width={50} height={50} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} fallback="https://via.placeholder.com/50" />;
+            render: (_: any, record: Product) => {
+                const imageUrls = record.imageUrls || record.images?.map(img => img.url) || [];
+                const mainImage = imageUrls[0];
+                return <Image src={mainImage} width={50} height={50} style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 4 }} fallback="https://via.placeholder.com/50" />;
             }
         },
         {
@@ -133,7 +144,7 @@ const ProductListPage: React.FC = () => {
                             </Button>
                         </>
                     )}
-                    <Button type="link" size="small">Details</Button>
+                    <Button type="link" size="small" onClick={() => showDetailsModal(record)}>Details</Button>
                 </Space>
             )
         }
@@ -171,6 +182,63 @@ const ProductListPage: React.FC = () => {
                         onChange={(e) => setRejectionReason(e.target.value)}
                     />
                 </div>
+            </Modal>
+
+            <Modal
+                title="Product Details"
+                open={detailsModalVisible}
+                onCancel={() => setDetailsModalVisible(false)}
+                footer={[
+                    <Button key="close" onClick={() => setDetailsModalVisible(false)}>
+                        Close
+                    </Button>
+                ]}
+                width={800}
+            >
+                {selectedProduct && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        <div style={{ display: 'flex', overflowX: 'auto', gap: 10, paddingBottom: 10 }}>
+                            {(selectedProduct.imageUrls || (selectedProduct as any).images?.map((img: any) => img.url) || []).map((url: string, index: number) => (
+                                <Image
+                                    key={index}
+                                    src={url}
+                                    width={150}
+                                    height={150}
+                                    style={{ objectFit: 'cover', borderRadius: 8 }}
+                                />
+                            ))}
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                            <div>
+                                <Title level={4}>{selectedProduct.title}</Title>
+                                <p><strong>Price:</strong> {selectedProduct.price} MAD</p>
+                                <p><strong>Brand:</strong> {selectedProduct.brand}</p>
+                                <p><strong>Size:</strong> {selectedProduct.size}</p>
+                                <p><strong>Condition:</strong> {selectedProduct.condition.replace('_', ' ')}</p>
+                                <p><strong>Status:</strong> <Tag color="blue">{selectedProduct.status}</Tag></p>
+                            </div>
+                            <div>
+                                <Title level={4}>Seller Information</Title>
+                                {selectedProduct.seller ? (
+                                    <>
+                                        <p><strong>Name:</strong> {selectedProduct.seller.firstName} {selectedProduct.seller.lastName}</p>
+                                        <p><strong>Email:</strong> {selectedProduct.seller.email}</p>
+                                    </>
+                                ) : (
+                                    <p>Seller information not available</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <Title level={4}>Description</Title>
+                            <div style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f5f5f5', padding: 15, borderRadius: 8 }}>
+                                {selectedProduct.description}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Modal>
         </div>
     );

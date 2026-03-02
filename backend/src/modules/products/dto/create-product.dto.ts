@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, IsEnum, IsArray } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, Min, IsEnum, IsArray, ArrayMinSize, ArrayMaxSize } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { ProductCondition, ProductStatus } from '@prisma/client';
 
@@ -49,6 +49,8 @@ export class CreateProductDto {
     })
     @IsArray()
     @IsString({ each: true })
+    @ArrayMinSize(2)
+    @ArrayMaxSize(5)
     @IsOptional()
     images?: string[];
 
@@ -59,6 +61,8 @@ export class CreateProductDto {
     })
     @IsArray()
     @IsString({ each: true })
+    @ArrayMinSize(2)
+    @ArrayMaxSize(5)
     @IsOptional()
     imageUrls?: string[];
 }

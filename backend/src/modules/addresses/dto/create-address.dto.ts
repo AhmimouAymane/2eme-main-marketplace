@@ -27,6 +27,11 @@ export class CreateAddressDto {
   @IsNotEmpty()
   country: string;
 
+  @ApiProperty({ example: '+212600000000', required: false })
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
   @ApiProperty({ example: false, required: false })
   @IsBoolean()
   @IsOptional()

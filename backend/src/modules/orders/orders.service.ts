@@ -104,6 +104,7 @@ export class OrdersService {
                 seller: {
                     select: { id: true, firstName: true, lastName: true },
                 },
+                userReviews: true,
             },
             orderBy: { createdAt: 'desc' },
         });
@@ -148,6 +149,7 @@ export class OrdersService {
                 seller: {
                     select: { id: true, firstName: true, lastName: true, email: true, addresses: true },
                 },
+                userReviews: true,
             },
         });
 

@@ -43,7 +43,7 @@ class AppConstants {
   ];
 
   // Validation
-  static const int minPasswordLength = 6;
+  static const int minPasswordLength = 8;
   static const int maxProductTitleLength = 100;
   static const int maxProductDescriptionLength = 1000;
 

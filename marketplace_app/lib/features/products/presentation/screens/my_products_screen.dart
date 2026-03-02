@@ -17,10 +17,15 @@ class MyProductsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
+          onPressed: () => context.pop(),
+        ),
         title: const Text('Mes annonces'),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add, color: AppColors.cloviGreen),
             onPressed: () => context.push(AppRoutes.createProduct),
           ),
         ],

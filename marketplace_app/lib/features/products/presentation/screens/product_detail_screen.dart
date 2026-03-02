@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
@@ -822,9 +823,14 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
   @override
   Widget build(BuildContext context) {
     final product = widget.product;
+    final userAsync = ref.watch(userIdProvider);
 
     return AlertDialog(
-      title: const Text('Paiement à la livraison'),
+      title: const Text(
+        'Vérifier votre commande',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
+      contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
@@ -832,155 +838,203 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                product.title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
+              // Product Card
+              _buildSectionCard(
+                context,
+                'Produit',
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[200],
+                            borderRadius: BorderRadius.circular(8),
+                            image: product.mainImageUrl != null
+                                ? DecorationImage(
+                                    image: NetworkImage(product.fullMainImageUrl),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: product.mainImageUrl == null
+                              ? Icon(Icons.image_outlined, color: Colors.grey[400])
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                Formatters.price(product.price),
+                                style: TextStyle(
+                                  color: AppColors.cloviGreen,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                Formatters.price(product.price),
-                style: TextStyle(
-                  color: AppColors.cloviGreen,
-                  fontWeight: FontWeight.bold,
-                ),
+
+              const SizedBox(height: 16),
+
+              // Address Section
+              userAsync.when(
+                data: (userId) {
+                  if (userId == null) return const Text('Non connecté');
+                  return ref.watch(userAddressesProvider(userId)).when(
+                        data: (addrs) {
+                          if (addrs.isEmpty) {
+                            return _buildSectionCard(
+                              context,
+                              'Adresse de livraison',
+                              Column(
+                                children: [
+                                  const Text(
+                                    'Aucune adresse enregistrée.',
+                                    style: TextStyle(fontSize: 13),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: () => context.push(AppRoutes.addresses),
+                                    icon: const Icon(Icons.add, size: 18),
+                                    label: const Text('Ajouter une adresse'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          // Auto-select once
+                          if (_selectedAddress == null) {
+                            _selectedAddress = addrs.firstWhere(
+                              (a) => a.isDefault,
+                              orElse: () => addrs.first,
+                            );
+                            if (_selectedAddress?.phone != null && _phoneController.text.isEmpty) {
+                              _phoneController.text = _selectedAddress!.phone!;
+                            }
+                          }
+
+                          return _buildSectionCard(
+                            context,
+                            'Adresse de livraison',
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (addrs.length > 1)
+                                  DropdownButtonFormField<AddressModel>(
+                                    value: _selectedAddress,
+                                    decoration: InputDecoration(
+                                      labelText: 'Choisir une adresse',
+                                      prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                    items: addrs
+                                        .map((a) => DropdownMenuItem(
+                                              value: a,
+                                              child: Text(a.label, style: const TextStyle(fontSize: 14)),
+                                            ))
+                                        .toList(),
+                                    onChanged: (a) {
+                                      setState(() {
+                                        _selectedAddress = a;
+                                        if (a?.phone != null) {
+                                          _phoneController.text = a!.phone!;
+                                        }
+                                      });
+                                    },
+                                    validator: (a) => a == null ? 'Requis' : null,
+                                  )
+                                else
+                                  Text(
+                                    '${_selectedAddress!.label}\n${_selectedAddress!.street}, ${_selectedAddress!.city}',
+                                    style: const TextStyle(fontSize: 14, height: 1.4),
+                                  ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: _phoneController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Téléphone pour le livreur',
+                                    prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    contentPadding: const EdgeInsets.all(12),
+                                  ),
+                                  keyboardType: TextInputType.phone,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(10),
+                                  ],
+                                  validator: (v) => (v == null || v.trim().isEmpty)
+                                      ? 'Requis pour la livraison'
+                                      : (v.length < 10 ? 'Numéro invalide' : null),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (e, _) => Text('Erreur: $e'),
+                      );
+                },
+                loading: () => const SizedBox(height: 100),
+                error: (e, _) => Text('Erreur: $e'),
               ),
-              const SizedBox(height: 8),
+              
+              const SizedBox(height: 16),
+              
+              // Payment info
               Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 8,
-                  horizontal: 12,
-                ),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: Colors.amber.shade50,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.amber.shade100),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.local_shipping_outlined,
-                      color: Colors.amber.shade800,
-                      size: 20,
-                    ),
+                    Icon(Icons.payments_outlined, color: Colors.amber.shade800, size: 20),
                     const SizedBox(width: 8),
-                    Expanded(
+                    const Expanded(
                       child: Text(
-                        'Vous réglerez en espèces à la livraison.',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.amber.shade900,
-                        ),
+                        'Paiement à la livraison.',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              // address selector
-              Builder(
-                builder: (ctx) {
-                  final userAsync = ref.watch(userIdProvider);
-                  return userAsync.when(
-                    data: (userId) {
-                      if (userId == null) {
-                        return const Text('Utilisateur non connecté');
-                      }
-                      return ref
-                          .watch(userAddressesProvider(userId))
-                          .when(
-                            data: (addrs) {
-                              if (addrs.isEmpty) {
-                                return Column(
-                                  children: [
-                                    const Text(
-                                      'Aucune adresse trouvée. Ajoutez-en une dans votre profil.',
-                                    ),
-                                    TextButton.icon(
-                                      onPressed: () =>
-                                          context.push(AppRoutes.addresses),
-                                      icon: const Icon(Icons.add),
-                                      label: const Text('Gérer mes adresses'),
-                                    ),
-                                  ],
-                                );
-                              }
-                              // set default selection on first build
-                              if (_selectedAddress == null) {
-                                _selectedAddress = addrs.firstWhere(
-                                  (a) => a.isDefault,
-                                  orElse: () => addrs.first,
-                                );
-                              }
-                              return Row(
-                                children: [
-                                  Expanded(
-                                    child: DropdownButtonFormField<AddressModel>(
-                                      initialValue: _selectedAddress,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Adresse de livraison *',
-                                        border: OutlineInputBorder(),
-                                      ),
-                                      items: addrs
-                                          .map(
-                                            (a) => DropdownMenuItem(
-                                              value: a,
-                                              child: Text(a.label),
-                                            ),
-                                          )
-                                          .toList(),
-                                      onChanged: (a) =>
-                                          setState(() => _selectedAddress = a),
-                                      validator: (v) => v == null
-                                          ? 'Sélectionnez une adresse'
-                                          : null,
-                                    ),
-                                  ),
-                                  IconButton(
-                                    onPressed: () =>
-                                        context.push(AppRoutes.addresses),
-                                    icon: const Icon(Icons.add_circle_outline,
-                                        color: AppColors.cloviGreen),
-                                    tooltip: 'Ajouter une adresse',
-                                  ),
-                                ],
-                              );
-                            },
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            error: (e, _) => Text('Erreur: $e'),
-                          );
-                    },
-                    loading: () =>
-                        const Center(child: CircularProgressIndicator()),
-                    error: (e, _) => Text('Erreur: $e'),
-                  );
-                },
-              ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Téléphone *',
-                  hintText: 'Pour le livreur',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.phone,
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Le téléphone est obligatoire';
-                  }
-                  return null;
-                },
-              ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: widget.onCancel, child: const Text('Annuler')),
+        TextButton(
+          onPressed: widget.onCancel,
+          child: Text('Annuler', style: TextStyle(color: Colors.grey.shade600)),
+        ),
         ElevatedButton(
           onPressed: _selectedAddress == null
               ? null
@@ -996,9 +1050,47 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
                     widget.onConfirm(payload);
                   }
                 },
-          child: const Text('Confirmer la commande'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.cloviGreen,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: const Text('Confirmer'),
         ),
       ],
+    );
+  }
+
+  Widget _buildSectionCard(BuildContext context, String title, Widget content) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 8),
+          content,
+        ],
+      ),
     );
   }
 }

@@ -64,7 +64,7 @@ void main() async {
 
   // Initialisation des réglages pour flutter_local_notifications
   const initializationSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/launcher_icon');
+      AndroidInitializationSettings('ic_notification');
   const initializationSettingsDarwin = DarwinInitializationSettings();
   const initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
@@ -104,6 +104,48 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
     _setupNotifications();
   }
 
+  void _handleNotificationClick(RemoteMessage message) {
+    print("Notification clicked: ${message.data}");
+    final data = message.data;
+    final screen = data['screen'];
+    
+    if (screen == null) return;
+
+    final router = ref.read(routerProvider);
+    
+    switch (screen) {
+      case 'chat':
+        final conversationId = data['conversationId'];
+        if (conversationId != null) {
+          // Si on vient d'une notification, on s'assure d'avoir la liste des convos en dessous
+          router.go('/conversations');
+          router.push('/chat/$conversationId');
+        }
+        break;
+      case 'product_detail':
+        final productId = data['productId'];
+        if (productId != null) {
+          router.push('/product/$productId');
+        }
+        break;
+      case 'order_detail':
+        final orderId = data['orderId'];
+        if (orderId != null) {
+          // IMPORTANT: On utilise .go pour réinitialiser la pile si besoin, 
+          // ou on s'assure que le retour mène aux commandes.
+          router.go('/orders');
+          router.push('/order/$orderId');
+        }
+        break;
+      case 'my_products':
+        router.push('/my-products');
+        break;
+      case 'notifications':
+        router.push('/notifications');
+        break;
+    }
+  }
+
   void _setupNotifications() async {
     // Désactiver les notifications système en premier plan pour iOS
     // afin d'utiliser nos SnackBars personnalisés à la place (évite les doublons)
@@ -115,10 +157,18 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
     // 1. Gérer les messages en premier plan (Foreground)
     _fcmSubscription = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final data = message.data;
+      
+      // Mise à jour temps réel pour les commandes
+      if (data['screen'] == 'order_detail' && data['orderId'] != null) {
+        ref.invalidate(orderDetailProvider(data['orderId']));
+        ref.invalidate(buyerOrdersProvider);
+        ref.invalidate(sellerOrdersProvider);
+      }
+
       if (message.notification != null) {
         // Ne pas afficher de notification si c'est un message chat
         // et qu'on est déjà dans cette conversation
-        final data = message.data;
         if (data['screen'] == 'chat' && data['conversationId'] != null) {
           final currentChatId = ref.read(currentChatConversationIdProvider);
           if (currentChatId == data['conversationId']) {
@@ -145,43 +195,6 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       Future.delayed(const Duration(milliseconds: 500), () {
         _handleNotificationClick(initialMessage);
       });
-    }
-  }
-
-  void _handleNotificationClick(RemoteMessage message) {
-    print("Notification clicked: ${message.data}");
-    final data = message.data;
-    final screen = data['screen'];
-    
-    if (screen == null) return;
-
-    final router = ref.read(routerProvider);
-    
-    switch (screen) {
-      case 'chat':
-        final conversationId = data['conversationId'];
-        if (conversationId != null) {
-          router.push('/chat/$conversationId');
-        }
-        break;
-      case 'product_detail':
-        final productId = data['productId'];
-        if (productId != null) {
-          router.push('/product/$productId');
-        }
-        break;
-      case 'order_detail':
-        final orderId = data['orderId'];
-        if (orderId != null) {
-          router.push('/order/$orderId');
-        }
-        break;
-      case 'my_products':
-        router.push('/my-products');
-        break;
-      case 'notifications':
-        router.push('/notifications');
-        break;
     }
   }
 

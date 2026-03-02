@@ -41,8 +41,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
+        String message = e.toString().replaceAll('Exception: ', '');
+        // Check if it's a 404 from Dio
+        if (message.contains('404')) {
+          message = 'Aucun compte n\'est associé à cet email.';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(message), backgroundColor: Colors.red),
         );
       }
     } finally {

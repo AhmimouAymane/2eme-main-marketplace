@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -8,6 +9,7 @@ import '../../../../shared/models/order_model.dart';
 import '../../../../shared/models/address_model.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
+import '../../../profile/data/user_reviews_service.dart';
 
 
 /// Écran de détail d'une commande
@@ -617,101 +619,159 @@ class OrderDetailScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Confirmer la commande'),
+        title: const Text(
+          'Confirmer la commande',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
         content: Form(
           key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Veuillez indiquer l\'adresse où le livreur pourra récupérer le colis :',
-              ),
-              const SizedBox(height: 16),
-              Consumer(
-                builder: (context, ref, child) {
-                  return ref
-                      .watch(userAddressesProvider(order.sellerId))
-                      .when(
-                        data: (addresses) {
-                          if (addresses.isEmpty) {
-                            return Column(
-                              children: [
-                                const Text(
-                                  'Aucune adresse enregistrée. Veuillez en ajouter une.',
-                                  style: TextStyle(color: AppColors.error),
-                                ),
-                                TextButton.icon(
-                                  onPressed: () => context.push(AppRoutes.addresses),
-                                  icon: const Icon(Icons.add),
-                                  label: const Text('Gérer mes adresses'),
-                                ),
-                              ],
-                            );
-                          }
-
-                          selectedAddress ??= addresses.firstWhere(
-                            (a) => a.isDefault,
-                            orElse: () => addresses.first,
-                          );
-
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<AddressModel>(
-                                  initialValue: selectedAddress,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Adresse de collecte *',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  items: addresses
-                                      .map(
-                                        (a) => DropdownMenuItem(
-                                          value: a,
-                                          child: Text(a.label),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (val) => selectedAddress = val,
-                                  validator: (val) => val == null
-                                      ? 'L\'adresse est obligatoire'
-                                      : null,
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: () => context.push(AppRoutes.addresses),
-                                icon: const Icon(Icons.add_circle_outline, color: AppColors.cloviGreen),
-                                tooltip: 'Ajouter une adresse',
-                              ),
-                            ],
-                          );
-                        },
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                        error: (e, _) => Text('Erreur: $e'),
-                      );
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: phoneController,
-                decoration: const InputDecoration(
-                  labelText: 'Téléphone de contact *',
-                  hintText: 'Pour coordonner la remise',
-                  border: OutlineInputBorder(),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Product Summary (Card)
+                _buildDialogSection(
+                  context,
+                  'Produit à confirmer',
+                  Row(
+                    children: [
+                      if (order.product?.fullMainImageUrl != null)
+                        Container(
+                          width: 50,
+                          height: 50,
+                          margin: const EdgeInsets.only(right: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            image: DecorationImage(
+                              image: NetworkImage(order.product!.fullMainImageUrl),
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              order.product?.title ?? '',
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              Formatters.price(order.totalPrice),
+                              style: TextStyle(color: AppColors.cloviGreen, fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                keyboardType: TextInputType.phone,
-                validator: (val) => val == null || val.trim().isEmpty
-                    ? 'Le téléphone est obligatoire'
-                    : null,
-              ),
-            ],
+                const SizedBox(height: 16),
+
+                // Address Section
+                _buildDialogSection(
+                  context,
+                  'Lieu de ramassage',
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Indiquez où le livreur récupérera le colis :',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 12),
+                      Consumer(
+                        builder: (context, ref, child) {
+                          return ref.watch(userAddressesProvider(order.sellerId)).when(
+                                data: (addresses) {
+                                  if (addresses.isEmpty) {
+                                    return Column(
+                                      children: [
+                                        const Text(
+                                          'Aucune adresse enregistrée.',
+                                          style: TextStyle(color: AppColors.error, fontSize: 12),
+                                        ),
+                                        TextButton.icon(
+                                          onPressed: () => context.push(AppRoutes.addresses),
+                                          icon: const Icon(Icons.add, size: 18),
+                                          label: const Text('Gérer mes adresses'),
+                                        ),
+                                      ],
+                                    );
+                                  }
+
+                                  selectedAddress ??= addresses.firstWhere(
+                                    (a) => a.isDefault,
+                                    orElse: () => addresses.first,
+                                  );
+                                  
+                                  // Pre-fill phone if available and current length is 0
+                                  if (selectedAddress?.phone != null && phoneController.text.isEmpty) {
+                                    phoneController.text = selectedAddress!.phone!;
+                                  }
+
+                                  return DropdownButtonFormField<AddressModel>(
+                                    value: selectedAddress,
+                                    decoration: InputDecoration(
+                                      labelText: 'Adresse de collecte',
+                                      prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    ),
+                                    items: addresses
+                                        .map((a) => DropdownMenuItem(
+                                              value: a,
+                                              child: Text(a.label, style: const TextStyle(fontSize: 14)),
+                                            ))
+                                        .toList(),
+                                    onChanged: (val) {
+                                      selectedAddress = val;
+                                      if (val?.phone != null) {
+                                        phoneController.text = val!.phone!;
+                                      }
+                                    },
+                                    validator: (val) => val == null ? 'Requis' : null,
+                                  );
+                                },
+                                loading: () => const Center(child: CircularProgressIndicator()),
+                                error: (e, _) => Text('Erreur: $e'),
+                              );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: phoneController,
+                        decoration: InputDecoration(
+                          labelText: 'Téléphone de contact',
+                          prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        ),
+                        keyboardType: TextInputType.phone,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(10),
+                        ],
+                        validator: (val) => val == null || val.trim().isEmpty
+                            ? 'Requis pour le livreur'
+                            : (val.length < 10 ? 'Numéro invalide' : null),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Annuler'),
+            child: Text('Annuler', style: TextStyle(color: Colors.grey.shade600)),
           ),
           Consumer(
             builder: (consumerContext, consumerRef, child) {
@@ -731,14 +791,11 @@ class OrderDetailScreen extends ConsumerWidget {
 
                           Navigator.pop(dialogContext);
                           try {
-                            print('[CONFIRM] Sending confirm: orderId=${order.id}');
                             await ordersService.updateOrderStatus(
-                                  order.id,
-                                  OrderStatus.confirmed,
-                                  pickupAddress: addressStr,
-                                );
-                            print('[CONFIRM] Success!');
-                            // Use parent ref (not Consumer's ref which is disposed after pop)
+                              order.id,
+                              OrderStatus.confirmed,
+                              pickupAddress: addressStr,
+                            );
                             ref.invalidate(orderDetailProvider(order.id));
                             ref.invalidate(productsProvider);
                             ref.invalidate(homeProductsProvider);
@@ -746,7 +803,6 @@ class OrderDetailScreen extends ConsumerWidget {
                               const SnackBar(content: Text('Commande confirmée !')),
                             );
                           } catch (e) {
-                            print('[CONFIRM] Error: $e');
                             parentMessenger.showSnackBar(
                               SnackBar(content: Text('Erreur: $e')),
                             );
@@ -754,10 +810,48 @@ class OrderDetailScreen extends ConsumerWidget {
                         },
                   orElse: () => null,
                 ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.cloviGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
                 child: const Text('Confirmer'),
               );
             },
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDialogSection(BuildContext context, String title, Widget content) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 8),
+          content,
         ],
       ),
     );
@@ -1167,6 +1261,10 @@ class OrderDetailScreen extends ConsumerWidget {
       );
     }
 
+    if (order.status == OrderStatus.completed) {
+      return _buildCompletedAction(context, ref, order, isBuyer: false);
+    }
+
     return const SizedBox.shrink();
   }
 
@@ -1196,7 +1294,7 @@ class OrderDetailScreen extends ConsumerWidget {
     }
 
     if (order.status == OrderStatus.completed) {
-      return _buildCompletedAction(context, ref, order);
+      return _buildCompletedAction(context, ref, order, isBuyer: true);
     }
 
     return const SizedBox.shrink();
@@ -1225,35 +1323,79 @@ class OrderDetailScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildCompletedAction(BuildContext context, WidgetRef ref, OrderModel order) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: ElevatedButton.icon(
-        onPressed: () => _showReviewDialog(context, ref, order),
-        icon: const Icon(Icons.star_outline),
-        label: const Text('Laisser un avis'),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          backgroundColor: AppColors.cloviGreen,
-        ),
-      ),
+  Widget _buildCompletedAction(BuildContext context, WidgetRef ref, OrderModel order, {required bool isBuyer}) {
+    // Check if user already rated
+    final myReviewAsync = ref.watch(FutureProvider.autoDispose((ref) {
+      return ref.watch(userReviewsServiceProvider).getMyReviewForOrder(order.id);
+    }));
+
+    return myReviewAsync.when(
+      data: (review) {
+        if (review != null) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.cloviGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                   const Icon(Icons.check_circle, color: AppColors.cloviGreen),
+                   const SizedBox(width: 12),
+                   Text(
+                     'Avis laissé (${review.rating}/5)',
+                     style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.cloviGreen),
+                   ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: ElevatedButton.icon(
+            onPressed: () => _showReviewDialog(context, ref, order, isBuyer: isBuyer),
+            icon: const Icon(Icons.star_outline),
+            label: Text(isBuyer ? 'Évaluer le vendeur' : 'Évaluer l\'acheteur'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              backgroundColor: AppColors.cloviGreen,
+            ),
+          ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => const SizedBox.shrink(),
     );
   }
 
-  void _showReviewDialog(BuildContext context, WidgetRef ref, OrderModel order) {
+  void _showReviewDialog(BuildContext context, WidgetRef ref, OrderModel order, {required bool isBuyer}) {
     int rating = 5;
     final commentController = TextEditingController();
+    final userReviewsService = ref.read(userReviewsServiceProvider);
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Votre avis'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            isBuyer ? 'Évaluer le vendeur' : 'Évaluer l\'acheteur',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Avez-vous aimé votre achat ?'),
-              const SizedBox(height: 16),
+              Text(
+                isBuyer 
+                  ? 'Comment s\'est déroulée votre expérience avec ${order.seller?.firstName ?? 'le vendeur'} ?'
+                  : 'Comment s\'est déroulée votre expérience avec ${order.buyer?.firstName ?? 'l\'acheteur'} ?',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(5, (index) {
@@ -1261,19 +1403,23 @@ class OrderDetailScreen extends ConsumerWidget {
                     icon: Icon(
                       index < rating ? Icons.star : Icons.star_border,
                       color: Colors.amber,
-                      size: 32,
+                      size: 40,
                     ),
                     onPressed: () => setState(() => rating = index + 1),
                   );
                 }),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               TextField(
                 controller: commentController,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'Laissez un commentaire (optionnel)...',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  hintText: 'Laissez un commentaire sur la transaction...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[50],
                 ),
               ),
             ],
@@ -1281,21 +1427,31 @@ class OrderDetailScreen extends ConsumerWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler'),
+              child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: () async {
+                final comment = commentController.text.trim();
                 Navigator.pop(context);
+                
                 try {
-                  await ref.read(productsServiceProvider).addReview(
-                        order.productId,
-                        rating,
-                        commentController.text.trim(),
-                      );
+                  await userReviewsService.createReview(
+                    orderId: order.id,
+                    rating: rating,
+                    comment: comment.isEmpty ? null : comment,
+                  );
+                  
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Merci pour votre avis !')),
+                      const SnackBar(
+                        content: Text('Merci pour votre avis !'),
+                        backgroundColor: AppColors.cloviGreen,
+                      ),
                     );
+                    // Refresh view
+                    ref.invalidate(orderDetailProvider(order.id));
+                    ref.invalidate(sellerProfileProvider(order.sellerId));
+                    ref.invalidate(topSellersProvider);
                   }
                 } catch (e) {
                   if (context.mounted) {
@@ -1305,7 +1461,10 @@ class OrderDetailScreen extends ConsumerWidget {
                   }
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.cloviGreen),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.cloviGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               child: const Text('Envoyer'),
             ),
           ],

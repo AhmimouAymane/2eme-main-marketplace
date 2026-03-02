@@ -125,9 +125,9 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       return;
     }
 
-    if (_selectedImages.isEmpty && _existingImageUrls.isEmpty) {
+    if (_selectedImages.length + _existingImageUrls.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Veuillez ajouter au moins une photo')),
+        const SnackBar(content: Text('Veuillez ajouter au moins 2 photos')),
       );
       return;
     }

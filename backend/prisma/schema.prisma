@@ -112,6 +112,7 @@ model Order {
   buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id])
   product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   seller          User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  userReviews     UserReview[]
 
   @@map("orders")
 }
@@ -154,6 +155,7 @@ model Address {
   city      String
   postal    String
   country   String
+  phone     String?
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -195,10 +197,12 @@ model UserReview {
   comment      String?
   reviewerId   String
   targetUserId String
+  orderId      String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   reviewer     User     @relation("Reviewer", fields: [reviewerId], references: [id])
   targetUser   User     @relation("TargetUser", fields: [targetUserId], references: [id])
+  order        Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([reviewerId, targetUserId])
   @@map("user_reviews")

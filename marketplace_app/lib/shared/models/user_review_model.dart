@@ -8,6 +8,7 @@ class UserReviewModel extends Equatable {
   final String reviewerId;
   final UserModel? reviewer;
   final String targetUserId;
+  final String orderId;
   final DateTime createdAt;
 
   const UserReviewModel({
@@ -17,6 +18,7 @@ class UserReviewModel extends Equatable {
     required this.reviewerId,
     this.reviewer,
     required this.targetUserId,
+    required this.orderId,
     required this.createdAt,
   });
 
@@ -27,15 +29,20 @@ class UserReviewModel extends Equatable {
         reviewerId: json['reviewerId'] ?? '',
         reviewer: json['reviewer'] != null ? UserModel.fromJson(json['reviewer']) : null,
         targetUserId: json['targetUserId'] ?? '',
+        orderId: json['orderId'] ?? '',
         createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
       );
 
   Map<String, dynamic> toJson() => {
+        'id': id,
         'rating': rating,
         'comment': comment,
+        'reviewerId': reviewerId,
         'targetUserId': targetUserId,
+        'orderId': orderId,
+        'createdAt': createdAt.toIso8601String(),
       };
 
   @override
-  List<Object?> get props => [id, rating, comment, reviewerId, reviewer, targetUserId, createdAt];
+  List<Object?> get props => [id, rating, comment, reviewerId, reviewer, targetUserId, orderId, createdAt];
 }

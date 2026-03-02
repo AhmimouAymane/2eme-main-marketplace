@@ -15,6 +15,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { MailModule } from './modules/mail/mail.module';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { UserReviewsModule } from './modules/user-reviews/user-reviews.module';
 import { join } from 'path';
 import { ScheduleModule } from '@nestjs/schedule';
 
@@ -36,6 +38,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     ConversationsModule,
     NotificationsModule,
     MailModule,
+    DashboardModule,
+    UserReviewsModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',

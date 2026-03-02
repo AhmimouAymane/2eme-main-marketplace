@@ -8,6 +8,7 @@ class AddressModel extends Equatable {
   final String city;
   final String postal;
   final String country;
+  final String? phone;
   final bool isDefault;
 
   const AddressModel({
@@ -17,6 +18,7 @@ class AddressModel extends Equatable {
     required this.city,
     required this.postal,
     required this.country,
+    this.phone,
     required this.isDefault,
   });
 
@@ -27,6 +29,7 @@ class AddressModel extends Equatable {
     city: j['city'] as String,
     postal: j['postal'] as String,
     country: j['country'] as String,
+    phone: j['phone'] as String?,
     isDefault: j['isDefault'] as bool? ?? false,
   );
 
@@ -36,6 +39,7 @@ class AddressModel extends Equatable {
     'city': city,
     'postal': postal,
     'country': country,
+    'phone': phone,
     'isDefault': isDefault,
   };
 
@@ -47,6 +51,7 @@ class AddressModel extends Equatable {
     city,
     postal,
     country,
+    phone,
     isDefault,
   ];
 }

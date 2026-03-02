@@ -6,7 +6,7 @@ import { Address } from '@prisma/client';
 
 @Injectable()
 export class AddressesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   async findAll(userId: string): Promise<Address[]> {
     return this.prisma.address.findMany({
@@ -26,14 +26,29 @@ export class AddressesService {
   }
 
   async create(userId: string, dto: CreateAddressDto): Promise<Address> {
-    // if this is first address or dto indicates default, update others
     const count = await this.prisma.address.count({ where: { userId } });
-    const isDefault = count == 0;
+    if (count >= 5) {
+      throw new Error('Vous ne pouvez pas avoir plus de 5 adresses.');
+    }
+
+    const isDefault = count == 0 || dto.isDefault === true;
+
+    if (isDefault) {
+      await this.prisma.address.updateMany({
+        where: { userId },
+        data: { isDefault: false },
+      });
+    }
 
     const addr = await this.prisma.address.create({
       data: {
         userId,
-        ...dto,
+        label: dto.label,
+        street: dto.street,
+        city: dto.city,
+        postal: dto.postal,
+        country: dto.country,
+        phone: dto.phone,
         isDefault,
       },
     });
@@ -60,6 +75,7 @@ export class AddressesService {
         city: dto.city,
         postal: dto.postal,
         country: dto.country,
+        phone: dto.phone,
         isDefault: dto.isDefault,
       },
     });

@@ -10,24 +10,44 @@ import {
     AlertCircle,
     ArrowUpRight
 } from 'lucide-react';
+import { apiClient } from '../api/api-client';
+import { DashboardStats } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 
-const DashboardPage: React.FC = () => {
-    // Static Mock Data
-    const stats = [
-        { title: 'Total Revenue', value: '128,430 MAD', icon: <DollarSign size={20} />, color: '#6366f1', trend: '+12.5%' },
-        { title: 'Active Listings', value: '1,240', icon: <ShoppingBag size={20} />, color: '#10b981', trend: '+5.2%' },
-        { title: 'Total Users', value: '8,520', icon: <Users size={20} />, color: '#f59e0b', trend: '+18.4%' },
-        { title: 'Pending Moderation', value: '14', icon: <AlertCircle size={20} />, color: '#ef4444', trend: '-2' },
-    ];
+const IconMap: Record<string, React.ReactNode> = {
+    'DollarSign': <DollarSign size={20} />,
+    'ShoppingBag': <ShoppingBag size={20} />,
+    'Users': <Users size={20} />,
+    'AlertCircle': <AlertCircle size={20} />,
+};
 
-    const activities = [
-        { id: 1, user: 'Ahmed L.', action: 'created a new listing', item: 'Nike Air Jordan 1', time: '5 mins ago', status: 'PENDING' },
-        { id: 2, user: 'Sara M.', action: 'completed a purchase', item: 'Vintage Zara Coat', time: '12 mins ago', status: 'SUCCESS' },
-        { id: 3, user: 'Admin', action: 'rejected listing', item: 'Used Battery', time: '45 mins ago', status: 'REJECTED' },
-        { id: 4, user: 'Yassine K.', action: 'registered', item: '', time: '1 hour ago', status: 'SUCCESS' },
-    ];
+const DashboardPage: React.FC = () => {
+    const [data, setData] = React.useState<DashboardStats | null>(null);
+    const [loading, setLoading] = React.useState(true);
+    const navigate = useNavigate();
+
+    React.useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const response = await apiClient.get('dashboard/stats').json<DashboardStats>();
+                setData(response);
+            } catch (error) {
+                console.error('Failed to fetch dashboard stats:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchStats();
+    }, []);
+
+    if (loading) {
+        return <div style={{ padding: 40, textAlign: 'center' }}><Card loading bordered={false} className="glass-card" /></div>;
+    }
+
+    const { stats = [], activities = [], salesGrowth = [], pendingCount = 0 } = data || {};
 
     return (
         <div className="animate-fade-in">
@@ -53,7 +73,7 @@ const DashboardPage: React.FC = () => {
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}>
-                                    {stat.icon}
+                                    {IconMap[stat.icon] || <ShoppingBag size={20} />}
                                 </div>
                                 <Tag color={stat.trend.startsWith('+') ? 'success' : 'error'} bordered={false} style={{ borderRadius: 20 }}>
                                     {stat.trend}
@@ -77,19 +97,19 @@ const DashboardPage: React.FC = () => {
                         <div style={{ height: 300, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '0 10px' }}>
                             {/* Simple CSS/SVG Mock Chart */}
                             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '100%', gap: 12 }}>
-                                {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 100, 85].map((val, i) => (
+                                {salesGrowth.map((val, i) => (
                                     <div key={i} style={{
                                         flex: 1,
-                                        height: `${val}%`,
-                                        background: i === 10 ? 'var(--primary-color)' : 'rgba(99, 102, 241, 0.1)',
+                                        height: `${Math.max((val.value / (Math.max(...salesGrowth.map(sg => sg.value)) || 1)) * 100, 5)}%`,
+                                        background: i === salesGrowth.length - 1 ? 'var(--primary-color)' : 'rgba(99, 102, 241, 0.1)',
                                         borderRadius: '4px 4px 0 0',
                                         transition: 'height 1s ease-in-out'
                                     }} />
                                 ))}
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}>
-                                {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map(m => (
-                                    <Text key={m} type="secondary" style={{ fontSize: 11 }}>{m}</Text>
+                                {salesGrowth.map(sg => (
+                                    <Text key={sg.month} type="secondary" style={{ fontSize: 11 }}>{sg.month}</Text>
                                 ))}
                             </div>
                         </div>
@@ -112,7 +132,7 @@ const DashboardPage: React.FC = () => {
                                                 <Text type="secondary" style={{ fontSize: 12 }}>{item.action} <Text strong>{item.item}</Text></Text>
                                                 <Space style={{ marginTop: 4 }}>
                                                     <Clock size={12} style={{ color: '#94a3b8' }} />
-                                                    <Text style={{ fontSize: 11, color: '#94a3b8' }}>{item.time}</Text>
+                                                    <Text style={{ fontSize: 11, color: '#94a3b8' }}>{new Date(item.time).toLocaleDateString()} {new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                                                 </Space>
                                             </Space>
                                         }
@@ -132,10 +152,10 @@ const DashboardPage: React.FC = () => {
                     <Card className="glass-card" style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #10b981 100%)', border: 'none' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#fff' }}>
                             <div>
-                                <Title level={4} style={{ color: '#fff', margin: 0 }}>Ready to moderate?</Title>
-                                <Text style={{ color: 'rgba(255,255,255,0.8)' }}>There are 14 products waiting for your approval.</Text>
+                                <Title level={4} style={{ color: '#fff', margin: 0 }}>Prêt à modérer ?</Title>
+                                <Text style={{ color: 'rgba(255,255,255,0.8)' }}>Il y a {pendingCount} produits en attente de votre approbation.</Text>
                             </div>
-                            <Button ghost size="large" style={{ borderRadius: 8, fontWeight: 600 }}>Go to Moderation</Button>
+                            <Button ghost size="large" style={{ borderRadius: 8, fontWeight: 600 }} onClick={() => navigate('/products')}>Aller à la Modération</Button>
                         </div>
                     </Card>
                 </Col>
