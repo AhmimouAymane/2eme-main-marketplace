@@ -5,6 +5,7 @@ import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/utils/formatters.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/order_model.dart';
+import 'package:marketplace_app/core/routes/app_routes.dart';
 
 /// Écran de liste des commandes
 class OrdersScreen extends ConsumerStatefulWidget {
@@ -36,7 +37,7 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
-          onPressed: () => context.pop(),
+          onPressed: () => context.canPop() ? context.pop() : context.go(AppRoutes.home),
         ),
         title: const Text('Mes commandes'),
         centerTitle: true,

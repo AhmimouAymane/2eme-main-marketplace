@@ -7,23 +7,23 @@ class ChatService {
   ChatService(this._dio);
 
   Future<List<ConversationModel>> getConversations() async {
-    final response = await _dio.get('/conversations');
+    final response = await _dio.get('conversations');
     final List<dynamic> data = response.data;
     return data.map((json) => ConversationModel.fromJson(json)).toList();
   }
 
   Future<ConversationModel> getConversation(String id) async {
-    final response = await _dio.get('/conversations/$id');
+    final response = await _dio.get('conversations/$id');
     return ConversationModel.fromJson(response.data);
   }
 
   Future<ConversationModel> createOrGetOrderConversation(String orderId) async {
-    final response = await _dio.post('/conversations/order/$orderId');
+    final response = await _dio.post('conversations/order/$orderId');
     return ConversationModel.fromJson(response.data);
   }
 
   Future<List<MessageModel>> getMessages(String conversationId) async {
-    final response = await _dio.get('/conversations/$conversationId/messages');
+    final response = await _dio.get('conversations/$conversationId/messages');
     final List<dynamic> data = response.data;
     return data.map((json) => MessageModel.fromJson(json)).toList();
   }
@@ -33,14 +33,18 @@ class ChatService {
     String content,
   ) async {
     final response = await _dio.post(
-      '/conversations/$conversationId/messages',
+      'conversations/$conversationId/messages',
       data: {'content': content},
     );
     return MessageModel.fromJson(response.data);
   }
 
   Future<void> markAsRead(String conversationId) async {
-    await _dio.post('/conversations/$conversationId/read');
+    await _dio.post('conversations/$conversationId/read');
+  }
+
+  Future<void> deleteConversation(String conversationId) async {
+    await _dio.post('conversations/$conversationId/delete');
   }
 }
 

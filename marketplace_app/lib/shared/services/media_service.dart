@@ -17,7 +17,7 @@ class MediaService {
       });
 
       final response = await _dio.post(
-        '/media/upload',
+        'media/upload',
         data: formData,
       );
 
@@ -47,7 +47,7 @@ class MediaService {
       }
 
       final response = await _dio.post(
-        '/media/upload-multiple',
+        'media/upload-multiple',
         data: formData,
       );
 

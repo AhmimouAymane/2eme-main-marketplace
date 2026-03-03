@@ -97,5 +97,14 @@ export class ConversationsController {
   ) {
     return this.conversationsService.markAsRead(id, userId);
   }
+
+  @Post(':id/delete')
+  @ApiOperation({ summary: 'Soft delete/hide a conversation for the current user' })
+  softDelete(
+    @Param('id') id: string,
+    @GetCurrentUser('sub') userId: string,
+  ) {
+    return this.conversationsService.softDeleteConversation(id, userId);
+  }
 }
 

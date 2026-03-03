@@ -36,120 +36,117 @@ class ProductCard extends ConsumerWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cloviGreen,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: AppColors.cloviGreen.withOpacity(0.15),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Image
-            Expanded(
-              flex: 4,
-              child: Stack(
-                children: [
-                  Container(
-                    width: double.infinity,
-                    color: Colors.grey[100],
-                    child: imageUrl.isEmpty
-                        ? const Icon(
-                            Icons.image_outlined,
-                            size: 48,
-                            color: Colors.grey,
-                          )
-                        : CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.cloviGreen.withOpacity(0.3),
-                              ),
-                            ),
-                            errorWidget: (context, url, error) => const Icon(
-                              Icons.broken_image_outlined,
-                              size: 48,
-                              color: Colors.grey,
-                            ),
+            // Full-bleed image
+            Positioned.fill(
+              child: imageUrl.isEmpty
+                  ? Container(
+                      color: Colors.grey[100],
+                      child: const Icon(Icons.image_outlined, size: 48, color: Colors.grey),
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[100],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.cloviGreen.withOpacity(0.3),
                           ),
-                  ),
-                  // Favorite button
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: GestureDetector(
-                      onTap: () {
-                        if (product != null) {
-                          ref.read(favoritesProvider.notifier).toggleFavorite(product!);
-                        } else {
-                          // Fallback for cases where only ID is provided
-                          // We create a dummy product just for toggle logic
-                          final dummy = ProductModel(
-                            id: productId,
-                            title: title,
-                            description: '',
-                            price: price,
-                            category: '',
-                            sellerId: '',
-                            imageUrls: imageUrl.isEmpty ? [] : [imageUrl],
-                            condition: ProductCondition.good,
-                            status: ProductStatus.published,
-                            isFavorite: isFavorite,
-                            createdAt: DateTime.now(),
-                            size: '',
-                            brand: '',
-                          );
-                          ref.read(favoritesProvider.notifier).toggleFavorite(dummy);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          isFavorite ? Icons.favorite : Icons.favorite_border,
-                          size: 16,
-                          color: isFavorite ? Colors.red : AppColors.cloviGreen,
                         ),
                       ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[100],
+                        child: const Icon(Icons.broken_image_outlined, size: 48, color: Colors.grey),
+                      ),
                     ),
+            ),
+            // Favorite button
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () {
+                  if (product != null) {
+                    ref.read(favoritesProvider.notifier).toggleFavorite(product!);
+                  } else {
+                    final dummy = ProductModel(
+                      id: productId,
+                      title: title,
+                      description: '',
+                      price: price,
+                      category: '',
+                      sellerId: '',
+                      imageUrls: imageUrl.isEmpty ? [] : [imageUrl],
+                      condition: ProductCondition.good,
+                      status: ProductStatus.published,
+                      isFavorite: isFavorite,
+                      createdAt: DateTime.now(),
+                      size: '',
+                      brand: '',
+                    );
+                    ref.read(favoritesProvider.notifier).toggleFavorite(dummy);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    shape: BoxShape.circle,
                   ),
-                ],
+                  child: Icon(
+                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                    size: 16,
+                    color: isFavorite ? Colors.red : AppColors.cloviGreen,
+                  ),
+                ),
               ),
             ),
-            // Info
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            // Bottom info strip
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.cloviGreen,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                ),
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      title.toLowerCase(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textPrimaryLight,
+                    Expanded(
+                      child: Text(
+                        title.toLowerCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, color: Colors.white70),
                       ),
                     ),
+                    const SizedBox(width: 4),
                     Text(
                       Formatters.price(price),
                       style: const TextStyle(
-                        color: AppColors.cloviGreen,
+                        color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: 13,
                       ),
                     ),
                   ],

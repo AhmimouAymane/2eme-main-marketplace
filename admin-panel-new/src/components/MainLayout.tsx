@@ -8,6 +8,7 @@ import {
     MenuUnfoldOutlined,
     MenuFoldOutlined,
     TagsOutlined,
+    SettingOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -47,6 +48,11 @@ const MainLayout: React.FC = () => {
             key: '/categories',
             icon: <TagsOutlined />,
             label: 'Categories',
+        },
+        {
+            key: '/settings',
+            icon: <SettingOutlined />,
+            label: 'Settings',
         },
     ];
 

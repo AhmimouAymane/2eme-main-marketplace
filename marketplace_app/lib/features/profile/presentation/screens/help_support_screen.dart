@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'package:marketplace_app/core/routes/app_routes.dart';
 
 /// Écran Aide & Support — FAQ + contact
 class HelpSupportScreen extends StatelessWidget {
@@ -14,7 +15,7 @@ class HelpSupportScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
-          onPressed: () => context.pop(),
+          onPressed: () => context.canPop() ? context.pop() : context.go(AppRoutes.profile),
         ),
         title: const Text(
           'Aide & Support',

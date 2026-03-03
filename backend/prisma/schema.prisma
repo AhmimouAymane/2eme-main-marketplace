@@ -91,6 +91,8 @@ model Order {
   buyerId         String
   sellerId        String
   totalPrice      Float
+  serviceFee      Float       @default(0)
+  shippingFee     Float       @default(0)
   status          OrderStatus @default(AWAITING_SELLER_CONFIRMATION)
   shippingAddress String?
   pickupAddress   String?
@@ -128,6 +130,8 @@ model Conversation {
   buyer         User      @relation("BuyerConversations", fields: [buyerId], references: [id])
   product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
   seller        User      @relation("SellerConversations", fields: [sellerId], references: [id])
+  deletedByBuyer Boolean  @default(false)
+  deletedBySeller Boolean  @default(false)
   messages      Message[]
 
   @@unique([buyerId, sellerId, productId])
@@ -260,6 +264,15 @@ model VerificationCode {
 
   @@index([email])
   @@map("verification_codes")
+}
+
+model SystemSettings {
+  id                   String   @id @default("default")
+  serviceFeePercentage Float    @default(5.0)
+  shippingFee          Float    @default(25.0)
+  updatedAt            DateTime @updatedAt
+
+  @@map("system_settings")
 }
 
 model strapi_migrations {

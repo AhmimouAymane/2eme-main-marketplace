@@ -9,6 +9,7 @@ import '../../../../shared/models/order_model.dart';
 import '../../../../shared/models/address_model.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
+import '../../../../shared/providers/system_settings_provider.dart';
 import '../../../profile/data/user_reviews_service.dart';
 
 
@@ -22,6 +23,7 @@ class OrderDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final orderAsync = ref.watch(orderDetailProvider(orderId));
     final userIdAsync = ref.watch(userIdProvider);
+    final settingsAsync = ref.watch(systemSettingsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.cloviBeige,
@@ -43,9 +45,9 @@ class OrderDetailScreen extends ConsumerWidget {
       ),
       body: orderAsync.when(
         data: (order) => userIdAsync.when(
-          data: (userId) => _buildContent(context, ref, order, userId),
+          data: (userId) => _buildContent(context, ref, order, userId, settingsAsync.value?.serviceFeePercentage),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, _) => _buildContent(context, ref, order, null),
+          error: (err, _) => _buildContent(context, ref, order, null, settingsAsync.value?.serviceFeePercentage),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, stack) => Center(
@@ -87,7 +89,7 @@ class OrderDetailScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, OrderModel order, String? currentUserId) {
+  Widget _buildContent(BuildContext context, WidgetRef ref, OrderModel order, String? currentUserId, double? serviceFeePercentage) {
     final isSeller = currentUserId == order.sellerId;
 
     return ListView(
@@ -365,11 +367,18 @@ class OrderDetailScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildSummaryRow('Prix du produit', order.totalPrice),
                 _buildSummaryRow(
-                  'Frais de service (inclus)',
-                  0.0,
-                ), // Pour l'instant on garde ça simple
+                  'Prix du produit',
+                  order.totalPrice - order.serviceFee - order.shippingFee,
+                ),
+                _buildSummaryRow(
+                  'Frais de service (${serviceFeePercentage?.toStringAsFixed(0) ?? "5"}%)',
+                  order.serviceFee,
+                ),
+                _buildSummaryRow(
+                  'Frais de livraison',
+                  order.shippingFee,
+                ),
                 const Divider(height: 24),
                 _buildSummaryRow('Total payé', order.totalPrice, isBold: true),
               ],
@@ -714,27 +723,49 @@ class OrderDetailScreen extends ConsumerWidget {
                                     phoneController.text = selectedAddress!.phone!;
                                   }
 
-                                  return DropdownButtonFormField<AddressModel>(
-                                    value: selectedAddress,
-                                    decoration: InputDecoration(
-                                      labelText: 'Adresse de collecte',
-                                      prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
-                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    ),
-                                    items: addresses
-                                        .map((a) => DropdownMenuItem(
-                                              value: a,
-                                              child: Text(a.label, style: const TextStyle(fontSize: 14)),
-                                            ))
-                                        .toList(),
-                                    onChanged: (val) {
-                                      selectedAddress = val;
-                                      if (val?.phone != null) {
-                                        phoneController.text = val!.phone!;
-                                      }
-                                    },
-                                    validator: (val) => val == null ? 'Requis' : null,
+                                   return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 8),
+                                      const Text(
+                                        'Choisir l\'adresse de collecte :',
+                                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: DropdownButtonFormField<AddressModel>(
+                                              value: selectedAddress,
+                                              decoration: InputDecoration(
+                                                labelText: 'Adresse de collecte',
+                                                prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                              ),
+                                              items: addresses
+                                                  .map((a) => DropdownMenuItem(
+                                                        value: a,
+                                                        child: Text(a.label, style: const TextStyle(fontSize: 14)),
+                                                      ))
+                                                  .toList(),
+                                              onChanged: (val) {
+                                                selectedAddress = val;
+                                                if (val?.phone != null) {
+                                                  phoneController.text = val!.phone!;
+                                                }
+                                              },
+                                              validator: (val) => val == null ? 'Requis' : null,
+                                            ),
+                                          ),
+                                          IconButton(
+                                            onPressed: () => context.push(AppRoutes.addresses),
+                                            icon: const Icon(Icons.add_circle_outline, color: AppColors.cloviGreen),
+                                            tooltip: 'Ajouter une adresse',
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   );
                                 },
                                 loading: () => const Center(child: CircularProgressIndicator()),

@@ -11,6 +11,8 @@ import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/shared/models/order_model.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
+import 'package:marketplace_app/shared/providers/system_settings_provider.dart';
+import 'package:marketplace_app/shared/models/system_settings_model.dart';
 
 /// Écran de détail d'un produit
 class ProductDetailScreen extends ConsumerStatefulWidget {
@@ -220,7 +222,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   // Vendeur
                   Card(
                     child: ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.person)),
+                      leading: CircleAvatar(
+                        backgroundColor: AppColors.cloviGreen,
+                        backgroundImage: product.sellerAvatarUrl != null && product.sellerAvatarUrl!.isNotEmpty
+                            ? NetworkImage(product.sellerAvatarUrl!)
+                            : null,
+                        child: product.sellerAvatarUrl == null || product.sellerAvatarUrl!.isEmpty
+                            ? const Icon(Icons.person, color: Colors.white)
+                            : null,
+                      ),
                       title: Text(product.sellerName ?? 'Vendeur anonyme'),
                        subtitle: Text(
                         'Membre depuis ${Formatters.date(product.createdAt)}${product.sellerCity != null ? ' • ${product.sellerCity}' : ''}',
@@ -419,26 +429,41 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   children: [
                     Row(
                       children: [
-                        Row(
-                          children: List.generate(5, (i) {
-                            return Icon(
-                              Icons.star,
-                              size: 16,
-                              color: i < review.rating
-                                  ? Colors.amber
-                                  : Colors.grey[300],
-                            );
-                          }),
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: AppColors.cloviGreen,
+                          backgroundImage: review.user?.avatarUrl != null &&
+                                  review.user!.avatarUrl!.isNotEmpty
+                              ? NetworkImage(review.user!.avatarUrl!)
+                              : null,
+                          child: review.user?.avatarUrl == null ||
+                                  review.user!.avatarUrl!.isEmpty
+                              ? const Icon(Icons.person, size: 14, color: Colors.white)
+                              : null,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          review.user?.fullName ?? 'Utilisateur',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                review.user?.fullName ?? 'Utilisateur',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              Row(
+                                children: List.generate(5, (starIndex) {
+                                  return Icon(
+                                    Icons.star,
+                                    size: 14,
+                                    color: starIndex < review.rating
+                                        ? Colors.amber
+                                        : Colors.grey[300],
+                                  );
+                                }),
+                              ),
+                            ],
                           ),
                         ),
-                        const Spacer(),
                         Text(
                           Formatters.date(review.createdAt),
                           style: const TextStyle(
@@ -450,7 +475,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     ),
                     if (review.comment != null && review.comment!.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.only(top: 8, left: 36),
                         child: Text(
                           review.comment!,
                           style: const TextStyle(fontSize: 14),
@@ -505,13 +530,27 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          comment.user?.fullName ?? 'Utilisateur',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                        CircleAvatar(
+                          radius: 12,
+                          backgroundColor: AppColors.cloviGreen,
+                          backgroundImage: comment.user?.avatarUrl != null &&
+                                  comment.user!.avatarUrl!.isNotEmpty
+                              ? NetworkImage(comment.user!.avatarUrl!)
+                              : null,
+                          child: comment.user?.avatarUrl == null ||
+                                  comment.user!.avatarUrl!.isEmpty
+                              ? const Icon(Icons.person, size: 12, color: Colors.white)
+                              : null,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            comment.user?.fullName ?? 'Utilisateur',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
                           ),
                         ),
                         Text(
@@ -523,8 +562,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(comment.content, style: const TextStyle(fontSize: 14)),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, left: 32),
+                      child: Text(comment.content, style: const TextStyle(fontSize: 14)),
+                    ),
                   ],
                 ),
               );
@@ -655,14 +696,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   void _showPurchaseDialog(BuildContext context, ProductModel product) {
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => _CheckoutDialog(
+        builder: (dialogContext) => _CheckoutDialog(
         product: product,
-        onConfirm: (shippingAddress) => _createOrderAfterCheckout(
+        onConfirm: (shippingAddress, serviceFee, shippingFee, totalPrice) =>
+            _createOrderAfterCheckout(
           context,
           dialogContext,
           product,
           shippingAddress,
           OrderStatus.awaitingSellerConfirmation,
+          serviceFee: serviceFee,
+          shippingFee: shippingFee,
+          totalPrice: totalPrice,
         ),
         onCancel: () => Navigator.pop(dialogContext),
       ),
@@ -707,12 +752,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 context: context,
                 builder: (dialogContext) => _CheckoutDialog(
                   product: product.copyWith(price: val),
-                  onConfirm: (shippingAddress) => _createOrderAfterCheckout(
+                  onConfirm:
+                      (shippingAddress, serviceFee, shippingFee, totalPrice) =>
+                          _createOrderAfterCheckout(
                     context,
                     dialogContext,
                     product.copyWith(price: val),
                     shippingAddress,
                     OrderStatus.offerMade,
+                    serviceFee: serviceFee,
+                    shippingFee: shippingFee,
+                    totalPrice: totalPrice,
                   ),
                   onCancel: () => Navigator.pop(dialogContext),
                 ),
@@ -730,19 +780,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     BuildContext dialogContext,
     ProductModel product,
     String shippingAddress,
-    OrderStatus status,
-  ) async {
+    OrderStatus status, {
+    required double serviceFee,
+    required double shippingFee,
+    required double totalPrice,
+  }) async {
     Navigator.pop(dialogContext);
     try {
-      await ref
-          .read(ordersServiceProvider)
-          .createOrder(
+      await ref.read(ordersServiceProvider).createOrder(
             OrderModel(
               id: '',
               productId: product.id,
               buyerId: '',
               sellerId: product.sellerId,
-              totalPrice: product.price,
+              totalPrice: totalPrice,
+              serviceFee: serviceFee,
+              shippingFee: shippingFee,
               status: status,
               shippingAddress: shippingAddress.trim(),
               createdAt: DateTime.now(),
@@ -796,7 +849,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 /// Dialog de checkout : paiement à la livraison + adresse de livraison
 class _CheckoutDialog extends ConsumerStatefulWidget {
   final ProductModel product;
-  final void Function(String shippingAddress) onConfirm;
+  final void Function(
+    String shippingAddress,
+    double serviceFee,
+    double shippingFee,
+    double totalPrice,
+  ) onConfirm;
   final VoidCallback onCancel;
 
   const _CheckoutDialog({
@@ -825,73 +883,43 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
     final product = widget.product;
     final userAsync = ref.watch(userIdProvider);
 
-    return AlertDialog(
-      title: const Text(
-        'Vérifier votre commande',
-        style: TextStyle(fontWeight: FontWeight.bold),
-      ),
-      contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-      content: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Product Card
-              _buildSectionCard(
-                context,
-                'Produit',
-                Column(
-                  children: [
-                    Row(
+
+    return ref.watch(systemSettingsProvider).when(
+      data: (settings) {
+        final double serviceFee = (product.price * (settings.serviceFeePercentage / 100)).ceilToDouble();
+        final double shippingFee = settings.shippingFee;
+        final double totalPayable = product.price + serviceFee + shippingFee;
+
+        return AlertDialog(
+          title: const Text(
+            'Vérifier votre commande',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          content: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Product Card
+                  _buildSectionCard(
+                    context,
+                    'Résumé du paiement',
+                    Column(
                       children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(8),
-                            image: product.mainImageUrl != null
-                                ? DecorationImage(
-                                    image: NetworkImage(product.fullMainImageUrl),
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
-                          ),
-                          child: product.mainImageUrl == null
-                              ? Icon(Icons.image_outlined, color: Colors.grey[400])
-                              : null,
+                        _buildSummaryRow('Prix du produit', product.price),
+                        _buildSummaryRow(
+                          'Frais de service (${settings.serviceFeePercentage.toStringAsFixed(1)}%)',
+                          serviceFee,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                product.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                Formatters.price(product.price),
-                                style: TextStyle(
-                                  color: AppColors.cloviGreen,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        _buildSummaryRow('Frais de livraison', shippingFee),
+                        const Divider(height: 20),
+                        _buildSummaryRow('Total à payer', totalPayable, isBold: true),
                       ],
                     ),
-                  ],
-                ),
-              ),
+                  ),
 
               const SizedBox(height: 16),
 
@@ -938,48 +966,58 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (addrs.length > 1)
-                                  DropdownButtonFormField<AddressModel>(
-                                    value: _selectedAddress,
-                                    decoration: InputDecoration(
-                                      labelText: 'Choisir une adresse',
-                                      prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                                const Text(
+                                  'Indiquez où le livreur livrera le colis :',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: DropdownButtonFormField<AddressModel>(
+                                        value: _selectedAddress,
+                                        decoration: InputDecoration(
+                                          labelText: 'Adresse de livraison',
+                                          prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        ),
+                                        items: addrs
+                                            .map((a) => DropdownMenuItem(
+                                                  value: a,
+                                                  child: Text(a.label, style: const TextStyle(fontSize: 14)),
+                                                ))
+                                            .toList(),
+                                        onChanged: (a) {
+                                          setState(() {
+                                            _selectedAddress = a;
+                                            if (a?.phone != null) {
+                                              _phoneController.text = a!.phone!;
+                                            }
+                                          });
+                                        },
+                                        validator: (a) => a == null ? 'Requis' : null,
                                       ),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                     ),
-                                    items: addrs
-                                        .map((a) => DropdownMenuItem(
-                                              value: a,
-                                              child: Text(a.label, style: const TextStyle(fontSize: 14)),
-                                            ))
-                                        .toList(),
-                                    onChanged: (a) {
-                                      setState(() {
-                                        _selectedAddress = a;
-                                        if (a?.phone != null) {
-                                          _phoneController.text = a!.phone!;
-                                        }
-                                      });
-                                    },
-                                    validator: (a) => a == null ? 'Requis' : null,
-                                  )
-                                else
-                                  Text(
-                                    '${_selectedAddress!.label}\n${_selectedAddress!.street}, ${_selectedAddress!.city}',
-                                    style: const TextStyle(fontSize: 14, height: 1.4),
-                                  ),
+                                    IconButton(
+                                      onPressed: () => context.push(AppRoutes.addresses),
+                                      icon: const Icon(Icons.add_circle_outline, color: AppColors.cloviGreen),
+                                      tooltip: 'Ajouter une adresse',
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(height: 12),
                                 TextFormField(
                                   controller: _phoneController,
                                   decoration: InputDecoration(
-                                    labelText: 'Téléphone pour le livreur',
+                                    labelText: 'Téléphone de contact',
                                     prefixIcon: const Icon(Icons.phone_outlined, size: 20),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
                                     ),
-                                    contentPadding: const EdgeInsets.all(12),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                   ),
                                   keyboardType: TextInputType.phone,
                                   inputFormatters: [
@@ -987,7 +1025,7 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
                                     LengthLimitingTextInputFormatter(10),
                                   ],
                                   validator: (v) => (v == null || v.trim().isEmpty)
-                                      ? 'Requis pour la livraison'
+                                      ? 'Requis pour le livreur'
                                       : (v.length < 10 ? 'Numéro invalide' : null),
                                 ),
                               ],
@@ -1047,7 +1085,7 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
                     if (phone.isNotEmpty) {
                       payload = '$payload — Tél: $phone';
                     }
-                    widget.onConfirm(payload);
+                    widget.onConfirm(payload, serviceFee, shippingFee, totalPayable);
                   }
                 },
           style: ElevatedButton.styleFrom(
@@ -1058,6 +1096,37 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
           child: const Text('Confirmer'),
         ),
       ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, s) => Center(child: Text('Erreur settings: $e')),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, double amount, {bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              color: isBold ? AppColors.cloviGreen : Colors.grey[700],
+            ),
+          ),
+          Text(
+            Formatters.price(amount),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              color: isBold ? AppColors.cloviGreen : Colors.black87,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1081,10 +1150,10 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
         children: [
           Text(
             title,
-            style: TextStyle(
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: AppColors.cloviGreen,
-              fontSize: 13,
+              fontSize: 12,
             ),
           ),
           const SizedBox(height: 8),

@@ -12,7 +12,6 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(themeModeProvider);
     final notificationsEnabled = ref.watch(notificationsEnabledProvider);
 
     return Scaffold(
@@ -22,7 +21,7 @@ class SettingsScreen extends ConsumerWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
-          onPressed: () => context.pop(),
+          onPressed: () => context.canPop() ? context.pop() : context.go(AppRoutes.home),
         ),
         title: const Text(
           'Paramètres',
@@ -38,21 +37,6 @@ class SettingsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _sectionTitle('Apparence'),
-            _buildCard(
-              child: Column(
-                children: [
-                  _buildListTile(
-                    icon: Icons.dark_mode_outlined,
-                    title: 'Thème',
-                    subtitle: _themeLabel(themeMode),
-                  ),
-                  const Divider(height: 1, indent: 56),
-                  _themeOptions(ref, themeMode),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
             _sectionTitle('Notifications'),
             _buildCard(
               child: _buildSwitchTile(
@@ -164,69 +148,6 @@ class SettingsScreen extends ConsumerWidget {
       value: value,
       onChanged: onChanged,
       activeThumbColor: AppColors.cloviGreen,
-    );
-  }
-
-  String _themeLabel(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return 'Clair';
-      case ThemeMode.dark:
-        return 'Sombre';
-      case ThemeMode.system:
-        return 'Système';
-    }
-  }
-
-  Widget _themeOptions(WidgetRef ref, ThemeMode current) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Row(
-        children: [
-          _themeChip(
-            label: 'Clair',
-            selected: current == ThemeMode.light,
-            onTap: () => ref.read(currentThemeProvider.notifier).setTheme(ThemeMode.light),
-          ),
-          const SizedBox(width: 8),
-          _themeChip(
-            label: 'Sombre',
-            selected: current == ThemeMode.dark,
-            onTap: () => ref.read(currentThemeProvider.notifier).setTheme(ThemeMode.dark),
-          ),
-          const SizedBox(width: 8),
-          _themeChip(
-            label: 'Système',
-            selected: current == ThemeMode.system,
-            onTap: () => ref.read(currentThemeProvider.notifier).setTheme(ThemeMode.system),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _themeChip({required String label, required bool selected, required VoidCallback onTap}) {
-    return Expanded(
-      child: Material(
-        color: selected ? AppColors.cloviGreen : Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : AppColors.textSecondaryLight,
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 

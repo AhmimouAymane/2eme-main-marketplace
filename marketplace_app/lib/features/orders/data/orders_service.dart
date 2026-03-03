@@ -11,7 +11,7 @@ class OrdersService {
   Future<OrderModel> createOrder(OrderModel order) async {
     try {
       final response = await _dio.post(
-        '/orders',
+        'orders',
         data: order.toJson(),
       );
       if (response.statusCode == 201) {
@@ -26,7 +26,7 @@ class OrdersService {
   /// Récupérer les commandes en tant qu'acheteur
   Future<List<OrderModel>> getBuyerOrders() async {
     try {
-      final response = await _dio.get('/orders/buyer');
+      final response = await _dio.get('orders/buyer');
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
         return data.map((json) => OrderModel.fromJson(json)).toList();
@@ -40,7 +40,7 @@ class OrdersService {
   /// Récupérer les commandes en tant que vendeur
   Future<List<OrderModel>> getSellerOrders() async {
     try {
-      final response = await _dio.get('/orders/seller');
+      final response = await _dio.get('orders/seller');
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
         return data.map((json) => OrderModel.fromJson(json)).toList();
@@ -54,7 +54,7 @@ class OrdersService {
   /// Récupérer une commande par son ID
   Future<OrderModel> getOrder(String id) async {
     try {
-      final response = await _dio.get('/orders/$id');
+      final response = await _dio.get('orders/$id');
       if (response.statusCode == 200) {
         return OrderModel.fromJson(response.data);
       }
@@ -74,7 +74,7 @@ class OrdersService {
   }) async {
     try {
       final response = await _dio.patch(
-        '/orders/$id',
+        'orders/$id',
         data: {
           'status': status.name
               .replaceAllMapped(

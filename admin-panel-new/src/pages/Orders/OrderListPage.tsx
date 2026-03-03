@@ -133,7 +133,7 @@ const OrderListPage: React.FC = () => {
             >
                 {selectedOrder && (
                     <div style={{ padding: '10px 0' }}>
-                        <Descriptions title="Informations Produit" bordered column={1}>
+                        <Descriptions title="Détails Financiers" bordered column={1}>
                             <Descriptions.Item label="Produit">
                                 <Space>
                                     <Avatar
@@ -145,12 +145,21 @@ const OrderListPage: React.FC = () => {
                                     />
                                     <div>
                                         <div style={{ fontWeight: 'bold' }}>{selectedOrder.product?.title}</div>
-                                        <Tag color="green">{selectedOrder.product?.price} MAD</Tag>
+                                        <Text type="secondary">ID: {selectedOrder.product?.id}</Text>
                                     </div>
                                 </Space>
                             </Descriptions.Item>
-                            <Descriptions.Item label="Prix de la transaction">
-                                <span style={{ fontWeight: 'bold', color: '#10b981' }}>{selectedOrder.totalPrice} MAD</span>
+                            <Descriptions.Item label="Prix de l'article">
+                                <span>{selectedOrder.totalPrice - selectedOrder.serviceFee - selectedOrder.shippingFee} MAD</span>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Frais de service">
+                                <Text type="warning">{selectedOrder.serviceFee} MAD</Text>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Frais de livraison">
+                                <Text type="warning">{selectedOrder.shippingFee} MAD</Text>
+                            </Descriptions.Item>
+                            <Descriptions.Item label="Total payé">
+                                <span style={{ fontWeight: 'bold', color: '#10b981', fontSize: '1.2em' }}>{selectedOrder.totalPrice} MAD</span>
                             </Descriptions.Item>
                         </Descriptions>
 

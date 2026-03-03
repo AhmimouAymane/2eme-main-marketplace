@@ -8,16 +8,16 @@ class AppConstants {
     // Sur Web, Platform.isAndroid lance une erreur.
     // Sur Émulateur Android, 10.0.2.2 est l'adresse pour accéder au localhost du PC.
     if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:8080/api/v1';
+      return 'http://10.0.2.2:8080/api/v1/';
     }
-    return 'http://localhost:8080/api/v1';
+    return 'http://localhost:8080/api/v1/';
   }
 
   static String get mediaBaseUrl {
     if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:8080';
+      return 'http://10.0.2.2:8080/';
     }
-    return 'http://localhost:8080';
+    return 'http://localhost:8080/';
   }
 
   static const Duration apiTimeout = Duration(seconds: 60);

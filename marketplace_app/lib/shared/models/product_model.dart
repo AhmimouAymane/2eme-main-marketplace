@@ -58,6 +58,7 @@ class ProductModel extends Equatable {
   final List<ReviewModel> reviews;
   final List<CommentModel> comments;
   final String? sellerCity;
+  final String? sellerAvatarUrl;
   
   const ProductModel({
     required this.id,
@@ -80,6 +81,7 @@ class ProductModel extends Equatable {
     this.reviews = const [],
     this.comments = const [],
     this.sellerCity,
+    this.sellerAvatarUrl,
   });
   
   // Getters
@@ -152,6 +154,7 @@ class ProductModel extends Equatable {
       reviews: (json['reviews'] as List?)?.map((r) => ReviewModel.fromJson(r)).toList() ?? [],
       comments: (json['comments'] as List?)?.map((c) => CommentModel.fromJson(c)).toList() ?? [],
       sellerCity: _extractCity(json['seller']),
+      sellerAvatarUrl: json['seller']?['avatarUrl'],
     );
   }
 
@@ -238,6 +241,7 @@ class ProductModel extends Equatable {
     List<ReviewModel>? reviews,
     List<CommentModel>? comments,
     String? sellerCity,
+    String? sellerAvatarUrl,
   }) {
     return ProductModel(
       id: id ?? this.id,
@@ -260,6 +264,7 @@ class ProductModel extends Equatable {
       reviews: reviews ?? this.reviews,
       comments: comments ?? this.comments,
       sellerCity: sellerCity ?? this.sellerCity,
+      sellerAvatarUrl: sellerAvatarUrl ?? this.sellerAvatarUrl,
     );
   }
   

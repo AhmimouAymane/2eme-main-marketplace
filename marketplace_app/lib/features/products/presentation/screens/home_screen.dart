@@ -41,58 +41,53 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-      // backgroundColor: AppColors.cloviBeige, // Inherited from theme
       drawer: const CloviDrawer(),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Custom Top Bar
-            _buildTopBar(),
+          child: Column(
+            children: [
+              // Custom Top Bar
+              _buildTopBar(),
 
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  print(
-                    'DEBUG: HomeScreen.onRefresh - Clearing filters and refreshing products',
-                  );
-                  ref.read(productFilterProvider.notifier).clearAll();
-                  await ref.refresh(homeProductsProvider.future);
-                },
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Safety Carousel
-                      //removed for now, can be added back later if needed
-                      // _buildSafetyCarousel(),  
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    print(
+                      'DEBUG: HomeScreen.onRefresh - Clearing filters and refreshing products',
+                    );
+                    ref.read(productFilterProvider.notifier).clearAll();
+                    await ref.refresh(homeProductsProvider.future);
+                  },
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Search Section
+                        _buildSearchSection(),
+                        const SizedBox(height: 24),
 
-                      // Search Section
-                      _buildSearchSection(),
-                      const SizedBox(height: 24),
+                        // Trending Categories
+                        _buildCategoriesSection(),
+                        const SizedBox(height: 32),
 
-                      // Trending Categories
-                      _buildCategoriesSection(),
-                      const SizedBox(height: 32),
+                        // Top Sellers
+                        _buildTopSellersSection(),
+                        const SizedBox(height: 32),
 
-                      // Top Sellers
-                      _buildTopSellersSection(),
-                      const SizedBox(height: 32),
+                        // Fresh Arrivals
+                        _buildFreshArrivalsSection(),
+                        const SizedBox(height: 32),
 
-                      // Fresh Arrivals
-                      _buildFreshArrivalsSection(),
-                      const SizedBox(height: 32),
-
-                      // Community Activity
-                      _buildCommunityActivitySection(),
-                      const SizedBox(height: 24),
-                    ],
+                        // Community Activity
+                        _buildCommunityActivitySection(),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
       ),
     );
   }
@@ -323,19 +318,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           height: 60,
                           width: 60,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.cloviGreen,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
+                                color: AppColors.cloviGreen.withOpacity(0.2),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
                               ),
                             ],
                           ),
                           child: Icon(
                             _getCategoryIcon(cat.name),
-                            color: AppColors.cloviGreen,
+                            color: Colors.white,
                             size: 28,
                           ),
                         ),

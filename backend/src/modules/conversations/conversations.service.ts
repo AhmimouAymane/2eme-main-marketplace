@@ -92,7 +92,10 @@ export class ConversationsService {
   async getUserConversations(userId: string) {
     return this.prisma.conversation.findMany({
       where: {
-        OR: [{ buyerId: userId }, { sellerId: userId }],
+        OR: [
+          { buyerId: userId, deletedByBuyer: false },
+          { sellerId: userId, deletedBySeller: false },
+        ],
       },
       include: {
         product: {
@@ -160,16 +163,21 @@ export class ConversationsService {
         },
       });
 
+      const isBuyerSender = conversation.buyerId === senderId;
+      const recipientId = isBuyerSender ? conversation.sellerId : conversation.buyerId;
+
       await this.prisma.conversation.update({
         where: { id: conversation.id },
         data: {
           lastMessageAt: message.createdAt,
+          // Unhide for recipient if they previously deleted/hid it
+          ...(isBuyerSender
+            ? { deletedBySeller: false }
+            : { deletedByBuyer: false }),
         },
       });
 
       // Create notification for recipient
-      const isBuyerSender = conversation.buyerId === senderId;
-      const recipientId = isBuyerSender ? conversation.sellerId : conversation.buyerId;
       const sender = isBuyerSender ? (conversation as any).buyer : (conversation as any).seller;
       const senderName = sender?.firstName || 'Un utilisateur';
 
@@ -208,6 +216,19 @@ export class ConversationsService {
       },
       data: {
         isRead: true,
+      },
+    });
+  }
+
+  async softDeleteConversation(id: string, userId: string): Promise<void> {
+    const conversation = await this.getConversation(id, userId);
+
+    const isBuyer = conversation.buyerId === userId;
+
+    await this.prisma.conversation.update({
+      where: { id },
+      data: {
+        [isBuyer ? 'deletedByBuyer' : 'deletedBySeller']: true,
       },
     });
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'legal_screen.dart';
+import 'package:marketplace_app/core/routes/app_routes.dart';
 
 /// Écran À propos — présentation de Clovi
 class AboutScreen extends StatelessWidget {
@@ -15,7 +16,7 @@ class AboutScreen extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
-          onPressed: () => context.pop(),
+          onPressed: () => context.canPop() ? context.pop() : context.go(AppRoutes.profile),
         ),
         title: const Text(
           'À propos',

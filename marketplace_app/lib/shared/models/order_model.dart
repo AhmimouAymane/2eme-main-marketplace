@@ -39,6 +39,8 @@ class OrderModel extends Equatable {
   final String sellerId;
   final UserModel? seller;
   final double totalPrice;
+  final double serviceFee;
+  final double shippingFee;
   final OrderStatus status;
   final String? shippingAddress;
   final String? pickupAddress;
@@ -65,6 +67,8 @@ class OrderModel extends Equatable {
     required this.sellerId,
     this.seller,
     required this.totalPrice,
+    this.serviceFee = 0.0,
+    this.shippingFee = 0.0,
     required this.status,
     this.shippingAddress,
     this.pickupAddress,
@@ -107,6 +111,8 @@ class OrderModel extends Equatable {
     sellerId: json['sellerId'] ?? '',
     seller: json['seller'] != null ? UserModel.fromJson(json['seller']) : null,
     totalPrice: (json['totalPrice'] ?? 0.0).toDouble(),
+    serviceFee: (json['serviceFee'] ?? 0.0).toDouble(),
+    shippingFee: (json['shippingFee'] ?? 0.0).toDouble(),
     status: _statusFromString(json['status'] ?? 'AWAITING_SELLER_CONFIRMATION'),
     shippingAddress: json['shippingAddress'],
     pickupAddress: json['pickupAddress'],
@@ -168,6 +174,8 @@ class OrderModel extends Equatable {
     final map = <String, dynamic>{
       'productId': productId,
       'totalPrice': totalPrice,
+      'serviceFee': serviceFee,
+      'shippingFee': shippingFee,
     };
 
     final enumName = status.name.replaceAllMapped(
@@ -197,6 +205,8 @@ class OrderModel extends Equatable {
     String? sellerId,
     UserModel? seller,
     double? totalPrice,
+    double? serviceFee,
+    double? shippingFee,
     OrderStatus? status,
     String? shippingAddress,
     String? pickupAddress,
@@ -223,6 +233,8 @@ class OrderModel extends Equatable {
       sellerId: sellerId ?? this.sellerId,
       seller: seller ?? this.seller,
       totalPrice: totalPrice ?? this.totalPrice,
+      serviceFee: serviceFee ?? this.serviceFee,
+      shippingFee: shippingFee ?? this.shippingFee,
       status: status ?? this.status,
       shippingAddress: shippingAddress ?? this.shippingAddress,
       pickupAddress: pickupAddress ?? this.pickupAddress,
@@ -252,6 +264,8 @@ class OrderModel extends Equatable {
     sellerId,
     seller,
     totalPrice,
+    serviceFee,
+    shippingFee,
     status,
     shippingAddress,
     pickupAddress,

@@ -71,6 +71,8 @@ export enum OrderStatus {
 export interface Order {
     id: string;
     totalPrice: number;
+    serviceFee: number;
+    shippingFee: number;
     status: OrderStatus;
     createdAt: string;
     buyer: User;

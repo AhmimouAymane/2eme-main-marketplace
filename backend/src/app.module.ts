@@ -17,6 +17,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { UserReviewsModule } from './modules/user-reviews/user-reviews.module';
+import { SettingsModule } from './modules/settings/settings.module';
 import { join } from 'path';
 import { ScheduleModule } from '@nestjs/schedule';
 
@@ -40,6 +41,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     MailModule,
     DashboardModule,
     UserReviewsModule,
+    SettingsModule,
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',

@@ -8,7 +8,7 @@ class UsersService {
 
   Future<UserModel> getMe() async {
     try {
-      final response = await _dio.get('/users/me');
+      final response = await _dio.get('users/me');
       final data = response.data;
       if (data is Map<String, dynamic>) {
         return UserModel.fromJson(data);
@@ -22,7 +22,7 @@ class UsersService {
 
   Future<UserModel> updateProfile(Map<String, dynamic> data) async {
     try {
-      final response = await _dio.patch('/users/me', data: data);
+      final response = await _dio.patch('users/me', data: data);
       final body = response.data;
       if (body is Map<String, dynamic>) {
         return UserModel.fromJson(body);
@@ -35,7 +35,7 @@ class UsersService {
 
   Future<UserModel> getPublicProfile(String userId) async {
     try {
-      final response = await _dio.get('/users/$userId');
+      final response = await _dio.get('users/$userId');
       final data = response.data;
       if (data is Map<String, dynamic>) {
         return UserModel.fromJson(data);
@@ -54,7 +54,7 @@ class UsersService {
   ) async {
     try {
       await _dio.post(
-        '/users/$targetUserId/reviews',
+        'users/$targetUserId/reviews',
         data: {'rating': rating, 'comment': comment},
       );
     } catch (e) {
@@ -65,7 +65,7 @@ class UsersService {
   /// Supprimer le compte (DB + Firebase)
   Future<void> deleteAccount() async {
     try {
-      await _dio.delete('/users/me');
+      await _dio.delete('users/me');
     } catch (e) {
       rethrow;
     }

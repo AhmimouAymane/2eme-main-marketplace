@@ -16,7 +16,6 @@ class CloviDrawer extends ConsumerWidget {
     final userAvatarUrl = ref.watch(userAvatarUrlProvider);
     
     return Drawer(
-      // backgroundColor: AppColors.cloviBeige, // Inherited from theme
       child: Column(
         children: [
           _buildHeader(

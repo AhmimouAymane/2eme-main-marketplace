@@ -11,6 +11,7 @@ class AppColors {
   static const Color primary = cloviGreen;
   static const Color primaryLight = Color(0xFF4B8573);
   static const Color primaryDark = cloviDarkGreen;
+
   
   static const Color secondary = cloviDarkGreen;
   static const Color secondaryLight = cloviGreen;

@@ -156,9 +156,16 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
     );
 
     // 1. Gérer les messages en premier plan (Foreground)
-    _fcmSubscription = FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    _fcmSubscription = FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       final data = message.data;
       
+      // Vérifier si l'utilisateur est authentifié avant toute action
+      final token = ref.read(authTokenProvider);
+      if (token == null) {
+        print("Notification reçue en premier plan mais ignorée: Utilisateur non connecté");
+        return;
+      }
+
       // Mise à jour temps réel pour les commandes
       if (data['screen'] == 'order_detail' && data['orderId'] != null) {
         ref.invalidate(orderDetailProvider(data['orderId']));
@@ -313,7 +320,7 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       // Thème personnalisé
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ref.watch(themeModeProvider),
+      themeMode: ThemeMode.light,
 
       // Utilise une clé globale pour le ScaffoldMessenger
       scaffoldMessengerKey: rootScaffoldMessengerKey,

@@ -8,7 +8,7 @@ class FavoritesService {
 
   Future<bool> toggleFavorite(String productId) async {
     try {
-      final response = await _dio.post('/favorites/$productId');
+      final response = await _dio.post('favorites/$productId');
       if (response.statusCode == 201) {
         return response.data['favorited'] as bool;
       }
@@ -20,7 +20,7 @@ class FavoritesService {
 
   Future<List<ProductModel>> getFavorites() async {
     try {
-      final response = await _dio.get('/favorites');
+      final response = await _dio.get('favorites');
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
         return data.map((json) => ProductModel.fromJson(json)).toList();

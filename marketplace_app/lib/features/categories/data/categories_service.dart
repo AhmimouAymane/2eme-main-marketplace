@@ -10,7 +10,7 @@ class CategoriesService {
   /// Récupérer la hiérarchie complète des catégories
   Future<List<CategoryModel>> getCategories() async {
     try {
-      final response = await _dio.get('/categories');
+      final response = await _dio.get('categories');
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
         return data.map((json) => CategoryModel.fromJson(json)).toList();

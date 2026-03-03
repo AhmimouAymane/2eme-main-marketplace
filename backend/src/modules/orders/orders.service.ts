@@ -16,7 +16,7 @@ export class OrdersService {
     ) { }
 
     async create(createOrderDto: CreateOrderDto, buyerId: string): Promise<Order> {
-        const { productId, totalPrice, shippingAddress, status } = createOrderDto;
+        const { productId, totalPrice, serviceFee, shippingFee, shippingAddress, status } = createOrderDto;
 
         // Check if product exists and is available
         const product = await this.prisma.product.findUnique({
@@ -36,6 +36,22 @@ export class OrdersService {
             throw new ForbiddenException('You cannot buy your own product');
         }
 
+        // Fetch current system settings for fees
+        const settings = await this.prisma.systemSettings.findUnique({
+            where: { id: 'default' },
+        });
+
+        const systemServiceFeePercentage = settings?.serviceFeePercentage || 5.0;
+        const systemShippingFee = settings?.shippingFee || 25.0;
+
+        // Recalculate fees for security if not provided or to ensure they match backend logic
+        // We round up the service fee as in the frontend
+        const calculatedServiceFee = Math.ceil(product.price * (systemServiceFeePercentage / 100));
+
+        const finalServiceFee = serviceFee !== undefined ? serviceFee : calculatedServiceFee;
+        const finalShippingFee = shippingFee !== undefined ? shippingFee : systemShippingFee;
+        const finalTotalPrice = product.price + finalServiceFee + finalShippingFee;
+
         // Default status for "Buy Now" is AWAITING_SELLER_CONFIRMATION
         // If it's an offer, it would be OFFER_MADE (logic can be expanded)
         const orderStatus = status || OrderStatus.AWAITING_SELLER_CONFIRMATION;
@@ -47,7 +63,9 @@ export class OrdersService {
                     productId,
                     buyerId,
                     sellerId: product.sellerId,
-                    totalPrice,
+                    totalPrice: finalTotalPrice,
+                    serviceFee: finalServiceFee,
+                    shippingFee: finalShippingFee,
                     shippingAddress,
                     status: orderStatus,
                 },

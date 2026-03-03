@@ -17,7 +17,7 @@ class CloviBottomNav extends StatelessWidget {
       height: 70,
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cloviGreen,
         borderRadius: BorderRadius.circular(35),
         boxShadow: [
           BoxShadow(
@@ -32,7 +32,7 @@ class CloviBottomNav extends StatelessWidget {
           Expanded(child: _buildNavItem(Icons.home_outlined, Icons.home, 'Home', 0)),
           Expanded(child: _buildNavItem(Icons.search_outlined, Icons.search, 'Search', 1)),
 
-          // Central "+" button — wrapped in Expanded + Center for perfect alignment
+          // Central "+" button
           Expanded(
             child: Center(
               child: GestureDetector(
@@ -40,11 +40,18 @@ class CloviBottomNav extends StatelessWidget {
                 child: Container(
                   height: 50,
                   width: 50,
-                  decoration: const BoxDecoration(
-                    color: AppColors.cloviDarkGreen,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withAlpha(20),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 30),
+                  child: const Icon(Icons.add, color: AppColors.cloviGreen, size: 30),
                 ),
               ),
             ),
@@ -69,7 +76,7 @@ class CloviBottomNav extends StatelessWidget {
           children: [
             Icon(
               active ? activeIcon : icon,
-              color: active ? AppColors.cloviGreen : AppColors.textSecondaryLight,
+              color: active ? Colors.white : Colors.white.withOpacity(0.5),
               size: 24,
             ),
             const SizedBox(height: 2),
@@ -77,7 +84,7 @@ class CloviBottomNav extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 10,
-                color: active ? AppColors.cloviGreen : AppColors.textSecondaryLight,
+                color: active ? Colors.white : Colors.white.withOpacity(0.5),
                 fontWeight: active ? FontWeight.bold : FontWeight.normal,
               ),
             ),

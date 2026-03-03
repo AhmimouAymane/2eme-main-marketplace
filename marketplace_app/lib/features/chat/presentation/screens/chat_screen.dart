@@ -320,9 +320,72 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           error: (_, __) => const Text('Conversation'),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.black87),
-            onPressed: () {},
+          conversationAsync.maybeWhen(
+            data: (conversation) {
+              final currentUserId = currentUserIdAsync.maybeWhen(
+                data: (id) => id,
+                orElse: () => null,
+              );
+              final otherUser = currentUserId != null &&
+                      conversation.buyerId == currentUserId
+                  ? conversation.seller
+                  : conversation.buyer;
+
+              return PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert, color: Colors.black87),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'profile':
+                      if (otherUser?.id != null) {
+                        context.push('/seller/${otherUser!.id}');
+                      }
+                      break;
+                    case 'article':
+                      if (conversation.product?.id != null) {
+                        context.push('/product/${conversation.product!.id}');
+                      }
+                      break;
+                    case 'delete':
+                      _showDeleteConfirmation(context, ref, conversation.id);
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'profile',
+                    child: Row(
+                      children: [
+                        Icon(Icons.person_outline, size: 20),
+                        SizedBox(width: 12),
+                        Text('Voir le profil'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'article',
+                    child: Row(
+                      children: [
+                        Icon(Icons.shopping_bag_outlined, size: 20),
+                        SizedBox(width: 12),
+                        Text('Voir l\'article'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                        SizedBox(width: 12),
+                        Text('Supprimer', style: TextStyle(color: AppColors.error)),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+            orElse: () => const SizedBox.shrink(),
           ),
         ],
       ),
@@ -638,6 +701,43 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     } else {
       return Formatters.date(date);
     }
+  }
+
+  void _showDeleteConfirmation(BuildContext context, WidgetRef ref, String conversationId) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Supprimer la conversation ?'),
+        content: const Text(
+          'La conversation sera masquée de votre liste. Elle réapparaîtra si vous recevez un nouveau message.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                await ref.read(chatServiceProvider).deleteConversation(conversationId);
+                ref.invalidate(conversationsProvider);
+                if (context.mounted) {
+                  Navigator.pop(context); // Quitter le chat
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erreur: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Supprimer', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
   }
 }
 

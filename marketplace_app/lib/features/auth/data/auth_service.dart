@@ -24,7 +24,7 @@ class AuthService {
     required String lastName,
   }) async {
     try {
-      final response = await _dio.post('/auth/register', data: {
+      final response = await _dio.post('auth/register', data: {
         'email': email,
         'password': password,
         'firstName': firstName,
@@ -44,7 +44,7 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final response = await _dio.post('/auth/login', data: {
+      final response = await _dio.post('auth/login', data: {
         'email': email,
         'password': password,
       });
@@ -65,7 +65,7 @@ class AuthService {
   /// Mot de passe oublié (Envoi de code OTP via notre backend)
   Future<Map<String, dynamic>> forgotPassword(String email) async {
     try {
-      final response = await _dio.post('/auth/forgot-password', data: {
+      final response = await _dio.post('auth/forgot-password', data: {
         'email': email,
       });
       return response.data;
@@ -83,7 +83,7 @@ class AuthService {
     required String type, // 'REGISTRATION' ou 'PASSWORD_RESET'
   }) async {
     try {
-      final response = await _dio.post('/auth/verify-otp', data: {
+      final response = await _dio.post('auth/verify-otp', data: {
         'email': email,
         'code': code,
         'type': type,
@@ -111,7 +111,7 @@ class AuthService {
     required String newPassword,
   }) async {
     try {
-      final response = await _dio.post('/auth/reset-password', data: {
+      final response = await _dio.post('auth/reset-password', data: {
         'email': email,
         'code': code,
         'newPassword': newPassword,
@@ -217,7 +217,7 @@ class AuthService {
     String? lastName,
   }) async {
     try {
-      final response = await _dio.post('/auth/firebase', data: {
+      final response = await _dio.post('auth/firebase', data: {
         'token': fbToken,
         if (firstName != null) 'firstName': firstName,
         if (lastName != null) 'lastName': lastName,
@@ -272,7 +272,7 @@ class AuthService {
       final fcmToken = await FirebaseMessaging.instance.getToken();
       if (fcmToken != null) {
         await _dio.post(
-          '/auth/fcm-token', 
+          'auth/fcm-token', 
           data: {'token': fcmToken},
           options: token != null 
             ? Options(headers: {'Authorization': 'Bearer $token'})
@@ -286,7 +286,17 @@ class AuthService {
 
   /// Déconnexion
   Future<void> logout() async {
+    try {
+      // Supprimer le token FCM (important pour arrêter les notifications)
+      await FirebaseMessaging.instance.deleteToken();
+    } catch (e) {
+       print('Erreur lors de la suppression du token FCM: $e');
+    }
+
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(AppConstants.keyAuthToken);
+    await prefs.remove(AppConstants.keyUserId);
+    await prefs.remove(AppConstants.keyUserEmail);
     await prefs.remove(AppConstants.keyUserAvatarUrl);
     
     // Clear Riverpod state

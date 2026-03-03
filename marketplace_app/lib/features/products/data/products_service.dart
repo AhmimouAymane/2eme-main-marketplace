@@ -37,7 +37,7 @@ class ProductsService {
       
       print('DEBUG: ProductsService.getProducts - URL: ${_dio.options.baseUrl}/products?${queryParams.entries.map((e) => "${e.key}=${e.value}").join("&")}');
 
-      final response = await _dio.get('/products', queryParameters: queryParams);
+      final response = await _dio.get('products', queryParameters: queryParams);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = response.data;
@@ -52,7 +52,7 @@ class ProductsService {
   /// Récupérer un produit par son ID
   Future<ProductModel> getProduct(String id) async {
     try {
-      final response = await _dio.get('/products/$id');
+      final response = await _dio.get('products/$id');
       if (response.statusCode == 200) {
         return ProductModel.fromJson(response.data);
       }
@@ -66,7 +66,7 @@ class ProductsService {
   Future<ProductModel> createProduct(ProductModel product) async {
     try {
       final response = await _dio.post(
-        '/products',
+        'products',
         data: product.toJson(),
       );
       if (response.statusCode == 201) {
@@ -82,7 +82,7 @@ class ProductsService {
   Future<ProductModel> updateProduct(String id, Map<String, dynamic> data) async {
     try {
       final response = await _dio.patch(
-        '/products/$id',
+        'products/$id',
         data: data,
       );
       if (response.statusCode == 200) {
@@ -97,7 +97,7 @@ class ProductsService {
   /// Supprimer un produit
   Future<void> deleteProduct(String id) async {
     try {
-      final response = await _dio.delete('/products/$id');
+      final response = await _dio.delete('products/$id');
       if (response.statusCode != 200) {
         throw Exception('Failed to delete product');
       }
@@ -109,7 +109,7 @@ class ProductsService {
   /// Ajouter une évaluation
   Future<void> addReview(String productId, int rating, String? comment) async {
     try {
-      await _dio.post('/products/$productId/reviews', data: {
+      await _dio.post('products/$productId/reviews', data: {
         'rating': rating,
         'comment': comment,
       });
@@ -121,7 +121,7 @@ class ProductsService {
   /// Ajouter un commentaire
   Future<void> addComment(String productId, String content) async {
     try {
-      await _dio.post('/products/$productId/comments', data: {
+      await _dio.post('products/$productId/comments', data: {
         'content': content,
       });
     } catch (e) {
