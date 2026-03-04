@@ -127,20 +127,24 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 _buildFilterButton(
                   onPressed: () => _showCategoryFilter(),
                   icon: Icons.category_outlined,
-                  label: ref
-                      .watch(categoriesProvider)
-                      .maybeWhen(
+                  label: ref.watch(categoriesProvider).maybeWhen(
                         data: (categories) {
-                          final selectedId = ref
-                              .watch(productFilterProvider)
-                              .categoryId;
+                          final selectedId = ref.watch(productFilterProvider).categoryId;
                           if (selectedId == null) return 'Category';
-                          return categories
-                              .firstWhere(
-                                (c) => c.id == selectedId,
-                                orElse: () => categories.first,
-                              )
-                              .name;
+                          
+                          // Helper for recursive search in SearchScreen
+                          CategoryModel? findById(List<CategoryModel> cats, String id) {
+                            for (var c in cats) {
+                              if (c.id == id) return c;
+                              if (c.children.isNotEmpty) {
+                                var found = findById(c.children, id);
+                                if (found != null) return found;
+                              }
+                            }
+                            return null;
+                          }
+
+                          return findById(categories, selectedId)?.name ?? 'Category';
                         },
                         orElse: () => 'Categories',
                       ),

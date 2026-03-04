@@ -218,7 +218,18 @@ class ProfileScreen extends ConsumerWidget {
             onTap: () => context.push(AppRoutes.orders),
           ),
           _buildDivider(),
-          
+          _buildMenuTile(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'Mon portefeuille',
+            onTap: () => context.push(AppRoutes.wallet),
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.verified_user_outlined,
+            title: 'Vérification du compte',
+            onTap: () => context.push(AppRoutes.sellerVerification),
+          ),
+          _buildDivider(),
           _buildMenuTile(
             icon: Icons.location_on_outlined,
             title: 'Adresses',

@@ -78,6 +78,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         _buildFreshArrivalsSection(),
                         const SizedBox(height: 32),
 
+                        // Section Bijoux
+                        _buildCategoryProductSection(
+                          title: 'Bijoux Étincelants',
+                          provider: jewelryProductsProvider,
+                          slug: 'femme-accessoires-bijoux',
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Section Chaussures Femme
+                        _buildCategoryProductSection(
+                          title: 'Chaussures Femme',
+                          provider: womenShoesProductsProvider,
+                          slug: 'femme-chaussures',
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Section Sacs & Accessoires
+                        _buildCategoryProductSection(
+                          title: 'Sacs & Accessoires',
+                          provider: bagsProductsProvider,
+                          slug: 'femme-accessoires-sacs',
+                        ),
+                        const SizedBox(height: 32),
+
                         // Community Activity
                         _buildCommunityActivitySection(),
                         const SizedBox(height: 24),
@@ -621,6 +645,81 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               loading: () => const SizedBox(),
               error: (e, _) => const SizedBox(),
             ),
+      ],
+    );
+  }
+
+  Widget _buildCategoryProductSection({
+    required String title,
+    required AutoDisposeFutureProvider<List<ProductModel>> provider,
+    required String slug,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.cloviGreen,
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  final id = ref.read(categoryBySlugProvider(slug));
+                  if (id != null) {
+                    ref.read(productFilterProvider.notifier).updateCategory(id);
+                    context.push(AppRoutes.search);
+                  }
+                },
+                child: const Text('voir tout'),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 240,
+          child: ref.watch(provider).when(
+                data: (products) {
+                  if (products.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'Aucun produit trouvé dans cette catégorie',
+                        style: TextStyle(color: Colors.grey, fontSize: 13),
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      final product = products[index];
+                      return Container(
+                        width: 150,
+                        margin: const EdgeInsets.only(right: 16),
+                        child: ProductCard(
+                          productId: product.id,
+                          imageUrl: product.fullMainImageUrl,
+                          title: product.title,
+                          price: product.price,
+                          product: product,
+                          onTap: () => context.push('/product/${product.id}'),
+                        ),
+                      );
+                    },
+                  );
+                },
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => const SizedBox(),
+              ),
+        ),
       ],
     );
   }

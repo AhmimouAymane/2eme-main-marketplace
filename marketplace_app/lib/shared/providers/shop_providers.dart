@@ -64,6 +64,28 @@ final categoriesProvider = FutureProvider.autoDispose<List<CategoryModel>>((
   return service.getCategories();
 });
 
+/// Provider to find a category ID by its slug
+final categoryBySlugProvider = Provider.family<String?, String>((ref, slug) {
+  final categoriesAsync = ref.watch(categoriesProvider);
+  return categoriesAsync.maybeWhen(
+    data: (categories) {
+      return _findCategoryRecursive(categories, slug)?.id;
+    },
+    orElse: () => null,
+  );
+});
+
+CategoryModel? _findCategoryRecursive(List<CategoryModel> categories, String slug) {
+  for (final cat in categories) {
+    if (cat.slug == slug) return cat;
+    if (cat.children.isNotEmpty) {
+      final found = _findCategoryRecursive(cat.children, slug);
+      if (found != null) return found;
+    }
+  }
+  return null;
+}
+
 /// État des filtres de produits
 class ProductFilters {
   final String? search;
@@ -180,6 +202,22 @@ final homeProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((
     'DEBUG: homeProductsProvider fetching all products (periodic refresh active)',
   );
   return service.getProducts();
+});
+
+// Category specific providers for Home Page
+final jewelryProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
+  final service = ref.watch(productsServiceProvider);
+  return service.getProducts(categorySlug: 'femme-accessoires-bijoux');
+});
+
+final womenShoesProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
+  final service = ref.watch(productsServiceProvider);
+  return service.getProducts(categorySlug: 'femme-chaussures');
+});
+
+final bagsProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
+  final service = ref.watch(productsServiceProvider);
+  return service.getProducts(categorySlug: 'femme-accessoires-sacs');
 });
 
 // User Products Provider (My Ads)

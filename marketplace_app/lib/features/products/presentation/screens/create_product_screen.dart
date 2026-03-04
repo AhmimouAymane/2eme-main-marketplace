@@ -17,6 +17,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/services/categories_service.dart';
 import 'package:marketplace_app/shared/models/category_model.dart';
+import 'package:go_router/go_router.dart';
+import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/core/routes/app_routes.dart';
 
 
 class CreateProductScreen extends ConsumerStatefulWidget {
@@ -109,6 +112,12 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   }
 
   Future<void> _handleSubmit() async {
+    final user = ref.read(userProfileProvider).value;
+    if (user == null || !user.isSellerVerified) {
+      _showVerificationRequiredDialog();
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedSubCategory == null) {
@@ -217,6 +226,35 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
         );
       }
     }
+  }
+
+  void _showVerificationRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Vérification requise'),
+        content: const Text(
+          'Vous devez faire vérifier votre compte (RIB et CIN) avant de pouvoir poster un article. Cela nous permet d\'assurer la sécurité des transactions.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Plus tard'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.push(AppRoutes.sellerVerification);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.cloviGreen,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Se faire vérifier'),
+          ),
+        ],
+      ),
+    );
   }
 
   ProductCondition _conditionFromBackendString(String value) {

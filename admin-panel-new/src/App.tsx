@@ -9,6 +9,7 @@ import { useAuthStore } from './store/authStore';
 
 import CategoryPage from './pages/Categories/CategoryPage';
 import SettingsPage from './pages/Settings/SettingsPage';
+import VerificationListPage from './pages/Verification/VerificationListPage';
 
 // Protected Route Guard
 const ProtectedRoute = () => {
@@ -33,6 +34,7 @@ function App() {
                         <Route path="/products" element={<ProductListPage />} />
                         <Route path="/orders" element={<OrderListPage />} />
                         <Route path="/categories" element={<CategoryPage />} />
+                        <Route path="/verifications" element={<VerificationListPage />} />
                         <Route path="/settings" element={<SettingsPage />} />
                     </Route>
                 </Route>

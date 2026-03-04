@@ -38,6 +38,10 @@ model User {
   reviews             Review[]       @relation("UserReviews")
   givenReviews        UserReview[]   @relation("Reviewer")
   receivedReviews     UserReview[]   @relation("TargetUser")
+  isSellerVerified      Boolean        @default(false)
+  sellerStatus          SellerStatus   @default(NOT_SUBMITTED)
+  verificationComment   String?
+  verificationDocuments VerificationDocument[]
 
   @@map("users")
 }
@@ -275,6 +279,20 @@ model SystemSettings {
   @@map("system_settings")
 }
 
+model VerificationDocument {
+  id        String   @id @default(uuid())
+  userId    String
+  fileType  String   // 'ID_CARD' or 'BANK_CERTIFICATE'
+  fileName  String
+  mimeType  String
+  fileData  Bytes
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("verification_documents")
+}
+
 model strapi_migrations {
   id   Int       @id @default(autoincrement())
   name String?   @db.VarChar(255)
@@ -290,6 +308,13 @@ model strapi_migrations_internal {
 enum Role {
   USER
   ADMIN
+}
+
+enum SellerStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum ProductStatus {
@@ -347,6 +372,8 @@ enum NotificationType {
   WELCOME
   SECURITY_ALERT
   PROMOTION
+  SELLER_VERIFIED
+  SELLER_REJECTED
 }
 
 enum VerificationType {

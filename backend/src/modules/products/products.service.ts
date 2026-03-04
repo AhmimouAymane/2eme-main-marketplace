@@ -18,6 +18,10 @@ export class ProductQuery {
 
     @IsOptional()
     @IsString()
+    categorySlug?: string;
+
+    @IsOptional()
+    @IsString()
     size?: string;
 
     @IsOptional()
@@ -95,6 +99,7 @@ export class ProductsService {
         const {
             search,
             categoryId,
+            categorySlug,
             size,
             brand,
             condition,
@@ -106,8 +111,20 @@ export class ProductsService {
             order = query._order || 'desc',
         } = query;
 
+        let targetCategoryId = categoryId;
+
+        // If slug is provided instead of ID, find the ID first
+        if (categorySlug && !targetCategoryId) {
+            const cat = await this.prisma.category.findUnique({
+                where: { slug: categorySlug }
+            });
+            if (cat) {
+                targetCategoryId = cat.id;
+            }
+        }
+
         let categoryIds: string[] = [];
-        if (categoryId) {
+        if (targetCategoryId) {
             // Get the category and all its descendants
             const allCategories = await this.prisma.category.findMany();
 
@@ -120,8 +137,8 @@ export class ProductsService {
                 return ids;
             };
 
-            categoryIds = getDescendantIds(categoryId);
-            console.log(`Filtering for category ${categoryId} and its descendants:`, categoryIds);
+            categoryIds = getDescendantIds(targetCategoryId);
+            console.log(`Filtering for category ${targetCategoryId} (from ${categorySlug || 'ID'}) and its descendants:`, categoryIds);
         }
 
         const where: Prisma.ProductWhereInput = {
@@ -147,7 +164,10 @@ export class ProductsService {
         if ((query as any).isAdminView === 'true' || (query as any).isAdminView === true) {
             // No additional status filters for admin panel
         } else if (userId) {
-            const user = await this.prisma.user.findUnique({ where: { id: userId } });
+            const user = await this.prisma.user.findUnique({
+                where: { id: userId },
+                select: { id: true, role: true, isSellerVerified: true, sellerStatus: true }
+            });
 
             if (sellerId) {
                 // When filtering by sellerId (e.g. "My Products" page),
@@ -269,6 +289,18 @@ export class ProductsService {
 
 
     async create(createProductDto: CreateProductDto, sellerId: string) {
+        // Check if user is verified
+        const user = await this.prisma.user.findUnique({
+            where: { id: sellerId },
+            select: { isSellerVerified: true, sellerStatus: true }
+        });
+
+        if (!user || !user.isSellerVerified) {
+            throw new ForbiddenException(
+                'Vous devez faire vérifier votre compte (RIB et CIN) avant de pouvoir poster un produit.'
+            );
+        }
+
         console.log('--- PRODUCT CREATE DEBUG ---');
         console.log('Seller ID:', sellerId);
         console.log('Category ID:', createProductDto.categoryId);

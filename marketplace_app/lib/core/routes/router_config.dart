@@ -26,6 +26,8 @@ import 'package:marketplace_app/features/profile/presentation/screens/help_suppo
 import 'package:marketplace_app/features/profile/presentation/screens/about_screen.dart';
 import 'package:marketplace_app/shared/models/address_model.dart';
 import 'package:marketplace_app/shared/widgets/app_shell.dart';
+import 'package:marketplace_app/features/wallet/presentation/screens/wallet_screen.dart';
+import 'package:marketplace_app/features/verification/presentation/screens/seller_verification_screen.dart';
 
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 
@@ -190,6 +192,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => MaterialPage(
           key: state.pageKey,
           child: const AboutScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.wallet,
+        name: 'wallet',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const WalletScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.sellerVerification,
+        name: 'seller-verification',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const SellerVerificationScreen(),
         ),
       ),
 

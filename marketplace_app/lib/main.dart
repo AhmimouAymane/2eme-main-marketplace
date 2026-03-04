@@ -173,6 +173,11 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
         ref.invalidate(sellerOrdersProvider);
       }
 
+      // Mise à jour temps réel pour le statut vendeur
+      if (data['type'] == 'SELLER_VERIFIED' || data['type'] == 'SELLER_REJECTED') {
+        ref.invalidate(userProfileProvider);
+      }
+
       if (message.notification != null) {
         // Ne pas afficher de notification si c'est un message chat
         // et qu'on est déjà dans cette conversation

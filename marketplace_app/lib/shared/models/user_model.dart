@@ -11,6 +11,52 @@ enum UserRole {
   admin,
 }
 
+enum SellerStatus {
+  @JsonValue('NOT_SUBMITTED')
+  notSubmitted,
+  @JsonValue('PENDING')
+  pending,
+  @JsonValue('APPROVED')
+  approved,
+  @JsonValue('REJECTED')
+  rejected,
+}
+
+@JsonSerializable()
+class VerificationDocumentModel extends Equatable {
+  final String id;
+  final String fileType;
+  final String fileName;
+  final DateTime createdAt;
+
+  const VerificationDocumentModel({
+    required this.id,
+    required this.fileType,
+    required this.fileName,
+    required this.createdAt,
+  });
+
+  factory VerificationDocumentModel.fromJson(Map<String, dynamic> json) =>
+      VerificationDocumentModel(
+        id: json['id'] as String? ?? '',
+        fileType: json['fileType'] as String? ?? '',
+        fileName: json['fileName'] as String? ?? '',
+        createdAt: json['createdAt'] != null
+            ? DateTime.parse(json['createdAt'] as String)
+            : DateTime.now(),
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'fileType': fileType,
+        'fileName': fileName,
+        'createdAt': createdAt.toIso8601String(),
+      };
+
+  @override
+  List<Object?> get props => [id, fileType, fileName, createdAt];
+}
+
 /// Modèle de données pour un utilisateur
 @JsonSerializable()
 class UserModel extends Equatable {
@@ -29,6 +75,10 @@ class UserModel extends Equatable {
   final UserRole role;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final bool isSellerVerified;
+  final SellerStatus sellerStatus;
+  final String? verificationComment;
+  final List<VerificationDocumentModel>? verificationDocuments;
   
   const UserModel({
     required this.id,
@@ -46,6 +96,10 @@ class UserModel extends Equatable {
     required this.role,
     required this.createdAt,
     this.updatedAt,
+    this.isSellerVerified = false,
+    this.sellerStatus = SellerStatus.notSubmitted,
+    this.verificationComment,
+    this.verificationDocuments,
   });
   
   // Getters
@@ -81,11 +135,28 @@ class UserModel extends Equatable {
         role: _roleFromString(json['role'] as String? ?? 'USER'),
         createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
         updatedAt: json['updatedAt'] == null ? null : DateTime.parse(json['updatedAt'] as String),
+        isSellerVerified: json['isSellerVerified'] as bool? ?? false,
+        sellerStatus: _sellerStatusFromString(json['sellerStatus'] as String? ?? 'NOT_SUBMITTED'),
+        verificationComment: json['verificationComment'] as String?,
+        verificationDocuments: json['verificationDocuments'] != null
+            ? (json['verificationDocuments'] as List)
+                .map((d) => VerificationDocumentModel.fromJson(d as Map<String, dynamic>))
+                .toList()
+            : null,
       );
   
   static UserRole _roleFromString(String role) {
     if (role == 'ADMIN') return UserRole.admin;
     return UserRole.user;
+  }
+
+  static SellerStatus _sellerStatusFromString(String status) {
+    switch (status) {
+      case 'PENDING': return SellerStatus.pending;
+      case 'APPROVED': return SellerStatus.approved;
+      case 'REJECTED': return SellerStatus.rejected;
+      default: return SellerStatus.notSubmitted;
+    }
   }
 
   Map<String, dynamic> toJson() => {
@@ -100,6 +171,10 @@ class UserModel extends Equatable {
         'salesCount': salesCount,
         'averageRating': averageRating,
         'role': role.name.toUpperCase(),
+        'isSellerVerified': isSellerVerified,
+        'sellerStatus': sellerStatus.name.toUpperCase(),
+        'verificationComment': verificationComment,
+        'verificationDocuments': verificationDocuments?.map((d) => d.toJson()).toList(),
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt?.toIso8601String(),
       };
@@ -121,6 +196,10 @@ class UserModel extends Equatable {
     UserRole? role,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? isSellerVerified,
+    SellerStatus? sellerStatus,
+    String? verificationComment,
+    List<VerificationDocumentModel>? verificationDocuments,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -138,6 +217,10 @@ class UserModel extends Equatable {
       role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isSellerVerified: isSellerVerified ?? this.isSellerVerified,
+      sellerStatus: sellerStatus ?? this.sellerStatus,
+      verificationComment: verificationComment ?? this.verificationComment,
+      verificationDocuments: verificationDocuments ?? this.verificationDocuments,
     );
   }
   
@@ -155,5 +238,9 @@ class UserModel extends Equatable {
         receivedReviews,
         createdAt,
         updatedAt,
+        isSellerVerified,
+        sellerStatus,
+        verificationComment,
+        verificationDocuments,
       ];
 }

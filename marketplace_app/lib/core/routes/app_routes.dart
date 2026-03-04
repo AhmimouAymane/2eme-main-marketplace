@@ -26,6 +26,8 @@ class AppRoutes {
   static const String notifications = '/notifications';
   static const String helpSupport = '/help-support';
   static const String about = '/about';
+  static const String wallet = '/wallet';
+  static const String sellerVerification = '/seller-verification';
 
   // Chat
   static const String conversations = '/conversations';

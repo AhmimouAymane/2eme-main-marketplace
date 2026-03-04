@@ -12,6 +12,7 @@ class ProductsService {
   Future<List<ProductModel>> getProducts({
     String? search,
     String? category,
+    String? categorySlug,
     String? condition,
     String? status,
     double? minPrice,
@@ -24,6 +25,7 @@ class ProductsService {
       final queryParams = {
         'search': search,
         'categoryId': category,
+        'categorySlug': categorySlug,
         'condition': condition,
         'status': status,
         'minPrice': minPrice,

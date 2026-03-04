@@ -20,6 +20,8 @@ import { UserReviewsModule } from './modules/user-reviews/user-reviews.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { join } from 'path';
 import { ScheduleModule } from '@nestjs/schedule';
+import { SellerVerificationModule } from './modules/seller-verification/seller-verification.module';
+import { WalletModule } from './modules/wallet/wallet.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { ScheduleModule } from '@nestjs/schedule';
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',
     }),
+    SellerVerificationModule,
+    WalletModule,
   ],
   controllers: [AppController],
   providers: [AppService],

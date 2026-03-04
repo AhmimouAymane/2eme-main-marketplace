@@ -13,6 +13,7 @@ import 'package:marketplace_app/shared/models/order_model.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/shared/providers/system_settings_provider.dart';
 import 'package:marketplace_app/shared/models/system_settings_model.dart';
+import 'package:marketplace_app/shared/widgets/full_screen_image_viewer.dart';
 
 /// Écran de détail d'un produit
 class ProductDetailScreen extends ConsumerStatefulWidget {
@@ -117,15 +118,33 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       setState(() => _currentImageIndex = index);
                     },
                     itemBuilder: (context, index) {
-                      return Container(
-                        color: Colors.grey[200],
-                        child: images.isEmpty
-                            ? Icon(
-                                Icons.image_outlined,
-                                size: 80,
-                                color: Colors.grey[400],
-                              )
-                            : Image.network(images[index], fit: BoxFit.cover),
+                      return GestureDetector(
+                        onTap: () {
+                          if (images.isNotEmpty) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => FullScreenImageViewer(
+                                  imageUrls: images,
+                                  initialIndex: index,
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: Container(
+                          color: Colors.grey[200],
+                          child: images.isEmpty
+                              ? Icon(
+                                  Icons.image_outlined,
+                                  size: 80,
+                                  color: Colors.grey[400],
+                                )
+                              : Hero(
+                                  tag: 'product_image_$index',
+                                  child: Image.network(images[index],
+                                      fit: BoxFit.cover),
+                                ),
+                        ),
                       );
                     },
                   ),

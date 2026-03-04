@@ -9,6 +9,7 @@ import {
     MenuFoldOutlined,
     TagsOutlined,
     SettingOutlined,
+    UserOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -48,6 +49,11 @@ const MainLayout: React.FC = () => {
             key: '/categories',
             icon: <TagsOutlined />,
             label: 'Categories',
+        },
+        {
+            key: '/verifications',
+            icon: <UserOutlined />,
+            label: 'Vérification Vendeurs',
         },
         {
             key: '/settings',
