@@ -167,7 +167,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // backgroundColor: AppColors.cloviBeige, // Inherited from theme
+      backgroundColor: AppColors.cloviDarkGreen,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -180,9 +180,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 alignment: Alignment.centerLeft,
                 child: IconButton(
                   onPressed: () => context.pop(),
-                  icon: Icon(
+                  icon: const Icon(
                     Icons.arrow_back,
-                    color: AppColors.cloviGreen,
+                    color: Colors.white,
                   ),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -191,8 +191,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               
               const SizedBox(height: 20),
 
-              // Logo du cintre avec "clovi"
-              _buildLogo(),
+              // Logo de l'application
+              Image.asset(
+                'assets/images/appiconB.png',
+                height: 120,
+                fit: BoxFit.contain,
+              ),
               const SizedBox(height: 12),
 
               // Sous-titre
@@ -200,7 +204,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 'Votre compagnon de mode d\'occasion',
                 style: TextStyle(
                   fontSize: 16,
-                  color: AppColors.cloviGreen,
+                  color: Colors.white.withOpacity(0.9),
                   fontWeight: FontWeight.w500,
                   height: 1.4,
                 ),
@@ -212,7 +216,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.cloviBeige,
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
@@ -233,7 +237,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF1A1A1A),
+                          color: AppColors.cloviDarkGreen,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -249,33 +253,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               decoration: InputDecoration(
                                 labelText: 'Prénom',
                                 labelStyle: TextStyle(
-                                  color: AppColors.cloviGreen,
+                                  color: AppColors.cloviDarkGreen,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 prefixIcon: Icon(
                                   Icons.person_outlined,
-                                  color: AppColors.cloviGreen,
+                                  color: AppColors.cloviDarkGreen,
                                 ),
                                 filled: true,
                                 fillColor: Colors.white,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(
-                                    color: AppColors.cloviGreen,
+                                    color: AppColors.cloviDarkGreen,
                                     width: 1.5,
                                   ),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(
-                                    color: AppColors.cloviGreen,
+                                    color: AppColors.cloviDarkGreen,
                                     width: 1.5,
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(
-                                    color: AppColors.cloviGreen,
+                                    color: AppColors.cloviDarkGreen,
                                     width: 2,
                                   ),
                                 ),
@@ -291,33 +295,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               decoration: InputDecoration(
                                 labelText: 'Nom',
                                 labelStyle: TextStyle(
-                                  color: AppColors.cloviGreen,
+                                  color: AppColors.cloviDarkGreen,
                                   fontWeight: FontWeight.w500,
                                 ),
                                 prefixIcon: Icon(
                                   Icons.person_outlined,
-                                  color: AppColors.cloviGreen,
+                                  color: AppColors.cloviDarkGreen,
                                 ),
                                 filled: true,
                                 fillColor: Colors.white,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(
-                                    color: AppColors.cloviGreen,
+                                    color: AppColors.cloviDarkGreen,
                                     width: 1.5,
                                   ),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(
-                                    color: AppColors.cloviGreen,
+                                    color: AppColors.cloviDarkGreen,
                                     width: 1.5,
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12),
                                   borderSide: BorderSide(
-                                    color: AppColors.cloviGreen,
+                                    color: AppColors.cloviDarkGreen,
                                     width: 2,
                                   ),
                                 ),
@@ -337,33 +341,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: 'Email',
                           labelStyle: TextStyle(
-                            color: AppColors.cloviGreen,
+                            color: AppColors.cloviDarkGreen,
                             fontWeight: FontWeight.w500,
                           ),
                           prefixIcon: Icon(
                             Icons.email_outlined,
-                            color: AppColors.cloviGreen,
+                            color: AppColors.cloviDarkGreen,
                           ),
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                               width: 1.5,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                               width: 1.5,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                               width: 2,
                             ),
                           ),
@@ -381,19 +385,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           helperText: '8+ caractères, Majuscule, Minuscule et (Chiffre ou Symbole)',
                           helperMaxLines: 2,
                           labelStyle: TextStyle(
-                            color: AppColors.cloviGreen,
+                            color: AppColors.cloviDarkGreen,
                             fontWeight: FontWeight.w500,
                           ),
                           prefixIcon: Icon(
                             Icons.lock_outlined,
-                            color: AppColors.cloviGreen,
+                            color: AppColors.cloviDarkGreen,
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword
                                   ? Icons.visibility_outlined
                                   : Icons.visibility_off_outlined,
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                             ),
                             onPressed: () {
                               setState(() => _obscurePassword = !_obscurePassword);
@@ -404,21 +408,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                               width: 1.5,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                               width: 1.5,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                               width: 2,
                             ),
                           ),
@@ -434,19 +438,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         decoration: InputDecoration(
                           labelText: 'Confirmer le mot de passe',
                           labelStyle: TextStyle(
-                            color: AppColors.cloviGreen,
+                            color: AppColors.cloviDarkGreen,
                             fontWeight: FontWeight.w500,
                           ),
                           prefixIcon: Icon(
                             Icons.lock_outlined,
-                            color: AppColors.cloviGreen,
+                            color: AppColors.cloviDarkGreen,
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscureConfirmPassword
                                   ? Icons.visibility_outlined
                                   : Icons.visibility_off_outlined,
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                             ),
                             onPressed: () {
                               setState(
@@ -458,21 +462,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                               width: 1.5,
                             ),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                               width: 1.5,
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(
-                              color: AppColors.cloviGreen,
+                              color: AppColors.cloviDarkGreen,
                               width: 2,
                             ),
                           ),
@@ -497,7 +501,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               TextSpan(
                                 text: "Conditions Générales d'Utilisation",
                                 style: const TextStyle(
-                                  color: AppColors.cloviGreen,
+                                  color: AppColors.cloviDarkGreen,
                                   fontWeight: FontWeight.bold,
                                   decoration: TextDecoration.underline,
                                 ),
@@ -598,9 +602,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         onPressed: () => context.pop(),
                         child: RichText(
                           text: TextSpan(
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 14,
-                              color: const Color(0xFF1A1A1A),
+                              color: Color(0xFF1A1A1A),
                             ),
                             children: [
                               const TextSpan(
@@ -611,7 +615,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 text: 'Connexion',
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.cloviGreen,
+                                  color: AppColors.cloviDarkGreen,
                                 ),
                               ),
                             ],
@@ -627,30 +631,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Column(
-      children: [
-        // Cintre dessiné avec CustomPaint
-        CustomPaint(
-          size: const Size(100, 60),
-          painter: HangerPainter(),
-        ),
-        const SizedBox(height: 8),
-        // Texte "clovi"
-        Text(
-          'clovi',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w400,
-            color: AppColors.cloviGreen,
-            fontFamily: 'Cursive',
-            letterSpacing: 1,
-          ),
-        ),
-      ],
     );
   }
 
@@ -697,49 +677,4 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ),
     );
   }
-}
-
-// Painter pour dessiner le cintre
-class HangerPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AppColors.cloviGreen
-      ..strokeWidth = 2.5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path();
-
-    // Crochet du cintre
-    final hookCenter = Offset(size.width / 2, 10);
-    canvas.drawCircle(hookCenter, 8, paint);
-
-    // Ligne verticale du crochet
-    path.moveTo(size.width / 2, 18);
-    path.lineTo(size.width / 2, 30);
-
-    // Partie gauche du cintre (courbe)
-    path.moveTo(size.width / 2, 30);
-    path.quadraticBezierTo(
-      size.width * 0.3, 35,
-      size.width * 0.15, 50,
-    );
-
-    // Partie droite du cintre (courbe)
-    path.moveTo(size.width / 2, 30);
-    path.quadraticBezierTo(
-      size.width * 0.7, 35,
-      size.width * 0.85, 50,
-    );
-
-    // Barre horizontale du bas
-    path.moveTo(size.width * 0.15, 50);
-    path.lineTo(size.width * 0.85, 50);
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

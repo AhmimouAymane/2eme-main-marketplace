@@ -9,6 +9,8 @@ import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/conversation_model.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
+
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -37,26 +39,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _markAsRead();
-      ref.read(chatSocketProvider).emit('join_conversation', {
+      ref.read(chatSocketProvider)?.emit('join_conversation', {
         'conversationId': widget.conversationId,
       });
     });
   }
 
   @override
-  void deactivate() {
-    // Déférer la modification du provider pour éviter l'erreur
-    // "Tried to modify a provider while the widget tree is building"
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        ref.read(currentChatConversationIdProvider.notifier).state = null;
-      }
-    });
-    super.deactivate();
-  }
-
-  @override
   void dispose() {
+    // S'assurer que le provider est réinitialisé quand on quitte l'écran
+    // pour que les notifications de ce chat s'affichent à nouveau
+    ref.read(currentChatConversationIdProvider.notifier).state = null;
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -80,6 +73,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await service.markAsRead(widget.conversationId);
       ref.invalidate(conversationsProvider);
       ref.invalidate(conversationMessagesProvider(widget.conversationId));
+      ref.invalidate(unreadNotificationsCountProvider);
     } catch (_) {}
   }
 

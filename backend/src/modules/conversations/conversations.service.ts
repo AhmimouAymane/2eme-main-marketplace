@@ -218,6 +218,20 @@ export class ConversationsService {
         isRead: true,
       },
     });
+
+    // AUSSI : Marquer les notifications de type message comme lues pour cette conversation
+    await this.prisma.notification.updateMany({
+      where: {
+        userId,
+        type: NotificationType.MESSAGE_RECEIVED,
+        isRead: false,
+        data: {
+          path: ['conversationId'],
+          equals: conversationId,
+        },
+      },
+      data: { isRead: true },
+    });
   }
 
   async softDeleteConversation(id: string, userId: string): Promise<void> {

@@ -8,6 +8,7 @@ import 'shared/providers/shop_providers.dart';
 import 'shared/providers/settings_providers.dart';
 import 'shared/models/conversation_model.dart';
 import 'features/auth/presentation/providers/auth_providers.dart';
+import 'features/notifications/presentation/providers/notifications_provider.dart';
 import 'dart:async';
 import 'core/theme/app_colors.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -157,6 +158,7 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
     // 1. Gérer les messages en premier plan (Foreground)
     _fcmSubscription = FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      print('DEBUG: FirebaseMessaging.onMessage received. Data: ${message.data}');
       final data = message.data;
       
       // Vérifier si l'utilisateur est authentifié avant toute action
@@ -178,12 +180,17 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
         ref.invalidate(userProfileProvider);
       }
 
+      // Mise à jour du compteur de notifications non lues
+      ref.invalidate(unreadNotificationsCountProvider);
+
       if (message.notification != null) {
+        print('DEBUG: FCM Foreground message received: ${message.notification?.title}');
         // Ne pas afficher de notification si c'est un message chat
         // et qu'on est déjà dans cette conversation
         if (data['screen'] == 'chat' && data['conversationId'] != null) {
           final currentChatId = ref.read(currentChatConversationIdProvider);
           if (currentChatId == data['conversationId']) {
+            print('DEBUG: FCM notification skipped (active chat)');
             return; // On est déjà dans cette conversation
           }
         }
@@ -217,8 +224,18 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
   }
 
   void _showCloviNotification(String title, String body, {bool isSystem = false, RemoteMessage? message}) {
-    rootScaffoldMessengerKey.currentState?.hideCurrentSnackBar();
-    rootScaffoldMessengerKey.currentState?.showSnackBar(
+    print('DEBUG: _showCloviNotification - title: $title, isSystem: $isSystem');
+    
+    final messengerState = rootScaffoldMessengerKey.currentState;
+    if (messengerState == null) {
+      print('DEBUG: _showCloviNotification - FAILED: messengerState is null');
+      return;
+    }
+
+    // Nettoyer toute notification existante pour éviter l'empilement
+    messengerState.removeCurrentSnackBar();
+
+    messengerState.showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -258,9 +275,13 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.cloviGreen,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(
+          bottom: 16, // Adjusted to be visible just above the BottomNavigationBar
+          left: 16,
+          right: 16,
+        ),
         elevation: 6,
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 3), // Reduced duration for transient effect
         action: SnackBarAction(
           label: 'VOIR',
           textColor: Colors.white70,
@@ -276,6 +297,7 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
   @override
   Widget build(BuildContext context) {
+    print('DEBUG: MarketplaceApp.build');
     // Initialise le socket global
     ref.watch(chatSocketProvider);
 
@@ -283,23 +305,38 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
     ref.listen<MessageModel?>(
       lastIncomingMessageProvider,
       (previous, next) {
-        if (next == null) return;
+        if (next == null) {
+          print('DEBUG: main.dart - lastIncomingMessageProvider reset to null');
+          return;
+        }
+        print('DEBUG: main.dart - lastIncomingMessageProvider NEW MESSAGE: ${next.content}');
 
-        // Récupérer les états actuels
+        // Récupérer les états actuels une fois les données chargées
         final currentUserId = ref.read(userIdProvider).value;
         final currentChatId = ref.read(currentChatConversationIdProvider);
+        
+        print('DEBUG: currentUserId=$currentUserId, senderId=${next.senderId}');
+        print('DEBUG: currentChatId=$currentChatId, conversationId=${next.conversationId}');
 
         // NE PAS afficher de notification si :
         // 1. C'est nous qui avons envoyé le message
         // 2. On est déjà dans la conversation en question
         if (next.senderId == currentUserId || next.conversationId == currentChatId) {
+          print('DEBUG: Notification skipped (own message or active chat)');
           return;
         }
 
+        print('DEBUG: Showing SnackBar for message: ${next.content}');
         _showCloviNotification(
           'Message de ${next.senderName ?? next.senderId}',
           next.content,
         );
+
+        // Reset pour permettre de redéclencher même si le même objet est réémis
+        // (utile si le backend renvoie le même message ou si Equatable bloque)
+        Future.microtask(() {
+          ref.read(lastIncomingMessageProvider.notifier).state = null;
+        });
       },
     );
 

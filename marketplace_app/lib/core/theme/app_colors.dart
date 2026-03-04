@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 /// Définition des couleurs de l'application marketplace
 class AppColors {
   // Couleurs principales (Clovie Theme)
-  static const Color cloviGreen = Color(0xFF2D5F4F);
+  static const Color cloviGreen = Color(0xFF1B4332);
   static const Color cloviDarkGreen = Color(0xFF1B4332);
   static const Color cloviBeige = Color(0xFFF5F5F0);
   

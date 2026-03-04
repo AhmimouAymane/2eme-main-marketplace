@@ -37,6 +37,8 @@ final authInitializerProvider = FutureProvider<void>((ref) async {
   
   if (savedToken != null) {
     ref.read(authTokenProvider.notifier).state = savedToken;
+    // On synchronise le token FCM au démarrage si on est connecté
+    ref.read(authServiceProvider).syncFcmToken(savedToken);
   }
 
   // Écouter les changements d'auth Firebase pour une synchronisation automatique

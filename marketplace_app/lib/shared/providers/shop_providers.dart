@@ -16,6 +16,7 @@ import 'package:marketplace_app/shared/models/conversation_model.dart';
 import 'package:marketplace_app/features/chat/data/chat_service.dart';
 import 'package:marketplace_app/shared/models/address_model.dart';
 import 'package:marketplace_app/features/addresses/data/addresses_service.dart';
+import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
 
 // Services
 // (usersServiceProvider moved to auth_providers.dart)
@@ -363,22 +364,48 @@ final lastIncomingMessageProvider = StateProvider<MessageModel?>((ref) => null);
 final currentChatConversationIdProvider = StateProvider<String?>((ref) => null);
 
 // Socket.io global pour le chat
-final chatSocketProvider = Provider<IO.Socket>((ref) {
-  final baseUrl = AppConstants.mediaBaseUrl; // ex: http://192.168.100.118:8080
+final chatSocketProvider = Provider<IO.Socket?>((ref) {
+  final baseUrl = AppConstants.mediaBaseUrl;
+  final token = ref.watch(authTokenProvider);
+
+  if (token == null) {
+    print('DEBUG: Socket - No token available, postponing connection');
+    return null;
+  }
+
+  // Ensure no double slash
+  final socketUrl = baseUrl.endsWith('/') 
+      ? '${baseUrl}chat' 
+      : '$baseUrl/chat';
+
+  print('DEBUG: Connecting to Socket: $socketUrl with token');
 
   final socket = IO.io(
-    '$baseUrl/chat',
+    socketUrl,
     IO.OptionBuilder()
         .setTransports(['websocket'])
+        .setAuth({'token': token})
         .disableAutoConnect()
         .build(),
   );
 
   socket
     ..onConnect((_) {
-      // Connecté au namespace /chat
+      print('DEBUG: Socket connected to /chat namespace');
+      final userId = ref.read(userIdProvider).value;
+      if (userId != null) {
+        print('DEBUG: Socket emitting identify for user $userId');
+        socket.emit('identify', {'userId': userId});
+      }
+    })
+    ..onConnectError((err) {
+      print('DEBUG: Socket connection error: $err');
+    })
+    ..onReconnect((_) {
+      print('DEBUG: Socket reconnected');
     })
     ..on('new_message', (data) {
+      print('DEBUG: Socket received new_message event: $data');
       if (data is Map) {
         final map = Map<String, dynamic>.from(data);
         final message = MessageModel.fromJson(map);
@@ -386,12 +413,16 @@ final chatSocketProvider = Provider<IO.Socket>((ref) {
         // Déférer les modifications de providers pour éviter l'erreur
         // "Tried to modify a provider while the widget tree is building"
         Future.microtask(() {
+          print('DEBUG: Dispatched new_message to lastIncomingMessageProvider');
           // Met à jour le dernier message reçu
           ref.read(lastIncomingMessageProvider.notifier).state = message;
 
           // Rafraîchit les conversations et la conversation ciblée
           ref.invalidate(conversationsProvider);
           ref.invalidate(conversationMessagesProvider(message.conversationId));
+          
+          // AUSSI : rafraîchir le compteur de notifications non lues (point rouge)
+          ref.invalidate(unreadNotificationsCountProvider);
         });
       }
     })

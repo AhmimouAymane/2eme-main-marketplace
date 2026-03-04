@@ -10,6 +10,7 @@ import 'package:marketplace_app/shared/widgets/clovi_drawer.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
 import '../../../profile/data/user_reviews_service.dart';
 
 /// Écran d'accueil avec liste de produits
@@ -39,6 +40,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Initialize socket connection globally to receive real-time updates for red dots
+    ref.watch(chatSocketProvider);
+    
     return Scaffold(
       key: _scaffoldKey,
       drawer: const CloviDrawer(),
@@ -117,35 +121,109 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildTopBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    final unreadCountAsync = ref.watch(unreadNotificationsCountProvider);
+    final hasUnread = unreadCountAsync.maybeWhen(
+      data: (count) {
+        print('DEBUG: unreadCount = $count');
+        return count > 0;
+      },
+      orElse: () => false,
+    );
+
+    return Container(
+      height: 70, // Slightly taller for better spacing
+      padding: EdgeInsets.zero, // Remove padding for absolute centering
+      child: Stack(
         children: [
-          IconButton(
-            icon: const Icon(Icons.menu, size: 28, color: AppColors.cloviGreen),
-            onPressed: () {
-              _scaffoldKey.currentState?.openDrawer();
-            },
+          // Left: Menu
+          Positioned(
+            left: 8,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.menu, size: 28, color: AppColors.cloviDarkGreen),
+                    onPressed: () {
+                      _scaffoldKey.currentState?.openDrawer();
+                    },
+                  ),
+                  if (hasUnread)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-          const CloviLogo(size: 30, fontSize: 24),
-          IconButton(
-            icon: ref.watch(userAvatarUrlProvider).maybeWhen(
-                  data: (url) {
-                    if (url != null && url.isNotEmpty) {
-                      final fullUrl = url.startsWith('http')
-                          ? url
-                          : '${AppConstants.mediaBaseUrl}$url';
-                      return CircleAvatar(
-                        radius: 14,
-                        backgroundImage: NetworkImage(fullUrl),
-                      );
-                    }
-                    return _buildDefaultAvatar();
-                  },
-                  orElse: () => _buildDefaultAvatar(),
-                ),
-            onPressed: () => context.push(AppRoutes.profile),
+
+          // Center: Logo
+          const Align(
+            alignment: Alignment.center,
+            child: CloviLogo(size: 32, fontSize: 26),
+          ),
+
+          // Right: Notifications & Profile
+          Positioned(
+            right: 8,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.notifications_none_rounded, size: 28, color: AppColors.cloviDarkGreen),
+                        onPressed: () => context.push(AppRoutes.notifications),
+                      ),
+                      if (hasUnread)
+                        Positioned(
+                          right: 8,
+                          top: 8,
+                          child: Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: AppColors.error,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: ref.watch(userAvatarUrlProvider).maybeWhen(
+                          data: (url) {
+                            if (url != null && url.isNotEmpty) {
+                              final fullUrl = url.startsWith('http')
+                                  ? url
+                                  : '${AppConstants.mediaBaseUrl}$url';
+                              return CircleAvatar(
+                                radius: 14,
+                                backgroundImage: NetworkImage(fullUrl),
+                              );
+                            }
+                            return _buildDefaultAvatar();
+                          },
+                          orElse: () => _buildDefaultAvatar(),
+                        ),
+                    onPressed: () => context.push(AppRoutes.profile),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -667,7 +745,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.cloviGreen,
+                  color: AppColors.cloviDarkGreen,
                 ),
               ),
               TextButton(

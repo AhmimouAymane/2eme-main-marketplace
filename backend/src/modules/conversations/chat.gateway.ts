@@ -27,12 +27,39 @@ export class ChatGateway {
 
   constructor(private readonly conversationsService: ConversationsService) { }
 
+  async handleConnection(client: Socket) {
+    // Le token est passé dans l'objet 'auth'
+    const token = client.handshake.auth?.token;
+    if (token) {
+      try {
+        // Idéalement, on décoderait le JWT ici pour avoir l'ID utilisateur
+        // Pour faire simple et robuste, on va laisser l'app appeler un message 'identify'
+        // ou utiliser les données déjà présentes si possible.
+        console.log('DEBUG: New client connection attempt');
+      } catch (err) {
+        console.error('DEBUG: Connection identification error', err);
+      }
+    }
+  }
+
+  @SubscribeMessage('identify')
+  async handleIdentify(
+    @MessageBody() data: { userId: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    if (data.userId) {
+      console.log(`DEBUG: User ${data.userId} joined their personal room`);
+      client.join(`user_${data.userId}`);
+    }
+  }
+
   @SubscribeMessage('join_conversation')
   async handleJoinConversation(
     @MessageBody() data: { conversationId: string },
     @ConnectedSocket() client: Socket,
   ) {
     client.join(data.conversationId);
+    console.log(`DEBUG: Client joined conversation room: ${data.conversationId}`);
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -52,8 +79,16 @@ export class ChatGateway {
       payload.content,
     );
 
-    // Envoie uniquement aux autres participants de la conversation
-    client.to(payload.conversationId).emit('new_message', message);
+    // 1. Envoie aux participants ACTIFS dans la conversation (ceux sur l'écran de chat)
+    this.server.to(payload.conversationId).emit('new_message', message);
+
+    // 2. Envoie au destinataire spécifique dans sa "personal room" 
+    // pour déclencher la notification SnackBar même s'il n'est pas dans le chat
+    const conversation = await this.conversationsService.getConversation(payload.conversationId, userId);
+    const recipientId = conversation.buyerId === userId ? conversation.sellerId : conversation.buyerId;
+
+    console.log(`DEBUG: Broadcasting to user_${recipientId}`);
+    this.server.to(`user_${recipientId}`).emit('new_message', message);
   }
 }
 

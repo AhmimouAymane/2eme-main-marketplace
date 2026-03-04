@@ -345,7 +345,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 }
 
-class _CategoryFilterSheet extends StatelessWidget {
+class _CategoryFilterSheet extends StatefulWidget {
   final List<CategoryModel> categories;
   final String? selectedId;
 
@@ -355,49 +355,144 @@ class _CategoryFilterSheet extends StatelessWidget {
   });
 
   @override
+  State<_CategoryFilterSheet> createState() => _CategoryFilterSheetState();
+}
+
+class _CategoryFilterSheetState extends State<_CategoryFilterSheet> {
+  late List<CategoryModel> _currentDisplayList;
+  final List<List<CategoryModel>> _navigationStack = [];
+  final List<String?> _parentIds = [];
+  final List<String?> _parentNames = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentDisplayList = widget.categories;
+  }
+
+  void _navigateDeeper(CategoryModel category) {
+    if (category.children.isNotEmpty) {
+      setState(() {
+        _navigationStack.add(_currentDisplayList);
+        _parentIds.add(category.id);
+        _parentNames.add(category.name);
+        _currentDisplayList = category.children;
+      });
+    } else {
+      Navigator.pop(context, category.id);
+    }
+  }
+
+  void _navigateBack() {
+    if (_navigationStack.isNotEmpty) {
+      setState(() {
+        _currentDisplayList = _navigationStack.removeLast();
+        _parentIds.removeLast();
+        _parentNames.removeLast();
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final currentParentId = _parentIds.isEmpty ? null : _parentIds.last;
+    final currentParentName = _parentNames.isEmpty ? null : _parentNames.last;
+
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
       padding: const EdgeInsets.all(20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Categories',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.cloviGreen,
-            ),
+          Row(
+            children: [
+              if (_navigationStack.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios, size: 20),
+                  onPressed: _navigateBack,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  color: AppColors.cloviGreen,
+                ),
+              if (_navigationStack.isNotEmpty) const SizedBox(width: 8),
+              Text(
+                currentParentName ?? 'Catégories',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.cloviGreen,
+                ),
+              ),
+              const Spacer(),
+              if (_navigationStack.isEmpty)
+                TextButton(
+                  onPressed: () => Navigator.pop(context, ""),
+                  child: const Text('Toutes'),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
           Flexible(
-            child: ListView(
+            child: ListView.separated(
               shrinkWrap: true,
-              children: [
-                ListTile(
-                  title: const Text('All'),
-                  trailing: selectedId == null
-                      ? const Icon(
-                          Icons.check,
-                          color: AppColors.cloviGreen,
-                        )
-                      : null,
-                  onTap: () => Navigator.pop(context, ""),
-                ),
-                ...categories.map((CategoryModel category) {
+              itemCount: _currentDisplayList.length + (_navigationStack.isNotEmpty ? 1 : 0),
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                // If we are in a sub-category, add the "Tout [Parent]" item first
+                if (_navigationStack.isNotEmpty && index == 0) {
+                  final isSelected = widget.selectedId == currentParentId;
                   return ListTile(
-                    title: Text(category.name),
-                    trailing: selectedId == category.id
-                        ? const Icon(
-                            Icons.check,
-                            color: AppColors.cloviGreen,
-                          )
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'Tout $currentParentName',
+                      style: TextStyle(
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.bold,
+                        color: isSelected ? AppColors.cloviGreen : AppColors.cloviGreen,
+                      ),
+                    ),
+                    trailing: isSelected
+                        ? const Icon(Icons.check, color: AppColors.cloviGreen, size: 20)
                         : null,
-                    onTap: () => Navigator.pop(context, category.id),
+                    onTap: () => Navigator.pop(context, currentParentId),
                   );
-                }),
-              ],
+                }
+
+                // Adjust index if we added the "Tout" item
+                final categoryIndex = _navigationStack.isNotEmpty ? index - 1 : index;
+                final category = _currentDisplayList[categoryIndex];
+                final hasChildren = category.children.isNotEmpty;
+                final isSelected = widget.selectedId == category.id;
+
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    category.name,
+                    style: TextStyle(
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? AppColors.cloviGreen : null,
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isSelected)
+                        const Icon(Icons.check, color: AppColors.cloviGreen, size: 20),
+                      if (hasChildren)
+                        const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
+                    ],
+                  ),
+                  onTap: () {
+                    if (hasChildren) {
+                      _navigateDeeper(category);
+                    } else {
+                      Navigator.pop(context, category.id);
+                    }
+                  },
+                );
+              },
             ),
           ),
         ],

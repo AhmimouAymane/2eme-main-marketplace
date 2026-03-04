@@ -14,7 +14,7 @@ class NotificationsService {
 
   Future<List<NotificationModel>> getNotifications() async {
     try {
-      final response = await _dio.get('/notifications');
+      final response = await _dio.get('notifications');
       return (response.data as List)
           .map((json) => NotificationModel.fromJson(json))
           .toList();
@@ -25,16 +25,17 @@ class NotificationsService {
 
   Future<int> getUnreadCount() async {
     try {
-      final response = await _dio.get('/notifications/unread-count');
+      final response = await _dio.get('notifications/unread-count');
       return response.data as int;
     } catch (e) {
+      print('DEBUG: Error in getUnreadCount: $e');
       return 0;
     }
   }
 
   Future<void> markAsRead(String id) async {
     try {
-      await _dio.patch('/notifications/$id/read');
+      await _dio.patch('notifications/$id/read');
     } catch (e) {
       rethrow;
     }
@@ -42,7 +43,7 @@ class NotificationsService {
 
   Future<void> markAllAsRead() async {
     try {
-      await _dio.patch('/notifications/read-all');
+      await _dio.patch('notifications/read-all');
     } catch (e) {
       rethrow;
     }

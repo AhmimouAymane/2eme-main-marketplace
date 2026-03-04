@@ -41,9 +41,9 @@ class CloviDrawer extends ConsumerWidget {
                     return _buildMenuItem(
                       icon: Icons.notifications_none_rounded,
                       title: 'Notifications',
-                      badge: unreadCountAsync.maybeWhen(
-                        data: (count) => count > 0 ? count.toString() : null,
-                        orElse: () => null,
+                      showDot: unreadCountAsync.maybeWhen(
+                        data: (count) => count > 0,
+                        orElse: () => false,
                       ),
                       onTap: () {
                         context.pop();
@@ -159,6 +159,7 @@ class CloviDrawer extends ConsumerWidget {
     required String title,
     required VoidCallback onTap,
     String? badge,
+    bool showDot = false,
   }) {
     return ListTile(
       leading: Icon(icon, color: AppColors.cloviGreen),
@@ -187,6 +188,16 @@ class CloviDrawer extends ConsumerWidget {
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
+              ),
+            ),
+          ] else if (showDot) ...[
+            const SizedBox(width: 8),
+            Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                color: AppColors.error,
+                shape: BoxShape.circle,
               ),
             ),
           ],
