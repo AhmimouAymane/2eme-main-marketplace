@@ -158,7 +158,6 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
     // 1. Gérer les messages en premier plan (Foreground)
     _fcmSubscription = FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      print('DEBUG: FirebaseMessaging.onMessage received. Data: ${message.data}');
       final data = message.data;
       
       // Vérifier si l'utilisateur est authentifié avant toute action
@@ -184,13 +183,11 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       ref.invalidate(unreadNotificationsCountProvider);
 
       if (message.notification != null) {
-        print('DEBUG: FCM Foreground message received: ${message.notification?.title}');
         // Ne pas afficher de notification si c'est un message chat
         // et qu'on est déjà dans cette conversation
         if (data['screen'] == 'chat' && data['conversationId'] != null) {
           final currentChatId = ref.read(currentChatConversationIdProvider);
           if (currentChatId == data['conversationId']) {
-            print('DEBUG: FCM notification skipped (active chat)');
             return; // On est déjà dans cette conversation
           }
         }
@@ -224,11 +221,8 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
   }
 
   void _showCloviNotification(String title, String body, {bool isSystem = false, RemoteMessage? message}) {
-    print('DEBUG: _showCloviNotification - title: $title, isSystem: $isSystem');
-    
     final messengerState = rootScaffoldMessengerKey.currentState;
     if (messengerState == null) {
-      print('DEBUG: _showCloviNotification - FAILED: messengerState is null');
       return;
     }
 
@@ -297,7 +291,6 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
   @override
   Widget build(BuildContext context) {
-    print('DEBUG: MarketplaceApp.build');
     // Initialise le socket global
     ref.watch(chatSocketProvider);
 
@@ -306,10 +299,8 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       lastIncomingMessageProvider,
       (previous, next) {
         if (next == null) {
-          print('DEBUG: main.dart - lastIncomingMessageProvider reset to null');
           return;
         }
-        print('DEBUG: main.dart - lastIncomingMessageProvider NEW MESSAGE: ${next.content}');
 
         // Récupérer les états actuels une fois les données chargées
         final currentUserId = ref.read(userIdProvider).value;

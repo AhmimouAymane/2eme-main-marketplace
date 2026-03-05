@@ -73,7 +73,6 @@ export class SellerVerificationController {
     @Roles(Role.ADMIN)
     @ApiOperation({ summary: 'List verification requests by status (Admin only)' })
     findAllByStatus(@Query('status') status: string) {
-        console.log(`[Admin] Fetching verifications for status: ${status}`);
         return this.verificationService.findAllByStatus(status as any);
     }
 

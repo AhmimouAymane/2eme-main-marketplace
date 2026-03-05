@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'legal_screen.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
@@ -15,8 +16,12 @@ class AboutScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
-          onPressed: () => context.canPop() ? context.pop() : context.go(AppRoutes.profile),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: AppColors.cloviGreen,
+          ),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go(AppRoutes.profile),
         ),
         title: const Text(
           'À propos',
@@ -97,19 +102,22 @@ class AboutScreen extends StatelessWidget {
                   _FeatureTile(
                     icon: Icons.recycling_rounded,
                     title: 'Mode durable',
-                    subtitle: 'Contribuez à la mode circulaire en donnant une seconde vie aux vêtements.',
+                    subtitle:
+                        'Contribuez à la mode circulaire en donnant une seconde vie aux vêtements.',
                   ),
                   Divider(height: 1, indent: 56),
                   _FeatureTile(
                     icon: Icons.verified_user_outlined,
                     title: 'Transactions sécurisées',
-                    subtitle: 'Politique de retour de 48h et paiements protégés.',
+                    subtitle:
+                        'Politique de retour de 48h et paiements protégés.',
                   ),
                   Divider(height: 1, indent: 56),
                   _FeatureTile(
                     icon: Icons.people_outline,
                     title: 'Communauté',
-                    subtitle: 'Rejoignez des milliers de passionnés de mode au Maroc.',
+                    subtitle:
+                        'Rejoignez des milliers de passionnés de mode au Maroc.',
                   ),
                   Divider(height: 1, indent: 56),
                   _FeatureTile(
@@ -141,7 +149,9 @@ class AboutScreen extends StatelessWidget {
                     title: 'Politique de remboursement',
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const RefundPolicyScreen()),
+                      MaterialPageRoute(
+                        builder: (_) => const RefundPolicyScreen(),
+                      ),
                     ),
                   ),
                   const Divider(height: 1, indent: 56),
@@ -156,7 +166,8 @@ class AboutScreen extends StatelessWidget {
                           sections: const [
                             LegalSection(
                               title: 'Collecte et utilisation des données',
-                              intro: 'Nous collectons vos données personnelles pour :',
+                              intro:
+                                  'Nous collectons vos données personnelles pour :',
                               bullets: [
                                 'La gestion de votre compte',
                                 'L\'exécution des transactions',
@@ -213,12 +224,20 @@ class AboutScreen extends StatelessWidget {
             // Social Links
             _sectionTitle('Suivez-nous'),
             _buildCard(
-              child: const Column(
+              child: Column(
                 children: [
                   _FeatureTile(
                     icon: Icons.camera_alt_outlined,
                     title: 'Instagram',
                     subtitle: '@clovi.ma',
+                    onTap: () => ontapUrl('https://www.instagram.com/clovi.ma'),
+                  ),
+                  const Divider(height: 1, indent: 56),
+                  _FeatureTile(
+                    icon: Icons.web,
+                    title: 'Notre site web',
+                    subtitle: 'www.clovi.ma',
+                    onTap: () => ontapUrl('https://www.clovi.ma'),
                   ),
                 ],
               ),
@@ -288,22 +307,40 @@ class AboutScreen extends StatelessWidget {
         title,
         style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
       ),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondaryLight),
+      trailing: const Icon(
+        Icons.chevron_right,
+        color: AppColors.textSecondaryLight,
+      ),
       onTap: onTap,
     );
   }
 
+  Future<void> ontapUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        // Fallback for some OS versions where canLaunchUrl is overly restrictive
+        await launchUrl(uri, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      debugPrint('Could not launch $url: $e');
+    }
+  }
 }
 
 class _FeatureTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   const _FeatureTile({
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.onTap,
   });
 
   @override
@@ -317,8 +354,12 @@ class _FeatureTile extends StatelessWidget {
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+        style: const TextStyle(
+          fontSize: 12,
+          color: AppColors.textSecondaryLight,
+        ),
       ),
+      onTap: onTap,
     );
   }
 }

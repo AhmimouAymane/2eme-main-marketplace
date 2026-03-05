@@ -156,7 +156,6 @@ export class SellerVerificationService {
     }
 
     async findAllByStatus(status: SellerStatus) {
-        console.log(`[Service] Querying database for sellerStatus: ${status}`);
         const results = await this.prisma.user.findMany({
             where: status === 'APPROVED' as any
                 ? { OR: [{ sellerStatus: 'APPROVED' as any }, { isSellerVerified: true }] }
@@ -178,7 +177,6 @@ export class SellerVerificationService {
                 },
             },
         });
-        console.log(`[Service] Found ${results.length} users for status ${status}`);
         return results;
     }
 

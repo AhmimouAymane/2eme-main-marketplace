@@ -9,12 +9,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
             imports: [ConfigModule],
             useFactory: async (config: ConfigService) => ({
                 transport: {
-                    host: config.get('MAIL_HOST') || 'smtp.gmail.com',
-                    port: config.get('MAIL_PORT') || 587,
-                    secure: false, // true for 465, false for other ports
+                    host: config.get('MAIL_HOST') || 'smtp.nindomail.com',
+                    port: config.get<number>('MAIL_PORT') || 465,
+                    secure: config.get<boolean>('MAIL_SECURE') ?? true,
                     auth: {
                         user: config.get('MAIL_USER'),
                         pass: config.get('MAIL_PASS'),
+                    },
+                    tls: {
+                        rejectUnauthorized: false,
                     },
                 },
                 defaults: {

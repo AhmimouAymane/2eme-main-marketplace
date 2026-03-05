@@ -22,16 +22,13 @@ export class MediaService {
                 },
                 (error: UploadApiErrorResponse, result: UploadApiResponse) => {
                     if (error) {
-                        console.error('Cloudinary Upload Error:', error);
                         return reject(new BadRequestException(`Cloudinary Error: ${error.message}`));
                     }
-                    console.log('Cloudinary Upload Success:', result.secure_url);
                     resolve(result.secure_url);
                 },
             );
 
             if (!file.buffer) {
-                console.error('File buffer is undefined for file:', file.originalname);
                 return reject(new BadRequestException('File buffer is empty'));
             }
 
@@ -56,7 +53,6 @@ export class MediaService {
 
             await cloudinary.uploader.destroy(fullPublicId);
         } catch (error) {
-            console.error('Cloudinary Deletion Error:', error);
             // We don't throw here to avoid blocking the main operation if image deletion fails
         }
     }

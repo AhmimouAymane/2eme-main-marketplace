@@ -98,7 +98,6 @@ export class AuthService {
                 ...tokens,
             };
         } catch (error) {
-            console.error('Firebase Auth Error:', error);
             throw new UnauthorizedException('Invalid Firebase token');
         }
     }
@@ -234,7 +233,6 @@ export class AuthService {
                 type: NotificationType.WELCOME,
             });
         } catch (error) {
-            console.error('Welcome notification failed:', error);
         }
     }
 

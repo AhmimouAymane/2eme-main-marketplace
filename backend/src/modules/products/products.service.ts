@@ -138,7 +138,6 @@ export class ProductsService {
             };
 
             categoryIds = getDescendantIds(targetCategoryId);
-            console.log(`Filtering for category ${targetCategoryId} (from ${categorySlug || 'ID'}) and its descendants:`, categoryIds);
         }
 
         const where: Prisma.ProductWhereInput = {

@@ -33,11 +33,7 @@ export class ChatGateway {
     if (token) {
       try {
         // Idéalement, on décoderait le JWT ici pour avoir l'ID utilisateur
-        // Pour faire simple et robuste, on va laisser l'app appeler un message 'identify'
-        // ou utiliser les données déjà présentes si possible.
-        console.log('DEBUG: New client connection attempt');
       } catch (err) {
-        console.error('DEBUG: Connection identification error', err);
       }
     }
   }
@@ -48,7 +44,6 @@ export class ChatGateway {
     @ConnectedSocket() client: Socket,
   ) {
     if (data.userId) {
-      console.log(`DEBUG: User ${data.userId} joined their personal room`);
       client.join(`user_${data.userId}`);
     }
   }
@@ -59,7 +54,6 @@ export class ChatGateway {
     @ConnectedSocket() client: Socket,
   ) {
     client.join(data.conversationId);
-    console.log(`DEBUG: Client joined conversation room: ${data.conversationId}`);
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -87,7 +81,6 @@ export class ChatGateway {
     const conversation = await this.conversationsService.getConversation(payload.conversationId, userId);
     const recipientId = conversation.buyerId === userId ? conversation.sellerId : conversation.buyerId;
 
-    console.log(`DEBUG: Broadcasting to user_${recipientId}`);
     this.server.to(`user_${recipientId}`).emit('new_message', message);
   }
 }
