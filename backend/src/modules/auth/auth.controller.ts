@@ -1,4 +1,5 @@
-import { Body, Controller, Post, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import { Body, Controller, Post, Get, Res, HttpCode, HttpStatus, UseGuards, Request } from '@nestjs/common';
+import type { Response } from 'express';
 import { VerificationType } from '@prisma/client';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -76,5 +77,49 @@ export class AuthController {
     @ApiOperation({ summary: 'Update FCM token' })
     updateFcmToken(@Request() req: any, @Body('token') token: string) {
         return this.authService.updateFcmToken(req.user.sub || req.user.id, token);
+    }
+
+    @Get('account-deletion')
+    @ApiOperation({ summary: 'Web page explaining how to delete account (for Google Play compliance)' })
+    getAccountDeletionPage(@Res() res: Response) {
+        const html = `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clovi - Suppression de compte</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        h1 { color: #10B981; }
+        .card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-top: 20px; }
+        .danger { color: #ef4444; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>Clovi - Demande de suppression de compte</h1>
+    <p>Conformément aux directives de Google Play et à notre politique de confidentialité, vous avez le droit de demander la suppression de votre compte Clovi et de toutes vos données personnelles sans avoir à ouvrir l'application.</p>
+
+    <div class="card">
+        <h2>Comment supprimer votre compte ?</h2>
+        <p>Veuillez envoyer un e-mail à notre équipe technique :</p>
+        <p>📧 <strong>contact@clovi.ma</strong> (ou à votre adresse e-mail de contact)</p>
+        <p><strong>Objet :</strong> Demande de suppression de compte</p>
+        <p><strong>Message :</strong> Veuillez indiquer clairement votre souhait de supprimer votre compte en nous écrivant depuis l'adresse e-mail associée à celui-ci.</p>
+    </div>
+
+    <div class="card">
+        <h2 class="danger">⚠️ Important : Que se passe-t-il ensuite ?</h2>
+        <ul>
+            <li>Votre demande sera traitée sous 72 heures ouvrées maximum.</li>
+            <li>Vos informations de profil, vos annonces actives, vos favoris et vos messages seront définitivement effacés.</li>
+            <li>Cependant, pour des raisons légales et comptables, certaines données de transactions (détails de commandes) peuvent être conservées.</li>
+        </ul>
+    </div>
+</body>
+</html>
+        `;
+        res.setHeader('Content-Type', 'text/html');
+        return res.send(html);
     }
 }

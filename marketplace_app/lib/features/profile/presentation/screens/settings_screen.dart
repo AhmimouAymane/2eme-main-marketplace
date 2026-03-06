@@ -5,6 +5,7 @@ import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/shared/providers/settings_providers.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
+import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 
 /// Écran Paramètres : thème, notifications, à propos
 class SettingsScreen extends ConsumerWidget {
@@ -68,6 +69,22 @@ class SettingsScreen extends ConsumerWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+            _sectionTitle('Compte'),
+            _buildCard(
+              child: Column(
+                children: [
+                  _buildListTile(
+                    icon: Icons.delete_outline,
+                    title: 'Supprimer mon compte',
+                    subtitle: 'Cette action est irréversible',
+                    iconColor: AppColors.error,
+                    textColor: AppColors.error,
+                    onTap: () => _showDeleteAccountDialog(context, ref),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 32),
           ],
         ),
@@ -112,13 +129,15 @@ class SettingsScreen extends ConsumerWidget {
     required String title,
     String? subtitle,
     VoidCallback? onTap,
+    Color? iconColor,
+    Color? textColor,
   }) {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Icon(icon, color: AppColors.cloviGreen, size: 24),
+      leading: Icon(icon, color: iconColor ?? AppColors.cloviGreen, size: 24),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 16),
+        style: TextStyle(fontWeight: FontWeight.w500, fontSize: 16, color: textColor),
       ),
       subtitle: subtitle != null
           ? Text(
@@ -184,5 +203,70 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _showDeleteAccountDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Supprimer le compte', style: TextStyle(color: AppColors.error)),
+        content: const Text(
+          'Êtes-vous sûr de vouloir supprimer définitivement votre compte et toutes vos données (annonces, messages, etc...) ?\n\n'
+          'Cette action est immédiate et NE PEUT PAS être annulée.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              _performAccountDeletion(context, ref);
+            },
+            child: const Text('Supprimer', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _performAccountDeletion(BuildContext context, WidgetRef ref) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await ref.read(usersServiceProvider).deleteAccount();
+      await ref.read(authServiceProvider).logout();
+
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Votre compte a été supprimé avec succès.'),
+            backgroundColor: AppColors.cloviGreen,
+          ),
+        );
+        context.go(AppRoutes.login);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 }
