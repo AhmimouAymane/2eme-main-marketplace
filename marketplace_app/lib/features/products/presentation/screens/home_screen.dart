@@ -8,6 +8,7 @@ import '../widgets/product_card.dart';
 import 'package:marketplace_app/shared/widgets/clovi_logo.dart';
 import 'package:marketplace_app/shared/widgets/clovi_drawer.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
+import 'package:marketplace_app/shared/models/category_model.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
@@ -108,7 +109,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                         // Community Activity
                         _buildCommunityActivitySection(),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 32),
+
+                        // All Products Grid (Requested: 2x2 vertical)
+                        _buildAllProductsGrid(),
+                        const SizedBox(height: 100),
                       ],
                     ),
                   ),
@@ -386,7 +391,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Categories',
+            'Catégories',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -398,61 +403,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         SizedBox(
           height: 100,
           child: categoriesAsync.when(
-            data: (categories) => ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final cat = categories[index];
-                return GestureDetector(
-                  onTap: () {
-                    ref
-                        .read(productFilterProvider.notifier)
-                        .updateCategory(cat.id);
-                    context.push(AppRoutes.search);
-                  },
-                  child: Container(
-                    width: 80,
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Column(
-                      children: [
-                        Container(
-                          height: 60,
-                          width: 60,
-                          decoration: BoxDecoration(
-                            color: AppColors.cloviGreen,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.cloviGreen.withOpacity(0.2),
-                                blurRadius: 6,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            _getCategoryIcon(cat.name),
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          cat.name,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+            data: (categories) {
+              // Liste ordonnée demandée par l'utilisateur
+              final targetNames = ['enfant', 'homme', 'femme', 'bijoux', 'montre', 'activewear'];
+              final List<CategoryModel> displayedCategories = [];
+
+              void collectTargetCategories(List<CategoryModel> cats) {
+                for (var cat in cats) {
+                  final nameLower = cat.name.toLowerCase();
+                  // On cherche si le nom contient un des mots-clés cibles
+                  if (targetNames.any((target) => nameLower.contains(target))) {
+                    displayedCategories.add(cat);
+                  }
+                  if (cat.children.isNotEmpty) {
+                    collectTargetCategories(cat.children);
+                  }
+                }
+              }
+
+              collectTargetCategories(categories);
+
+              // Dédoublonnage par nom (ex: éviter plusieurs "Activewear")
+              final uniqueCategories = <String, CategoryModel>{};
+              for (var cat in displayedCategories) {
+                // On normalise le nom pour le dédoublonnage
+                String key = cat.name.toLowerCase();
+                if (key.contains('enfant')) key = 'enfant';
+                if (key.contains('homme')) key = 'homme';
+                if (key.contains('femme')) key = 'femme';
+                
+                if (!uniqueCategories.containsKey(key)) {
+                  uniqueCategories[key] = cat;
+                }
+              }
+              
+              final finalList = uniqueCategories.values.toList();
+
+              // Tri selon l'ordre des targetNames
+              finalList.sort((a, b) {
+                int getIndex(CategoryModel c) {
+                  final name = c.name.toLowerCase();
+                  for (int i = 0; i < targetNames.length; i++) {
+                    if (name.contains(targetNames[i])) return i;
+                  }
+                  return targetNames.length;
+                }
+                return getIndex(a).compareTo(getIndex(b));
+              });
+
+              if (finalList.isEmpty) return const SizedBox.shrink();
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: finalList.length,
+                itemBuilder: (context, index) {
+                  return _buildCategoryItem(finalList[index]);
+                },
+              );
+            },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (e, _) => const SizedBox(),
           ),
@@ -461,16 +470,103 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  IconData _getCategoryIcon(String name) {
-    name = name.toLowerCase();
-    if (name.contains('homme') || name.contains('men')) return Icons.man;
-    if (name.contains('femme') || name.contains('women')) return Icons.woman;
-    if (name.contains('enfant') || name.contains('kid')) return Icons.child_care;
-    if (name.contains('chaussure')) return Icons.directions_run;
-    if (name.contains('accessoire')) return Icons.watch;
-    return Icons.category;
+  Widget _buildCategoryItem(CategoryModel cat) {
+    return GestureDetector(
+      onTap: () {
+        ref.read(productFilterProvider.notifier).updateCategory(cat.id);
+        context.push(AppRoutes.search);
+      },
+      child: Container(
+        width: 80,
+        margin: const EdgeInsets.only(right: 12),
+        child: Column(
+          children: [
+            Container(
+              height: 60,
+              width: 60,
+              decoration: BoxDecoration(
+                color: AppColors.cloviGreen.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _getCategoryIcon(cat.name),
+                color: AppColors.cloviGreen,
+                size: 28,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              cat.name,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
+  IconData _getCategoryIcon(String name) {
+  name = name.toLowerCase();
+
+  // Genres & Types
+  if (name.contains('fille')) return Icons.face_3_outlined;
+  if (name.contains('garcon') || name.contains('garçon')) return Icons.face_6_outlined;
+  if (name.contains('enfant')) return Icons.child_care_outlined;
+  if (name.contains('femme')) return Icons.woman_2_outlined;
+  if (name.contains('homme')) return Icons.man_2_outlined;
+
+  // Chaussures
+    // more shoe-like silhouette
+  if (name.contains('talon') || name.contains('escarpin')) return Icons.hiking_outlined;
+  if (name.contains('botte')) return Icons.do_not_step_outlined;
+  if (name.contains('basket') || name.contains('sneaker')) return Icons.directions_run_outlined;
+  if (name.contains('sandale')) return Icons.beach_access_outlined;
+
+  // Vêtements
+  if (name.contains('vêtement') || name.contains('vetement')) return Icons.checkroom_outlined;
+  if (name.contains('hauts') || name.contains('haut') || name.contains('chemise') || name.contains('blouse')) return Icons.dry_cleaning_outlined;
+  if (name.contains('robe') || name.contains('robes')) return Icons.accessibility_new_outlined;
+  if (name.contains('jean') || name.contains('pantalon')) return Icons.airline_seat_legroom_normal_outlined;
+  if (name.contains('manteau') || name.contains('veste') || name.contains('blouson')) return Icons.umbrella_outlined;
+  if (name.contains('pull') || name.contains('sweat')) return Icons.self_improvement_outlined;
+  if (name.contains('jupe')) return Icons.interests_outlined;
+
+  // Sacs
+  if (name.contains('sac à dos') || name.contains('sac a dos')) return Icons.backpack_outlined;
+  if (name.contains('sac à main') || name.contains('sac a main')) return Icons.shopping_bag_outlined;
+  if (name.contains('portefeuille') || name.contains('pochette')) return Icons.account_balance_wallet_outlined;
+  if (name.contains('sac')) return Icons.luggage_outlined;
+
+  // Bijoux & Accessoires
+  if (name.contains('collier') || name.contains('pendentif')) return Icons.diamond_outlined;
+  if (name.contains('bague') || name.contains('bracelet')) return Icons.circle_outlined;
+  if (name.contains('boucle') || name.contains('earring')) return Icons.radio_button_unchecked_outlined;
+  if (name.contains('bijoux')) return Icons.diamond_outlined;
+  if (name.contains('montre')) return Icons.watch_outlined;
+  if (name.contains('lunettes')) return Icons.remove_red_eye_outlined;
+  if (name.contains('chapeau') || name.contains('casquette')) return Icons.emoji_people_outlined;
+  if (name.contains('écharpe') || name.contains('echarpe') || name.contains('foulard')) return Icons.air_outlined;
+  if (name.contains('ceinture')) return Icons.horizontal_rule_outlined;
+  if (name.contains('accessoire')) return Icons.watch_outlined;
+
+  // Catégories spéciales
+  if (name.contains('traditionnel')) return Icons.auto_awesome_outlined;
+  if (name.contains('lingerie')) return Icons.favorite_border_outlined;
+  if (name.contains('pyjama') || name.contains('nuit')) return Icons.bedtime_outlined;
+  if (name.contains('sport') || name.contains('activewear')) return Icons.sports_gymnastics_outlined;
+  if (name.contains('maillot') || name.contains('bain')) return Icons.pool_outlined;
+  if (name.contains('mariage') || name.contains('soirée') || name.contains('soiree')) return Icons.celebration_outlined;
+  if (name.contains('enfant') || name.contains('bébé') || name.contains('bebe')) return Icons.child_friendly_outlined;
+
+  // Fallback
+  return Icons.category_outlined;
+}
   Widget _buildTopSellersSection() {
     final topSellersAsync = ref.watch(topSellersProvider);
 
@@ -517,7 +613,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: AppColors.cloviGreen.withOpacity(0.3),
+                                  color: Colors.grey.withOpacity(0.3),
                                   width: 2,
                                 ),
                               ),
@@ -798,6 +894,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 error: (e, _) => const SizedBox(),
               ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildAllProductsGrid() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'Tous les articles',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.cloviGreen,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        ref.watch(homeProductsProvider).when(
+              data: (products) {
+                if (products.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(
+                      child: Text(
+                        'Aucun article disponible pour le moment.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  );
+                }
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 0.72, // Adjust based on ProductCard height
+                    ),
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      final product = products[index];
+                      return ProductCard(
+                        productId: product.id,
+                        imageUrl: product.fullMainImageUrl,
+                        title: product.title,
+                        price: product.price,
+                        product: product,
+                        onTap: () => context.push('/product/${product.id}'),
+                      );
+                    },
+                  ),
+                );
+              },
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (e, _) => const SizedBox(),
+            ),
       ],
     );
   }

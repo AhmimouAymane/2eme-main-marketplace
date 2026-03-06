@@ -11,12 +11,17 @@ class CommentModel extends Equatable {
   final String productId;
   final DateTime createdAt;
 
+  final String? parentCommentId;
+  final List<CommentModel> replies;
+
   const CommentModel({
     required this.id,
     required this.content,
     required this.userId,
     this.user,
     required this.productId,
+    this.parentCommentId,
+    this.replies = const [],
     required this.createdAt,
   });
 
@@ -26,6 +31,8 @@ class CommentModel extends Equatable {
     userId: json['userId'] ?? '',
     user: json['user'] != null ? UserModel.fromJson(json['user']) : null,
     productId: json['productId'] ?? '',
+    parentCommentId: json['parentCommentId'],
+    replies: (json['replies'] as List?)?.map((r) => CommentModel.fromJson(r)).toList() ?? [],
     createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
   );
 
@@ -34,5 +41,9 @@ class CommentModel extends Equatable {
   };
 
   @override
-  List<Object?> get props => [id, content, userId, user, productId, createdAt];
+  List<Object?> get props => [id, content, userId, user,    productId,
+    parentCommentId,
+    replies,
+    createdAt
+  ];
 }

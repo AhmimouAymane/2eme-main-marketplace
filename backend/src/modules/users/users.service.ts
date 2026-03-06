@@ -43,7 +43,22 @@ export class UsersService {
                         createdAt: 'desc',
                     },
                 } : false,
-                receivedReviews: true,
+                receivedReviews: {
+                    include: {
+                        reviewer: true
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                },
+                givenReviews: {
+                    include: {
+                        targetUser: true
+                    },
+                    orderBy: {
+                        createdAt: 'desc'
+                    }
+                },
                 _count: {
                     select: {
                         sellerOrders: {
@@ -63,12 +78,37 @@ export class UsersService {
             ? totalRating / anyUser.receivedReviews.length
             : 0;
 
-        const { password, receivedReviews, _count, ...userData } = anyUser;
+        const { password, _count, receivedReviews: rr, givenReviews: gr, products: pr, ...userData } = anyUser;
 
         return {
             ...userData,
             averageRating,
             salesCount: _count.sellerOrders,
+            products: pr || [],
+            receivedReviews: (rr || []).map((r: any) => {
+                const { reviewer, ...reviewData } = r;
+                return {
+                    ...reviewData,
+                    reviewer: reviewer ? {
+                        id: reviewer.id,
+                        firstName: reviewer.firstName,
+                        lastName: reviewer.lastName,
+                        avatarUrl: reviewer.avatarUrl,
+                    } : null,
+                };
+            }),
+            givenReviews: (gr || []).map((r: any) => {
+                const { targetUser, ...reviewData } = r;
+                return {
+                    ...reviewData,
+                    targetUser: targetUser ? {
+                        id: targetUser.id,
+                        firstName: targetUser.firstName,
+                        lastName: targetUser.lastName,
+                        avatarUrl: targetUser.avatarUrl,
+                    } : null,
+                };
+            }),
         };
     }
 

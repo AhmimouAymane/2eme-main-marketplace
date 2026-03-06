@@ -72,10 +72,10 @@ export class OrdersService {
                 include: {
                     product: true,
                     buyer: {
-                        select: { id: true, firstName: true, lastName: true, email: true },
+                        select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true },
                     },
                     seller: {
-                        select: { id: true, firstName: true, lastName: true, email: true },
+                        select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true },
                     },
                 },
             }),
@@ -117,10 +117,10 @@ export class OrdersService {
                     include: { images: true },
                 },
                 buyer: {
-                    select: { id: true, firstName: true, lastName: true },
+                    select: { id: true, firstName: true, lastName: true, avatarUrl: true },
                 },
                 seller: {
-                    select: { id: true, firstName: true, lastName: true },
+                    select: { id: true, firstName: true, lastName: true, avatarUrl: true },
                 },
                 userReviews: true,
             },
@@ -162,10 +162,10 @@ export class OrdersService {
                     include: { images: true },
                 },
                 buyer: {
-                    select: { id: true, firstName: true, lastName: true, email: true, addresses: true },
+                    select: { id: true, firstName: true, lastName: true, email: true, addresses: true, avatarUrl: true },
                 },
                 seller: {
-                    select: { id: true, firstName: true, lastName: true, email: true, addresses: true },
+                    select: { id: true, firstName: true, lastName: true, email: true, addresses: true, avatarUrl: true },
                 },
                 userReviews: true,
             },

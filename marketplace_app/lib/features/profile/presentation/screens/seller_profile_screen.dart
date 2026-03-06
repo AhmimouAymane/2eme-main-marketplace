@@ -43,15 +43,15 @@ class SellerProfileScreen extends ConsumerWidget {
                   children: [
                     CircleAvatar(
                       radius: 54,
-                      backgroundColor: AppColors.cloviGreen.withOpacity(0.1),
+                      backgroundColor: Colors.grey.withOpacity(0.1),
                       child: CircleAvatar(
                         radius: 50,
-                        backgroundColor: AppColors.cloviGreen,
+                        backgroundColor: Colors.grey[200],
                         backgroundImage: seller.avatarUrl != null 
                             ? NetworkImage(seller.avatarUrl!) 
                             : null,
                         child: seller.avatarUrl == null 
-                            ? const Icon(Icons.person_rounded, size: 50, color: Colors.white)
+                            ? Icon(Icons.person_rounded, size: 50, color: Colors.grey[400])
                             : null,
                       ),
                     ),

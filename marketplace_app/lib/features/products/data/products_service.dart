@@ -121,11 +121,32 @@ class ProductsService {
   }
 
   /// Ajouter un commentaire
-  Future<void> addComment(String productId, String content) async {
+  Future<void> addComment(String productId, String content, {String? parentCommentId}) async {
     try {
       await _dio.post('products/$productId/comments', data: {
         'content': content,
+        'parentCommentId': parentCommentId,
       });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Modifier un commentaire
+  Future<void> updateComment(String commentId, String content) async {
+    try {
+      await _dio.patch('products/comments/$commentId', data: {
+        'content': content,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Supprimer un commentaire
+  Future<void> deleteComment(String commentId) async {
+    try {
+      await _dio.delete('products/comments/$commentId');
     } catch (e) {
       rethrow;
     }

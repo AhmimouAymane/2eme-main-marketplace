@@ -119,9 +119,33 @@ export class ProductsController {
     addComment(
         @Param('id') id: string,
         @GetCurrentUser('sub') userId: string,
+        @Body() body: { content: string, parentCommentId?: string },
+    ) {
+        return this.productsService.addComment(id, userId, body.content, body.parentCommentId);
+    }
+
+    @Patch('comments/:commentId')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Update a comment' })
+    updateComment(
+        @Param('commentId') commentId: string,
+        @GetCurrentUser('sub') userId: string,
         @Body() body: { content: string },
     ) {
-        return this.productsService.addComment(id, userId, body.content);
+        return this.productsService.updateComment(commentId, userId, body.content);
+    }
+
+    @Delete('comments/:commentId')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Delete a comment' })
+    deleteComment(
+        @Param('commentId') commentId: string,
+        @GetCurrentUser('sub') userId: string,
+        @GetCurrentUser('role') userRole: string,
+    ) {
+        return this.productsService.deleteComment(commentId, userId, userRole);
     }
 
     @Patch(':id/status')

@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/router_config.dart';
+import 'core/routes/app_routes.dart';
 import 'shared/providers/shop_providers.dart';
 import 'shared/providers/settings_providers.dart';
 import 'shared/models/conversation_model.dart';
@@ -13,6 +14,7 @@ import 'dart:async';
 import 'core/theme/app_colors.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 
 // Plugin pour gérer les canaux de notification Android
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -114,6 +116,9 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
     final router = ref.read(routerProvider);
     
+    // Nettoyer les notifications dès qu'on clique sur une action
+    rootScaffoldMessengerKey.currentState?.clearSnackBars();
+    
     switch (screen) {
       case 'chat':
         final conversationId = data['conversationId'];
@@ -184,12 +189,9 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
       if (message.notification != null) {
         // Ne pas afficher de notification si c'est un message chat
-        // et qu'on est déjà dans cette conversation
-        if (data['screen'] == 'chat' && data['conversationId'] != null) {
-          final currentChatId = ref.read(currentChatConversationIdProvider);
-          if (currentChatId == data['conversationId']) {
-            return; // On est déjà dans cette conversation
-          }
+        // (Socket.io s'en occupe déjà au premier plan pour plus de réactivité)
+        if (data['screen'] == 'chat') {
+          return;
         }
 
         _showCloviNotification(
@@ -226,8 +228,9 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       return;
     }
 
-    // Nettoyer toute notification existante pour éviter l'empilement
-    messengerState.removeCurrentSnackBar();
+    // On ne supprime plus la SnackBar actuelle pour permettre l'empilement (queue)
+    // si plusieurs messages arrivent à la suite.
+    // messengerState.removeCurrentSnackBar();
 
     messengerState.showSnackBar(
       SnackBar(
@@ -275,7 +278,7 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
           right: 16,
         ),
         elevation: 6,
-        duration: const Duration(seconds: 3), // Reduced duration for transient effect
+        duration: const Duration(seconds: 2), // Durée réduite pour plus de fluidité
         action: SnackBarAction(
           label: 'VOIR',
           textColor: Colors.white70,
@@ -312,8 +315,10 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
         // NE PAS afficher de notification si :
         // 1. C'est nous qui avons envoyé le message
         // 2. On est déjà dans la conversation en question
-        if (next.senderId == currentUserId || next.conversationId == currentChatId) {
-          print('DEBUG: Notification skipped (own message or active chat)');
+        // 3. On est sur la liste des discussions (qui se met à jour seule)
+        final currentPath = ref.read(routerProvider).routeInformationProvider.value.uri.toString();
+        if (currentPath == AppRoutes.conversations) {
+          print('DEBUG: Notification skipped (on conversations list screen)');
           return;
         }
 

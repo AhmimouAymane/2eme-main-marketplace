@@ -51,5 +51,9 @@
 		<string>http</string>
 		<string>instagram</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cette application nécessite l'accès à votre galerie pour modifier votre photo de profil.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Cette application nécessite l'accès à votre appareil photo pour prendre une photo de profil.</string>
 </dict>
 </plist>

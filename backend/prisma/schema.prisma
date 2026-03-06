@@ -217,13 +217,16 @@ model UserReview {
 }
 
 model Comment {
-  id        String   @id @default(uuid())
-  content   String
-  userId    String
-  productId String
-  createdAt DateTime @default(now())
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user      User     @relation("UserComments", fields: [userId], references: [id])
+  id              String    @id @default(uuid())
+  content         String
+  userId          String
+  productId       String
+  parentCommentId String?
+  createdAt       DateTime  @default(now())
+  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user            User      @relation("UserComments", fields: [userId], references: [id])
+  parent          Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies         Comment[] @relation("CommentReplies")
 
   @@map("comments")
 }

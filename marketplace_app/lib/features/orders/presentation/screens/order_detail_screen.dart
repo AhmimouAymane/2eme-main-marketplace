@@ -388,7 +388,7 @@ class OrderDetailScreen extends ConsumerWidget {
         const SizedBox(height: 16),
 
         // Adresse de livraison
-        Card(
+        /*Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -424,7 +424,7 @@ class OrderDetailScreen extends ConsumerWidget {
               ),
             ],
           ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 24),*/
 
         // Contact Section
         _buildInfoCard(
@@ -434,8 +434,15 @@ class OrderDetailScreen extends ConsumerWidget {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppColors.cloviGreen.withOpacity(0.1),
-                  child: Icon(Icons.person, color: AppColors.cloviGreen),
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage: (isSeller ? order.buyer?.avatarUrl : order.seller?.avatarUrl) != null &&
+                                  (isSeller ? order.buyer!.avatarUrl! : order.seller!.avatarUrl!).isNotEmpty
+                      ? NetworkImage(isSeller ? order.buyer!.avatarUrl! : order.seller!.avatarUrl!)
+                      : null,
+                  child: (isSeller ? order.buyer?.avatarUrl : order.seller?.avatarUrl) == null ||
+                                  (isSeller ? order.buyer!.avatarUrl!.isEmpty : order.seller!.avatarUrl!.isEmpty)
+                      ? Icon(Icons.person, color: Colors.grey[400])
+                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(

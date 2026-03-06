@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/user_review_model.dart';
@@ -9,7 +10,15 @@ final userReviewsServiceProvider = Provider((ref) {
   return UserReviewsService(dio);
 });
 
-final topSellersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
+final topSellersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  // Mise en place d'un rafraîchissement automatique toutes les 30 secondes
+  final timer = Timer(const Duration(seconds: 30), () {
+    ref.invalidateSelf();
+  });
+  
+  // S'assurer de nettoyer le timer quand le provider est détruit ou invalidé
+  ref.onDispose(() => timer.cancel());
+
   return ref.watch(userReviewsServiceProvider).getTopSellers();
 });
 

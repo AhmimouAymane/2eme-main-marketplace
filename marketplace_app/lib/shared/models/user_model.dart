@@ -70,6 +70,7 @@ class UserModel extends Equatable {
   final String? bio;
   final List<ProductModel>? products;
   final List<UserReviewModel>? receivedReviews;
+  final List<UserReviewModel>? givenReviews;
   final int salesCount;
   final double averageRating;
   final UserRole role;
@@ -91,6 +92,7 @@ class UserModel extends Equatable {
     this.bio,
     this.products,
     this.receivedReviews,
+    this.givenReviews,
     this.salesCount = 0,
     this.averageRating = 0.0,
     required this.role,
@@ -127,6 +129,11 @@ class UserModel extends Equatable {
             : null,
         receivedReviews: json['receivedReviews'] != null
             ? (json['receivedReviews'] as List)
+                .map((r) => UserReviewModel.fromJson(r as Map<String, dynamic>))
+                .toList()
+            : null,
+        givenReviews: json['givenReviews'] != null
+            ? (json['givenReviews'] as List)
                 .map((r) => UserReviewModel.fromJson(r as Map<String, dynamic>))
                 .toList()
             : null,
@@ -170,6 +177,8 @@ class UserModel extends Equatable {
         'bio': bio,
         'salesCount': salesCount,
         'averageRating': averageRating,
+        'receivedReviews': receivedReviews?.map((r) => r.toJson()).toList(),
+        'givenReviews': givenReviews?.map((r) => r.toJson()).toList(),
         'role': role.name.toUpperCase(),
         'isSellerVerified': isSellerVerified,
         'sellerStatus': sellerStatus.name.toUpperCase(),
@@ -212,6 +221,7 @@ class UserModel extends Equatable {
       bio: bio ?? this.bio,
       products: products ?? this.products,
       receivedReviews: receivedReviews ?? this.receivedReviews,
+      givenReviews: givenReviews ?? this.givenReviews,
       salesCount: salesCount ?? this.salesCount,
       averageRating: averageRating ?? this.averageRating,
       role: role ?? this.role,
@@ -236,6 +246,7 @@ class UserModel extends Equatable {
         bio,
         products,
         receivedReviews,
+        givenReviews,
         createdAt,
         updatedAt,
         isSellerVerified,

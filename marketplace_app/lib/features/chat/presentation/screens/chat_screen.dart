@@ -38,6 +38,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Nettoyer les notifications résiduelles en entrant dans le chat
+      ScaffoldMessenger.of(context).clearSnackBars();
+      
       _markAsRead();
       ref.read(chatSocketProvider)?.emit('join_conversation', {
         'conversationId': widget.conversationId,
@@ -268,7 +271,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: AppColors.cloviGreen.withOpacity(0.1),
+                    backgroundColor: Colors.grey.withOpacity(0.1),
                     backgroundImage: otherUser?.avatarUrl != null && otherUser!.avatarUrl!.isNotEmpty
                         ? NetworkImage(
                             otherUser.avatarUrl!.startsWith('http')
@@ -277,7 +280,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           )
                         : null,
                     child: otherUser?.avatarUrl == null || otherUser!.avatarUrl!.isEmpty
-                        ? const Icon(Icons.person, size: 20, color: AppColors.cloviGreen)
+                        ? Icon(Icons.person, size: 20, color: Colors.grey[400])
                         : null,
                   ),
                   const SizedBox(width: 12),

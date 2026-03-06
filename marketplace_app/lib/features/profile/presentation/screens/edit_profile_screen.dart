@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/utils/validators.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:marketplace_app/shared/providers/shop_providers.dart';
+import 'package:marketplace_app/shared/models/user_model.dart';
 
 /// Écran d'édition du profil — même design que la page profil (Clovi)
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -22,6 +27,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _bioController;
   bool _isLoading = false;
   bool _initialized = false;
+  String? _newAvatarUrl;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -66,12 +73,25 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     try {
       final service = ref.read(usersServiceProvider);
-      await service.updateProfile({
+      final updateData = {
         'firstName': _firstNameController.text.trim(),
         'lastName': _lastNameController.text.trim(),
         'phone': _phoneController.text.trim(),
         'bio': _bioController.text.trim(),
-      });
+      };
+
+      if (_newAvatarUrl != null) {
+        updateData['avatarUrl'] = _newAvatarUrl!;
+      }
+
+      await service.updateProfile(updateData);
+
+      // Synchroniser SharedPreferences si l'avatar a changé
+      if (_newAvatarUrl != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(AppConstants.keyUserAvatarUrl, _newAvatarUrl!);
+        ref.invalidate(userAvatarUrlProvider);
+      }
 
       if (mounted) {
         setState(() => _isLoading = false);
@@ -97,6 +117,70 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         );
       }
     }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+
+      if (image == null) return;
+
+      setState(() => _isLoading = true);
+
+      final mediaService = ref.read(mediaServiceProvider);
+      final url = await mediaService.uploadImage(image);
+
+      setState(() {
+        _newAvatarUrl = url;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur d\'upload : $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showImagePickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.cloviGreen),
+              title: const Text('Galerie'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.cloviGreen),
+              title: const Text('Appareil photo'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -161,10 +245,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               CircleAvatar(
                 radius: 48,
                 backgroundColor: AppColors.cloviGreen,
-                backgroundImage: user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
-                    ? NetworkImage(user.avatarUrl!)
-                    : null,
-                child: (user == null || user.avatarUrl == null || user.avatarUrl!.isEmpty)
+                backgroundImage: _newAvatarUrl != null
+                    ? NetworkImage(_newAvatarUrl!.startsWith('http')
+                        ? _newAvatarUrl!
+                        : '${AppConstants.mediaBaseUrl}$_newAvatarUrl')
+                    : (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty
+                        ? NetworkImage(user.avatarUrl!.startsWith('http')
+                            ? user.avatarUrl!
+                            : '${AppConstants.mediaBaseUrl}${user.avatarUrl}')
+                        : null),
+                child: (_newAvatarUrl == null && (user == null || user.avatarUrl == null || user.avatarUrl!.isEmpty))
                     ? const Icon(Icons.person, size: 48, color: Colors.white)
                     : null,
               ),
@@ -173,9 +263,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 backgroundColor: AppColors.cloviDarkGreen,
                 child: IconButton(
                   icon: const Icon(Icons.camera_alt, size: 20, color: Colors.white),
-                  onPressed: () {
-                    // TODO: Changer la photo de profil
-                  },
+                  onPressed: _showImagePickerOptions,
                   padding: EdgeInsets.zero,
                 ),
               ),

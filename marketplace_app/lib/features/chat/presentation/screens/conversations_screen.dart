@@ -244,7 +244,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
               children: [
                 CircleAvatar(
                   radius: 28,
-                  backgroundColor: AppColors.cloviGreen.withOpacity(0.1),
+                  backgroundColor: Colors.grey.withOpacity(0.1),
                   backgroundImage: otherUser?.avatarUrl != null && otherUser!.avatarUrl!.isNotEmpty
                       ? NetworkImage(
                           otherUser.avatarUrl!.startsWith('http')
@@ -253,7 +253,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                         )
                       : null,
                   child: otherUser?.avatarUrl == null || otherUser!.avatarUrl!.isEmpty
-                      ? const Icon(Icons.person, size: 28, color: AppColors.cloviGreen)
+                      ? Icon(Icons.person, size: 28, color: Colors.grey[400])
                       : null,
                 ),
                 // Badge non lu

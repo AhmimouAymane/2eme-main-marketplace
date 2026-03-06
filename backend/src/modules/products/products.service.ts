@@ -212,12 +212,22 @@ export class ProductsService {
             include: {
                 images: true,
                 category: true,
+                comments: {
+                    include: {
+                        user: {
+                            select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+                        },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                    take: 5,
+                },
                 seller: {
                     select: {
                         id: true,
                         firstName: true,
                         lastName: true,
                         email: true,
+                        avatarUrl: true,
                         addresses: true,
                     },
                 },
@@ -244,14 +254,14 @@ export class ProductsService {
                 reviews: {
                     include: {
                         user: {
-                            select: { id: true, firstName: true, lastName: true },
+                            select: { id: true, firstName: true, lastName: true, avatarUrl: true },
                         },
                     },
                 },
                 comments: {
                     include: {
                         user: {
-                            select: { id: true, firstName: true, lastName: true },
+                            select: { id: true, firstName: true, lastName: true, avatarUrl: true },
                         },
                     },
                 },
@@ -261,6 +271,7 @@ export class ProductsService {
                         firstName: true,
                         lastName: true,
                         email: true,
+                        avatarUrl: true,
                     },
                 },
             },
@@ -467,13 +478,56 @@ export class ProductsService {
         });
     }
 
-    async addComment(productId: string, userId: string, content: string) {
+    async addComment(productId: string, userId: string, content: string, parentCommentId?: string) {
         return this.prisma.comment.create({
             data: {
                 content,
                 userId,
                 productId,
+                parentCommentId,
             },
+        });
+    }
+
+    async updateComment(commentId: string, userId: string, content: string) {
+        const comment = await this.prisma.comment.findUnique({
+            where: { id: commentId },
+        });
+
+        if (!comment) {
+            throw new NotFoundException(`Comment with ID ${commentId} not found`);
+        }
+
+        if (comment.userId !== userId) {
+            throw new ForbiddenException('You can only update your own comments');
+        }
+
+        return this.prisma.comment.update({
+            where: { id: commentId },
+            data: { content },
+        });
+    }
+
+    async deleteComment(commentId: string, userId: string, userRole?: string) {
+        const comment = await this.prisma.comment.findUnique({
+            where: { id: commentId },
+            include: { product: true },
+        });
+
+        if (!comment) {
+            throw new NotFoundException(`Comment with ID ${commentId} not found`);
+        }
+
+        const isOwner = comment.userId === userId;
+        const isSeller = comment.product.sellerId === userId;
+        const isAdmin = userRole === 'ADMIN';
+
+        if (!isOwner && !isSeller && !isAdmin) {
+            throw new ForbiddenException('You do not have permission to delete this comment');
+        }
+
+        return this.prisma.comment.delete({
+            where: { id: commentId },
         });
     }
 }

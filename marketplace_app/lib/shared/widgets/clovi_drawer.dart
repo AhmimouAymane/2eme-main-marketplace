@@ -121,7 +121,7 @@ class CloviDrawer extends ConsumerWidget {
                 radius: 25,
                 backgroundColor: Colors.white,
                 backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
-                child: avatarUrl == null ? const Icon(Icons.person, color: AppColors.cloviGreen) : null,
+                child: avatarUrl == null ? const Icon(Icons.person, color: Colors.grey) : null,
               ),
               const SizedBox(width: 12),
               Expanded(
