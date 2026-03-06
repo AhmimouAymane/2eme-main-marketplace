@@ -133,7 +133,9 @@ class WalletScreen extends ConsumerWidget {
   }
 
   Widget _buildTransactionItem(dynamic transaction) {
-    final double amount = (transaction['totalPrice'] ?? 0.0).toDouble() - (transaction['serviceFee'] ?? 0.0).toDouble();
+    final double amount = (transaction['totalPrice'] ?? 0.0).toDouble()
+        - (transaction['serviceFee'] ?? 0.0).toDouble()
+        - (transaction['shippingFee'] ?? 0.0).toDouble();
     final product = transaction['product'];
     final String title = product != null ? product['title'] : 'Produit';
 

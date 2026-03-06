@@ -22,6 +22,7 @@ import { join } from 'path';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SellerVerificationModule } from './modules/seller-verification/seller-verification.module';
 import { WalletModule } from './modules/wallet/wallet.module';
+import { ModerationModule } from './modules/moderation/moderation.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { WalletModule } from './modules/wallet/wallet.module';
     }),
     SellerVerificationModule,
     WalletModule,
+    ModerationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

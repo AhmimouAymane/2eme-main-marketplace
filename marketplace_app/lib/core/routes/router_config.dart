@@ -28,6 +28,7 @@ import 'package:marketplace_app/shared/models/address_model.dart';
 import 'package:marketplace_app/shared/widgets/app_shell.dart';
 import 'package:marketplace_app/features/wallet/presentation/screens/wallet_screen.dart';
 import 'package:marketplace_app/features/verification/presentation/screens/seller_verification_screen.dart';
+import 'package:marketplace_app/features/moderation/presentation/screens/blocked_users_screen.dart';
 
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 
@@ -208,6 +209,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => MaterialPage(
           key: state.pageKey,
           child: const SellerVerificationScreen(),
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.blockedUsers,
+        name: 'blocked-users',
+        pageBuilder: (context, state) => MaterialPage(
+          key: state.pageKey,
+          child: const BlockedUsersScreen(),
         ),
       ),
 

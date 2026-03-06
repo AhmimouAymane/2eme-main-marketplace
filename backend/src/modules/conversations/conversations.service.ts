@@ -2,12 +2,14 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { PrismaService } from '../prisma/prisma.service';
 import { Conversation, Message, NotificationType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import { ModerationService } from '../moderation/moderation.service';
 
 @Injectable()
 export class ConversationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly moderationService: ModerationService,
   ) { }
 
   async findOrCreateConversation(productId: string, userId: string): Promise<Conversation> {
@@ -23,6 +25,11 @@ export class ConversationsService {
 
     if (product.sellerId === userId) {
       throw new ForbiddenException('You cannot start a conversation with yourself');
+    }
+
+    // Vérifier si un blocage existe
+    if (await this.moderationService.isBlocked(userId, product.sellerId)) {
+      throw new ForbiddenException('You cannot start a conversation with a blocked user');
     }
 
     const buyerId = userId;
@@ -62,6 +69,12 @@ export class ConversationsService {
 
     if (order.buyerId !== userId && order.sellerId !== userId) {
       throw new ForbiddenException('You are not part of this order');
+    }
+
+    // Vérifier si un blocage existe
+    const potentialContactId = order.buyerId === userId ? order.sellerId : order.buyerId;
+    if (await this.moderationService.isBlocked(userId, potentialContactId)) {
+      throw new ForbiddenException('You cannot interact with a blocked user');
     }
 
     const productId = order.productId;
@@ -154,6 +167,12 @@ export class ConversationsService {
   async createMessage(conversationId: string, senderId: string, content: string): Promise<any> {
     try {
       const conversation = await this.getConversation(conversationId, senderId);
+
+      // Vérifier si un blocage existe
+      const contactId = conversation.buyerId === senderId ? conversation.sellerId : conversation.buyerId;
+      if (await this.moderationService.isBlocked(senderId, contactId)) {
+        throw new ForbiddenException('You cannot send messages to a blocked user');
+      }
 
       const message = await this.prisma.message.create({
         data: {

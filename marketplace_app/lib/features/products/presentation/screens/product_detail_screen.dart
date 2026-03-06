@@ -14,6 +14,8 @@ import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/shared/models/comment_model.dart';
 import 'package:marketplace_app/shared/providers/system_settings_provider.dart';
 import 'package:marketplace_app/shared/widgets/full_screen_image_viewer.dart';
+import 'package:marketplace_app/shared/widgets/report_dialog.dart';
+import 'package:marketplace_app/features/moderation/data/moderation_service.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -99,9 +101,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final isOwner = currentUserId != null && currentUserId == product.sellerId;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       body: CustomScrollView(
         slivers: [
-          _buildImageSliver(images),
+          _buildImageSliver(images, product, isOwner),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
@@ -140,14 +143,37 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
+  void _showReportDialog({
+    String? productId,
+    String? commentId,
+    String? userId,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) => ReportDialog(
+        productId: productId,
+        commentId: commentId,
+        userId: userId,
+      ),
+    );
+  }
+
   // ─── Image Sliver ────────────────────────────────────────────────────────────
 
-  Widget _buildImageSliver(List<String> images) {
+  Widget _buildImageSliver(List<String> images, ProductModel product, bool isOwner) {
     return SliverAppBar(
       expandedHeight: 320,
       pinned: true,
       // IMPROVEMENT: stretch gives a nice parallax rubber-band feel on iOS
       stretch: true,
+      actions: [
+        if (!isOwner)
+          IconButton(
+            icon: const Icon(Icons.report_gmailerrorred_outlined),
+            onPressed: () => _showReportDialog(productId: product.id),
+            tooltip: 'Signaler cette annonce',
+          ),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         stretchModes: const [StretchMode.zoomBackground],
         background: Stack(
@@ -1212,6 +1238,10 @@ class _CommentTile extends StatelessWidget {
                       onSelected: (value) {
                         if (value == 'edit') onEdit?.call();
                         if (value == 'delete') onDelete?.call();
+                        if (value == 'report') {
+                          final state = (context as Element).findAncestorStateOfType<_ProductDetailScreenState>();
+                          state?._showReportDialog(commentId: comment.id, userId: comment.userId);
+                        }
                       },
                       itemBuilder: (context) => [
                         if (isOwner)
@@ -1234,6 +1264,17 @@ class _CommentTile extends StatelessWidget {
                                 const SizedBox(width: 8),
                                 Text('Supprimer', 
                                     style: TextStyle(fontSize: 13, color: Colors.red[400])),
+                              ],
+                            ),
+                          ),
+                        if (!isOwner)
+                          const PopupMenuItem(
+                            value: 'report',
+                            child: Row(
+                              children: [
+                                Icon(Icons.report_gmailerrorred_outlined, size: 16),
+                                const SizedBox(width: 8),
+                                Text('Signaler', style: TextStyle(fontSize: 13)),
                               ],
                             ),
                           ),
@@ -1699,3 +1740,5 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
     );
   }
 }
+
+

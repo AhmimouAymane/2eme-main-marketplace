@@ -28,6 +28,7 @@ class AppRoutes {
   static const String about = '/about';
   static const String wallet = '/wallet';
   static const String sellerVerification = '/seller-verification';
+  static const String blockedUsers = '/blocked-users';
 
   // Chat
   static const String conversations = '/conversations';

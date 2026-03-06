@@ -1362,10 +1362,8 @@ class OrderDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildCompletedAction(BuildContext context, WidgetRef ref, OrderModel order, {required bool isBuyer}) {
-    // Check if user already rated
-    final myReviewAsync = ref.watch(FutureProvider.autoDispose((ref) {
-      return ref.watch(userReviewsServiceProvider).getMyReviewForOrder(order.id);
-    }));
+    // Check if user already rated using the stable provider
+    final myReviewAsync = ref.watch(myReviewForOrderProvider(order.id));
 
     return myReviewAsync.when(
       data: (review) {
@@ -1417,8 +1415,8 @@ class OrderDetailScreen extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (stateCtx, setState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(
             isBuyer ? 'Évaluer le vendeur' : 'Évaluer l\'acheteur',
@@ -1464,13 +1462,13 @@ class OrderDetailScreen extends ConsumerWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogCtx),
               child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
               onPressed: () async {
                 final comment = commentController.text.trim();
-                Navigator.pop(context);
+                Navigator.pop(dialogCtx);
                 
                 try {
                   await userReviewsService.createReview(
@@ -1479,6 +1477,12 @@ class OrderDetailScreen extends ConsumerWidget {
                     comment: comment.isEmpty ? null : comment,
                   );
                   
+                  // Refresh view using ref (does not depend on context mounted)
+                  ref.invalidate(orderDetailProvider(order.id));
+                  ref.invalidate(myReviewForOrderProvider(order.id));
+                  ref.invalidate(sellerProfileProvider(order.sellerId));
+                  ref.invalidate(topSellersProvider);
+                  
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -1486,10 +1490,6 @@ class OrderDetailScreen extends ConsumerWidget {
                         backgroundColor: AppColors.cloviGreen,
                       ),
                     );
-                    // Refresh view
-                    ref.invalidate(orderDetailProvider(order.id));
-                    ref.invalidate(sellerProfileProvider(order.sellerId));
-                    ref.invalidate(topSellersProvider);
                   }
                 } catch (e) {
                   if (context.mounted) {

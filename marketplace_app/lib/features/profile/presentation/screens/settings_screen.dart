@@ -53,6 +53,13 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   _buildListTile(
+                    icon: Icons.shield_outlined,
+                    title: 'Utilisateurs bloqués',
+                    subtitle: 'Gérer les blocages',
+                    onTap: () => context.push(AppRoutes.blockedUsers),
+                  ),
+                  const Divider(height: 1),
+                  _buildListTile(
                     icon: Icons.info_outline,
                     title: 'À propos',
                     subtitle: '${AppConstants.appName} v${AppConstants.appVersion}',

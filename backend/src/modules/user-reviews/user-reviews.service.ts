@@ -33,22 +33,26 @@ export class UserReviewsService {
         // 3. Determine target user
         const targetUserId = isBuyer ? order.sellerId : order.buyerId;
 
-        // 4. Check if already rated (using new unique constraint: one review per user pair)
-        const existingReview = await (this.prisma as any).userReview.findUnique({
-            where: { reviewerId_targetUserId: { reviewerId: userId, targetUserId } },
-        });
-        if (existingReview) {
-            throw new BadRequestException('Vous avez déjà évalué cet utilisateur.');
-        }
-
-        // 5. Create review
-        const review = await (this.prisma as any).userReview.create({
-            data: {
+        // 4. Create or Update review (Upsert logic: one review per user pair)
+        const review = await (this.prisma as any).userReview.upsert({
+            where: {
+                reviewerId_targetUserId: {
+                    reviewerId: userId,
+                    targetUserId,
+                },
+            },
+            update: {
+                rating,
+                comment,
+                orderId: orderId || null,
+                updatedAt: new Date(),
+            },
+            create: {
                 orderId: orderId || null,
                 reviewerId: userId,
                 targetUserId,
                 rating,
-                comment
+                comment,
             },
             include: { reviewer: { select: { firstName: true, lastName: true } } },
         });

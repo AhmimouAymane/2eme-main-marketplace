@@ -1,11 +1,27 @@
-import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Constantes de l'application marketplace
 class AppConstants {
 
   // API Configuration
-  static const String apiBaseUrl = 'http://154.70.207.29:8085/api/v1/';
-  static const String mediaBaseUrl = 'http://154.70.207.29:8085/';
+  static String get apiBaseUrl {
+    // Android Emulator
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'http://10.0.2.2:8080/api/v1/';
+    }
+
+    // Web ou Desktop
+    return 'http://localhost:8080/api/v1/';
+  }
+
+  static String get mediaBaseUrl {
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'http://10.0.2.2:8080/';
+    }
+
+    return 'http://localhost:8080/';
+  }
 
   static const Duration apiTimeout = Duration(seconds: 60);
 
@@ -41,4 +57,4 @@ class AppConstants {
   // App Info
   static const String appName = 'Marketplace';
   static const String appVersion = '1.0.0';
-}
+} 

@@ -42,6 +42,10 @@ model User {
   sellerStatus          SellerStatus   @default(NOT_SUBMITTED)
   verificationComment   String?
   verificationDocuments VerificationDocument[]
+  reportsSent         Report[]       @relation("Reporter")
+  reportsReceived     Report[]       @relation("ReportedUser")
+  blockedUsers        Block[]        @relation("Blocker")
+  blockedBy           Block[]        @relation("BlockedUser")
 
   @@map("users")
 }
@@ -72,6 +76,7 @@ model Product {
   category          Category         @relation(fields: [categoryId], references: [id])
   seller            User             @relation("UserProducts", fields: [sellerId], references: [id])
   reviews           Review[]
+  reports           Report[]
 
   @@index([deletedAt])
   @@map("products")
@@ -227,6 +232,7 @@ model Comment {
   user            User      @relation("UserComments", fields: [userId], references: [id])
   parent          Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
   replies         Comment[] @relation("CommentReplies")
+  reports         Report[]
 
   @@map("comments")
 }
@@ -306,6 +312,49 @@ model strapi_migrations_internal {
   id   Int       @id @default(autoincrement())
   name String?   @db.VarChar(255)
   time DateTime? @db.Timestamp(6)
+}
+
+
+model Report {
+  id              String       @id @default(uuid())
+  reporterId      String
+  reason          ReportReason
+  description     String?
+  
+  // Reported content (optional, one of these must be set)
+  reportedUserId  String?
+  reportedProductId String?
+  reportedCommentId String?
+  
+  createdAt       DateTime     @default(now())
+  
+  reporter        User         @relation("Reporter", fields: [reporterId], references: [id])
+  reportedUser    User?        @relation("ReportedUser", fields: [reportedUserId], references: [id])
+  reportedProduct Product?     @relation(fields: [reportedProductId], references: [id])
+  reportedComment Comment?     @relation(fields: [reportedCommentId], references: [id])
+
+  @@map("reports")
+}
+
+model Block {
+  id            String   @id @default(uuid())
+  blockerId     String
+  blockedUserId String
+  createdAt     DateTime @default(now())
+
+  blocker       User     @relation("Blocker", fields: [blockerId], references: [id])
+  blockedUser   User     @relation("BlockedUser", fields: [blockedUserId], references: [id])
+
+  @@unique([blockerId, blockedUserId])
+  @@map("blocks")
+}
+
+enum ReportReason {
+  SPAM
+  INAPPROPRIATE_CONTENT
+  FRAUD
+  HARASSMENT
+  OTHER
 }
 
 enum Role {

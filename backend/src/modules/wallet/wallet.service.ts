@@ -15,14 +15,14 @@ export class WalletService {
             select: {
                 totalPrice: true,
                 serviceFee: true,
+                shippingFee: true,
             },
         });
 
         const balance = orders.reduce((acc, order) => {
-            // Balance is the total price the buyer paid minus the service fee
-            // (Shipping fee is typically handled separately or included depending on the carrier model, 
-            // but here we focus on the product payout)
-            return acc + (order.totalPrice - order.serviceFee);
+            // Balance is the total price the buyer paid minus the service fee and shipping fee
+            // (The seller only keeps the price of the article minus the platform's service fee)
+            return acc + (order.totalPrice - order.serviceFee - order.shippingFee);
         }, 0);
 
         return {

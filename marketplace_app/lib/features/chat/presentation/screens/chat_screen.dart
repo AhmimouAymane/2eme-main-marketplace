@@ -10,7 +10,8 @@ import 'package:marketplace_app/shared/models/conversation_model.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
-
+import 'package:marketplace_app/features/moderation/data/moderation_service.dart';
+import 'package:marketplace_app/shared/widgets/report_dialog.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -95,9 +96,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       _scrollToBottom();
     } catch (e) {
       if (!mounted) return;
+      
+      String errorMessage = 'Erreur lors de l\'envoi: $e';
+      
+      // Check for 403 Forbidden (Blocked user)
+      if (e.toString().contains('403') || e.toString().contains('Forbidden')) {
+        errorMessage = 'Vous ne pouvez pas envoyer de message à cet utilisateur.';
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur lors de l\'envoi: $e'),
+          content: Text(errorMessage),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -235,6 +244,65 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  void _showBlockConfirmation(BuildContext context, String userId, String name) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.shield_outlined, color: AppColors.error),
+            SizedBox(width: 10),
+            Text('Bloquer ?', style: TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Voulez-vous bloquer $name ?\n\nVous ne recevrez plus ses messages et vous ne pourrez plus interagir avec cette personne.',
+          style: const TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ref.read(moderationServiceProvider).blockUser(userId);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text('$name a été bloqué.'),
+                      backgroundColor: AppColors.error,
+                  ),
+                );
+                Navigator.pop(context); // Quitter le chat
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
+                );
+              }
+            },
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Bloquer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showReportDialog({String? userId}) {
+    showDialog(
+      context: context,
+      builder: (context) => ReportDialog(userId: userId),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final conversationAsync = ref.watch(conversationProvider(widget.conversationId));
@@ -345,6 +413,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     case 'delete':
                       _showDeleteConfirmation(context, ref, conversation.id);
                       break;
+                    case 'block':
+                      if (otherUser?.id != null) {
+                        _showBlockConfirmation(context, otherUser!.id, otherUser.fullName ?? 'cet utilisateur');
+                      }
+                      break;
+                    case 'report':
+                      if (otherUser?.id != null) {
+                        _showReportDialog(userId: otherUser!.id);
+                      }
+                      break;
                   }
                 },
                 itemBuilder: (context) => [
@@ -376,6 +454,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         Icon(Icons.delete_outline, size: 20, color: AppColors.error),
                         SizedBox(width: 12),
                         Text('Supprimer', style: TextStyle(color: AppColors.error)),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'report',
+                    child: Row(
+                      children: [
+                        Icon(Icons.report_gmailerrorred_outlined, size: 20),
+                        SizedBox(width: 12),
+                        Text('Signaler l\'utilisateur'),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'block',
+                    child: Row(
+                      children: [
+                        Icon(Icons.block_outlined, size: 20, color: AppColors.error),
+                        SizedBox(width: 12),
+                        Text('Bloquer l\'utilisateur', style: TextStyle(color: AppColors.error)),
                       ],
                     ),
                   ),

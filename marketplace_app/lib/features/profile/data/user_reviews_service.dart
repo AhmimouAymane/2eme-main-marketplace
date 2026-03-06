@@ -22,6 +22,10 @@ final topSellersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) asyn
   return ref.watch(userReviewsServiceProvider).getTopSellers();
 });
 
+final myReviewForOrderProvider = FutureProvider.autoDispose.family<UserReviewModel?, String>((ref, orderId) async {
+  return ref.watch(userReviewsServiceProvider).getMyReviewForOrder(orderId);
+});
+
 class UserReviewsService {
   final Dio _dio;
 
@@ -32,7 +36,7 @@ class UserReviewsService {
     required int rating,
     String? comment,
   }) async {
-    final response = await _dio.post('/user-reviews', data: {
+    final response = await _dio.post('user-reviews', data: {
       'orderId': orderId,
       'rating': rating,
       if (comment != null) 'comment': comment,
@@ -41,7 +45,7 @@ class UserReviewsService {
   }
 
   Future<List<UserReviewModel>> getUserReviews(String userId) async {
-    final response = await _dio.get('/user-reviews/user/$userId');
+    final response = await _dio.get('user-reviews/user/$userId');
     return (response.data as List)
         .map((x) => UserReviewModel.fromJson(x))
         .toList();
@@ -49,7 +53,7 @@ class UserReviewsService {
 
   Future<UserReviewModel?> getMyReviewForOrder(String orderId) async {
     try {
-      final response = await _dio.get('/user-reviews/order/$orderId/mine');
+      final response = await _dio.get('user-reviews/order/$orderId/mine');
       if (response.data == null || response.data == '') return null;
       return UserReviewModel.fromJson(response.data);
     } catch (e) {
@@ -58,7 +62,7 @@ class UserReviewsService {
   }
 
   Future<List<Map<String, dynamic>>> getTopSellers() async {
-    final response = await _dio.get('/user-reviews/top-sellers');
+    final response = await _dio.get('user-reviews/top-sellers');
     return (response.data as List).cast<Map<String, dynamic>>();
   }
 }
