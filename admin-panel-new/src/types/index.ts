@@ -52,6 +52,7 @@ export interface Product {
     brand: string;
     size: string;
     condition: ProductCondition;
+    moderationComment?: string;
     createdAt: string;
 }
 
