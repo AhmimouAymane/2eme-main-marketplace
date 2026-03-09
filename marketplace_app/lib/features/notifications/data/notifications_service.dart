@@ -26,7 +26,8 @@ class NotificationsService {
   Future<int> getUnreadCount() async {
     try {
       final response = await _dio.get('notifications/unread-count');
-      return response.data as int;
+      // Safely parse count as it might come as a String or int
+      return int.tryParse(response.data.toString()) ?? 0;
     } catch (e) {
       print('DEBUG: Error in getUnreadCount: $e');
       return 0;

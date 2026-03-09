@@ -6,21 +6,11 @@ class AppConstants {
 
   // API Configuration
   static String get apiBaseUrl {
-    // Android Emulator
-    if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:8080/api/v1/';
-    }
-
-    // Web ou Desktop
-    return 'http://localhost:8080/api/v1/';
+    return 'http://154.70.207.29:8085/api/v1/';
   }
 
   static String get mediaBaseUrl {
-    if (!kIsWeb && Platform.isAndroid) {
-      return 'http://10.0.2.2:8080/';
-    }
-
-    return 'http://localhost:8080/';
+    return 'http://154.70.207.29:8085/';
   }
 
   static const Duration apiTimeout = Duration(seconds: 60);

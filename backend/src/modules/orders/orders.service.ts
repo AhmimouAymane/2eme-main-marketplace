@@ -44,17 +44,31 @@ export class OrdersService {
         const systemServiceFeePercentage = settings?.serviceFeePercentage || 5.0;
         const systemShippingFee = settings?.shippingFee || 25.0;
 
-        // Recalculate fees for security if not provided or to ensure they match backend logic
-        // We round up the service fee as in the frontend
-        const calculatedServiceFee = Math.ceil(product.price * (systemServiceFeePercentage / 100));
-
-        const finalServiceFee = serviceFee !== undefined ? serviceFee : calculatedServiceFee;
-        const finalShippingFee = shippingFee !== undefined ? shippingFee : systemShippingFee;
-        const finalTotalPrice = product.price + finalServiceFee + finalShippingFee;
-
-        // Default status for "Buy Now" is AWAITING_SELLER_CONFIRMATION
-        // If it's an offer, it would be OFFER_MADE (logic can be expanded)
+        // Recalculate fees/price for security
+        // If it's an offer, we respect the totalPrice from DTO (which is the grand total in our app)
+        // Otherwise, we enforce the product's current price.
         const orderStatus = status || OrderStatus.AWAITING_SELLER_CONFIRMATION;
+        const isOffer = orderStatus === OrderStatus.OFFER_MADE;
+
+        const finalShippingFee = shippingFee !== undefined ? shippingFee : systemShippingFee;
+
+        let basePrice = product.price;
+        if (isOffer && totalPrice) {
+            if (serviceFee !== undefined) {
+                // If the client explicitly provided the service fee, we can easily find the base price
+                basePrice = totalPrice - serviceFee - finalShippingFee;
+            } else {
+                // We reverse engineer the base price from the total: 
+                // Total - Shipping = Base + (Base * Fee%) -> Base = (Total - Shipping) / (1 + Fee%)
+                basePrice = Math.floor((totalPrice - finalShippingFee) / (1 + systemServiceFeePercentage / 100));
+            }
+        }
+
+        const finalServiceFee = serviceFee !== undefined
+            ? serviceFee
+            : Math.ceil(basePrice * (systemServiceFeePercentage / 100));
+
+        const finalTotalPrice = basePrice + finalServiceFee + finalShippingFee;
 
         // Prepare transaction steps
         const transactionSteps: any[] = [
@@ -95,12 +109,11 @@ export class OrdersService {
         const [order] = await this.prisma.$transaction(transactionSteps);
 
         // Create notification for seller
-        const isOffer = orderStatus === OrderStatus.OFFER_MADE;
         await this.notificationsService.create({
             userId: product.sellerId,
             title: isOffer ? '🤝 Nouvelle offre reçue !' : '🛒 Nouvelle commande reçue !',
             message: isOffer
-                ? `${order.buyer.firstName} propose ${totalPrice} MAD pour "${product.title}".`
+                ? `${order.buyer.firstName} propose ${basePrice} MAD pour "${product.title}".`
                 : `Vous avez reçu une nouvelle commande pour "${product.title}".`,
             type: NotificationType.NEW_ORDER_RECEIVED,
             data: { orderId: order.id, screen: 'order_detail' },

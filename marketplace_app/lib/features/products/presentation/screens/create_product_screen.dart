@@ -112,7 +112,9 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   }
 
   Future<void> _handleSubmit() async {
-    final user = ref.read(userProfileProvider).value;
+    final userAsync = ref.read(userProfileProvider);
+    final user = userAsync.value;
+    
     if (user == null || !user.isSellerVerified) {
       _showVerificationRequiredDialog();
       return;
@@ -455,6 +457,57 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   @override
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(categoriesTreeProvider);
+    final userAsync = ref.watch(userProfileProvider);
+
+    // Blocage si l'utilisateur n'est pas vérifié
+    final user = userAsync.value;
+    if (userAsync.isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(color: AppColors.cloviGreen)),
+      );
+    }
+
+    if (user == null || !user.isSellerVerified) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Vérification requise')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.verified_user_outlined, size: 80, color: AppColors.cloviGreen),
+                const SizedBox(height: 24),
+                const Text(
+                  'Compte non vérifié',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Vous devez faire vérifier votre compte avant de pouvoir poster un article.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () => context.push(AppRoutes.sellerVerification),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.cloviGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  ),
+                  child: const Text('Se faire vérifier'),
+                ),
+                TextButton(
+                  onPressed: () => context.pop(),
+                  child: const Text('Retour'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: AppColors.cloviBeige,

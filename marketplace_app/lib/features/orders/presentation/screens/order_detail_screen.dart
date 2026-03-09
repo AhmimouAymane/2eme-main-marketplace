@@ -89,12 +89,21 @@ class OrderDetailScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildContent(BuildContext context, WidgetRef ref, OrderModel order, String? currentUserId, double? serviceFeePercentage) {
+  Widget _buildContent(BuildContext context, WidgetRef ref, OrderModel order, String? currentUserId, double? currentServiceFeePercentage) {
     final isSeller = currentUserId == order.sellerId;
+    final shippingFee = order.shippingFee;
+    final serviceFee = order.serviceFee;
+    final itemPrice = order.totalPrice - serviceFee - shippingFee;
+    
+    // Calculer le pourcentage de frais historique de cette commande
+    final double historicalPercentage = itemPrice > 0 
+        ? (serviceFee / itemPrice) * 100 
+        : (currentServiceFeePercentage ?? 5.0);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // ... (Status Card code remains same)
         // Statut de la commande
         Card(
           child: Padding(
@@ -336,7 +345,7 @@ class OrderDetailScreen extends ConsumerWidget {
                               ),
                             ),
                           Text(
-                            'Prix: ${Formatters.price(order.totalPrice)}',
+                            'Prix: ${Formatters.price(itemPrice)}',
                             style: TextStyle(
                               color: AppColors.textSecondaryLight,
                             ),
@@ -368,11 +377,11 @@ class OrderDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 _buildSummaryRow(
-                  'Prix du produit',
-                  order.totalPrice - order.serviceFee - order.shippingFee,
+                  order.isOffer ? 'Montant de l\'offre' : 'Prix de l\'article',
+                  itemPrice,
                 ),
                 _buildSummaryRow(
-                  'Frais de service (${serviceFeePercentage?.toStringAsFixed(0) ?? "5"}%)',
+                  'Frais de service (${historicalPercentage.toStringAsFixed(1)}%)',
                   order.serviceFee,
                 ),
                 _buildSummaryRow(
@@ -380,7 +389,11 @@ class OrderDetailScreen extends ConsumerWidget {
                   order.shippingFee,
                 ),
                 const Divider(height: 24),
-                _buildSummaryRow('Total payé', order.totalPrice, isBold: true),
+                _buildSummaryRow(
+                  'Total payé', 
+                  order.totalPrice, 
+                  isBold: true,
+                ),
               ],
             ),
           ),

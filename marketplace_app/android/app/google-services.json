@@ -58,6 +58,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "735878764760-eu68v98ai5rrsjg5ocm38qucfo4u92kh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.techpal.clovi",
+            "certificate_hash": "2285736a7d3545d2838caf6327cf75cb777fd8cd"
+          }
+        },
+        {
           "client_id": "735878764760-j6cb68ndnf086p8qjbiio0hnrdihsmqs.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

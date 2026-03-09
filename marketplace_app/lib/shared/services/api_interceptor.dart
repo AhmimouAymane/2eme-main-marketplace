@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../core/constants/app_constants.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
 
@@ -22,7 +23,30 @@ class ApiInterceptor extends Interceptor {
     final path = options.uri.path;
     final isPublic = _publicPaths.any((p) => path.endsWith(p) || path.contains(p));
     if (isPublic) {
+      // Même pour les routes publiques, on vérifie la connexion
+      final connectivityResults = await Connectivity().checkConnectivity();
+      if (connectivityResults.contains(ConnectivityResult.none)) {
+        return handler.reject(
+          DioException(
+            requestOptions: options,
+            type: DioExceptionType.connectionError,
+            error: 'Pas de connexion internet',
+          ),
+        );
+      }
       return handler.next(options);
+    }
+
+    // Vérifier la connexion internet avant de continuer
+    final connectivityResults = await Connectivity().checkConnectivity();
+    if (connectivityResults.contains(ConnectivityResult.none)) {
+      return handler.reject(
+        DioException(
+          requestOptions: options,
+          type: DioExceptionType.connectionError,
+          error: 'Pas de connexion internet',
+        ),
+      );
     }
 
     // Récupérer le token depuis le stockage local (ou le provider)

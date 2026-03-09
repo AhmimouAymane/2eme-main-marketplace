@@ -455,3 +455,30 @@ final conversationMessagesProvider = FutureProvider.autoDispose
       final service = ref.watch(chatServiceProvider);
       return service.getMessages(conversationId);
     });
+
+/// Provider pour calculer le nombre total de messages non lus
+final unreadMessagesCountProvider = Provider.autoDispose<int>((ref) {
+  final conversationsAsync = ref.watch(conversationsProvider);
+  final currentUserId = ref.watch(userIdProvider).value;
+
+  return conversationsAsync.maybeWhen(
+    data: (conversations) {
+      int total = 0;
+      for (final convo in conversations) {
+        // Compter les messages non lus dans cette conversation par rapport au user actuel
+        // Note: Le backend devrait aussi envoyer l'info isRead par message
+        // On vérifie si le dernier message est lu et s'il ne vient pas de nous
+        if (convo.messages.isNotEmpty) {
+          final lastMsg = convo.messages.last;
+          if (!lastMsg.isRead && lastMsg.senderId != currentUserId) {
+            // Ici on simplifie : si le dernier est non lu et pas de nous, on compte 1
+            // Dans un système réel, on compterait tous les messages non lus par convo
+            total += 1;
+          }
+        }
+      }
+      return total;
+    },
+    orElse: () => 0,
+  );
+});

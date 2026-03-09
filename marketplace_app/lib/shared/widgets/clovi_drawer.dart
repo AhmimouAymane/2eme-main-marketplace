@@ -113,7 +113,7 @@ class CloviDrawer extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CloviLogo(size: 40, showText: true, color: Colors.white, fontSize: 28),
+          const CloviLogo(size: 40, showText: false, color: Colors.white, fontSize: 28),
           const SizedBox(height: 24),
           Row(
             children: [

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
+import '../providers/shop_providers.dart';
 
-class CloviBottomNav extends StatelessWidget {
+class CloviBottomNav extends ConsumerWidget {
   final int selectedIndex;
   final Function(int) onItemTapped;
 
@@ -12,10 +14,17 @@ class CloviBottomNav extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 70,
-      margin: const EdgeInsets.all(16),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref.watch(unreadMessagesCountProvider);
+
+    return SafeArea(
+      top: false,
+      left: false,
+      right: false,
+      bottom: true,
+      child: Container(
+        height: 70,
+        margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cloviGreen,
         borderRadius: BorderRadius.circular(35),
@@ -57,12 +66,45 @@ class CloviBottomNav extends StatelessWidget {
             ),
           ),
 
-          Expanded(child: _buildNavItem(Icons.chat_bubble_outline, Icons.chat_bubble, 'Messages', 3)),
+          Expanded(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                _buildNavItem(Icons.chat_bubble_outline, Icons.chat_bubble, 'Messages', 3),
+                if (unreadCount > 0)
+                  Positioned(
+                    top: 15,
+                    right: 15,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: AppColors.error,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        unreadCount > 9 ? '9+' : unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           Expanded(child: _buildNavItem(Icons.person_outline, Icons.person, 'Profile', 4)),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildNavItem(IconData icon, IconData activeIcon, String label, int index) {
     final bool active = selectedIndex == index;
@@ -71,6 +113,7 @@ class CloviBottomNav extends StatelessWidget {
       onTap: () => onItemTapped(index),
       child: SizedBox(
         height: double.infinity,
+        width: double.infinity,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

@@ -8,8 +8,37 @@ import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/core/utils/formatters.dart';
 
+import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+
 class MyProductsScreen extends ConsumerWidget {
   const MyProductsScreen({super.key});
+
+  Future<void> _checkVerification(BuildContext context, WidgetRef ref) async {
+    try {
+      final profile = await ref.refresh(userProfileProvider.future);
+      if (profile == null || !profile.isSellerVerified) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Vous devez être vérifié pour créer une annonce.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          context.push(AppRoutes.sellerVerification);
+        }
+        return;
+      }
+      if (context.mounted) {
+        context.push(AppRoutes.createProduct);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,7 +55,7 @@ class MyProductsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add, color: AppColors.cloviGreen),
-            onPressed: () => context.push(AppRoutes.createProduct),
+            onPressed: () => _checkVerification(context, ref),
           ),
         ],
       ),
@@ -49,7 +78,7 @@ class MyProductsScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   ElevatedButton(
-                    onPressed: () => context.push(AppRoutes.createProduct),
+                    onPressed: () => _checkVerification(context, ref),
                     child: const Text('Créer une annonce'),
                   ),
                 ],

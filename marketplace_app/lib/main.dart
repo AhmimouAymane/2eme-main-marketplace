@@ -14,6 +14,8 @@ import 'dart:async';
 import 'core/theme/app_colors.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'shared/providers/connectivity_provider.dart';
+import 'shared/widgets/no_internet_screen.dart';
 
 
 // Plugin pour gérer les canaux de notification Android
@@ -278,7 +280,7 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
           right: 16,
         ),
         elevation: 6,
-        duration: const Duration(seconds: 2), // Durée réduite pour plus de fluidité
+        duration: const Duration(seconds: 2), // Durée réduite (2s) pour moins d'encombrement
         action: SnackBarAction(
           label: 'VOIR',
           textColor: Colors.white70,
@@ -297,6 +299,18 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
     // Initialise le socket global
     ref.watch(chatSocketProvider);
 
+    // Écoute la reconnexion pour rafraîchir les données
+    ref.listen<bool>(isOnlineProvider, (previous, next) {
+      if (previous == false && next == true) {
+        print('DEBUG: App reconnected, refreshing key providers');
+        ref.invalidate(userProfileProvider);
+        ref.invalidate(homeProductsProvider);
+        ref.invalidate(unreadNotificationsCountProvider);
+        ref.invalidate(conversationsProvider);
+        ref.invalidate(unreadMessagesCountProvider);
+      }
+    });
+
     // Écoute les nouveaux messages entrants (Socket.io)
     ref.listen<MessageModel?>(
       lastIncomingMessageProvider,
@@ -314,7 +328,17 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
         // NE PAS afficher de notification si :
         // 1. C'est nous qui avons envoyé le message
+        if (next.senderId == currentUserId) {
+          print('DEBUG: Notification skipped (own message)');
+          return;
+        }
+
         // 2. On est déjà dans la conversation en question
+        if (currentChatId == next.conversationId) {
+          print('DEBUG: Notification skipped (already in this chat)');
+          return;
+        }
+
         // 3. On est sur la liste des discussions (qui se met à jour seule)
         final currentPath = ref.read(routerProvider).routeInformationProvider.value.uri.toString();
         if (currentPath == AppRoutes.conversations) {
@@ -324,8 +348,9 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
         print('DEBUG: Showing SnackBar for message: ${next.content}');
         _showCloviNotification(
-          'Message de ${next.senderName ?? next.senderId}',
+          'Message de ${next.senderName ?? 'Vendeur'}',
           next.content,
+          message: null, // On ne passe pas le message RemoteMessage ici car c'est un Socket message
         );
 
         // Reset pour permettre de redéclencher même si le même objet est réémis
@@ -365,6 +390,22 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
       // Configuration du routeur (utilise le provider pour réagir aux changements d'auth)
       routerConfig: ref.watch(routerProvider),
+      
+      // Gestion globale du mode hors ligne
+      builder: (context, child) {
+        final isOnline = ref.watch(isOnlineProvider);
+        
+        if (!isOnline) {
+          return NoInternetScreen(
+            onRetry: () {
+              // Invalider le stream pour forcer une nouvelle vérification
+              ref.invalidate(connectivityStreamProvider);
+            },
+          );
+        }
+        
+        return child!;
+      },
     );
   }
 }
