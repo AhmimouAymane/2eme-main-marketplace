@@ -5,12 +5,21 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class AppConstants {
 
   // API Configuration
+  static String get _host {
+    if (kIsWeb) return 'localhost';
+    if (Platform.isAndroid) return '10.0.2.2'; // Standard Android emulator loopback
+    return 'localhost';
+  }
+
   static String get apiBaseUrl {
-    return 'http://154.70.207.29:8085/api/v1/';
+    // For local development, use the local IP or localhost
+    // return 'http://154.70.207.29:8085/api/v1/';
+    return 'http://$_host:8080/api/v1/';
   }
 
   static String get mediaBaseUrl {
-    return 'http://154.70.207.29:8085/';
+    // return 'http://154.70.207.29:8085/';
+    return 'http://$_host:8080/';
   }
 
   static const Duration apiTimeout = Duration(seconds: 60);
@@ -18,6 +27,7 @@ class AppConstants {
   // Storage Keys
   static const String keyAuthToken = 'auth_token';
   static const String keyUserId = 'user_id';
+  static const String keyUserName = 'user_name';
   static const String keyUserEmail = 'user_email';
   static const String keyUserAvatarUrl = 'user_avatar_url';
   static const String keyThemeMode = 'theme_mode';
@@ -46,5 +56,5 @@ class AppConstants {
 
   // App Info
   static const String appName = 'Marketplace';
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '1.0.1';
 } 

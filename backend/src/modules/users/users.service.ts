@@ -29,12 +29,35 @@ export class UsersService {
         };
     }
 
-    async findOne(id: string, includeProducts = false) {
+    async search(searchTerm: string) {
+        if (!searchTerm) return [];
+
+        return this.prisma.user.findMany({
+            where: {
+                OR: [
+                    { firstName: { contains: searchTerm, mode: 'insensitive' } },
+                    { lastName: { contains: searchTerm, mode: 'insensitive' } },
+                ],
+            },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                avatarUrl: true,
+            },
+            take: 20,
+        });
+    }
+
+    async findOne(id: string, includeProducts = false, isPublic = false) {
         const user = await this.prisma.user.findUnique({
             where: { id },
             include: {
                 products: includeProducts ? {
-                    where: { deletedAt: null },
+                    where: {
+                        deletedAt: null,
+                        ...(isPublic ? { status: 'PUBLISHED' } : {})
+                    },
                     include: {
                         images: true,
                         category: true,
@@ -62,10 +85,14 @@ export class UsersService {
                 _count: {
                     select: {
                         sellerOrders: {
-                            where: { status: 'DELIVERED' }
+                            where: {
+                                status: {
+                                    in: ['CONFIRMED', 'SHIPPED', 'DELIVERED', 'RETURN_WINDOW_48H', 'COMPLETED']
+                                }
+                            }
                         }
                     }
-                }
+                },
             },
         });
 

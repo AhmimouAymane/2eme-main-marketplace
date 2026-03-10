@@ -251,6 +251,10 @@ class AuthService {
     if (user != null) {
       await prefs.setString(AppConstants.keyUserId, user['id']);
       await prefs.setString(AppConstants.keyUserEmail, user['email']);
+      
+      final String fullName = '${user['firstName']} ${user['lastName']}';
+      await prefs.setString(AppConstants.keyUserName, fullName);
+
       if (user['avatarUrl'] != null) {
         await prefs.setString(AppConstants.keyUserAvatarUrl, user['avatarUrl']);
       }
@@ -259,6 +263,7 @@ class AuthService {
     // Invalidate user-related providers to force refresh everywhere
     _ref.invalidate(userEmailProvider);
     _ref.invalidate(userIdProvider);
+    _ref.invalidate(userNameProvider);
     _ref.invalidate(userAvatarUrlProvider);
     _ref.invalidate(userProfileProvider);
     
@@ -296,6 +301,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.keyAuthToken);
     await prefs.remove(AppConstants.keyUserId);
+    await prefs.remove(AppConstants.keyUserName);
     await prefs.remove(AppConstants.keyUserEmail);
     await prefs.remove(AppConstants.keyUserAvatarUrl);
     
@@ -303,6 +309,7 @@ class AuthService {
     _ref.read(authTokenProvider.notifier).state = null;
     _ref.invalidate(userEmailProvider);
     _ref.invalidate(userIdProvider);
+    _ref.invalidate(userNameProvider);
     _ref.invalidate(userAvatarUrlProvider);
     _ref.invalidate(userProfileProvider);
     _ref.invalidate(isAuthenticatedProvider);

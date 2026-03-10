@@ -224,7 +224,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           },
                           orElse: () => _buildDefaultAvatar(),
                         ),
-                    onPressed: () => context.push(AppRoutes.profile),
+                    onPressed: () => context.go(AppRoutes.profile),
                   ),
                 ],
               ),
@@ -252,13 +252,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         children: [
           Expanded(
             child: GestureDetector(
-              onTap: () async {
+              onTap: () {
                 ref.read(productFilterProvider.notifier).clearAll();
-                await context.push(AppRoutes.search);
-                // Au retour de la recherche, on s'assure que l'accueil est propre
-                print('DEBUG: Returning from Search - Resetting Home');
-                ref.read(productFilterProvider.notifier).clearAll();
-                ref.invalidate(homeProductsProvider);
+                context.go(AppRoutes.search);
               },
               child: Container(
                 height: 45,
@@ -474,7 +470,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return GestureDetector(
       onTap: () {
         ref.read(productFilterProvider.notifier).updateCategory(cat.id);
-        context.push(AppRoutes.search);
+        context.go(AppRoutes.search);
       },
       child: Container(
         width: 80,
@@ -713,7 +709,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () => context.push(AppRoutes.search),
+                onPressed: () => context.go(AppRoutes.search),
                 child: const Text('voir tout'),
               ),
             ],

@@ -22,7 +22,8 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
   const ProductDetailScreen({super.key, required this.productId});
 
   @override
-  ConsumerState<ProductDetailScreen> createState() => _ProductDetailScreenState();
+  ConsumerState<ProductDetailScreen> createState() =>
+      _ProductDetailScreenState();
 }
 
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
@@ -38,59 +39,65 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ref.watch(productDetailProvider(widget.productId)).when(
-      data: (product) => _buildContent(context, product),
-      // IMPROVEMENT: Use a proper skeleton/shimmer instead of a bare spinner
-      loading: () => const _ProductDetailSkeleton(),
-      error: (error, stack) {
-        final is404 = error is DioException && error.response?.statusCode == 404;
-        final message = is404
-            ? 'Cette annonce n\'est plus disponible\n(supprimée ou vendue).'
-            : (error is DioException ? error.message : error.toString()) ??
-                'Une erreur est survenue';
+    return ref
+        .watch(productDetailProvider(widget.productId))
+        .when(
+          data: (product) => _buildContent(context, product),
+          // IMPROVEMENT: Use a proper skeleton/shimmer instead of a bare spinner
+          loading: () => const _ProductDetailSkeleton(),
+          error: (error, stack) {
+            final is404 =
+                error is DioException && error.response?.statusCode == 404;
+            final message = is404
+                ? 'Cette annonce n\'est plus disponible\n(supprimée ou vendue).'
+                : (error is DioException ? error.message : error.toString()) ??
+                      'Une erreur est survenue';
 
-        return Scaffold(
-          appBar: AppBar(title: const Text('Annonce indisponible')),
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    is404 ? Icons.inventory_2_outlined : Icons.wifi_off_outlined,
-                    size: 72,
-                    color: Colors.grey[350],
+            return Scaffold(
+              appBar: AppBar(title: const Text('Annonce indisponible')),
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        is404
+                            ? Icons.inventory_2_outlined
+                            : Icons.wifi_off_outlined,
+                        size: 72,
+                        color: Colors.grey[350],
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        message,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 32),
+                      FilledButton.icon(
+                        onPressed: () => context.pop(),
+                        icon: const Icon(Icons.arrow_back),
+                        label: const Text('Retour'),
+                      ),
+                      // IMPROVEMENT: Add retry for non-404 errors
+                      if (!is404) ...[
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          onPressed: () => ref.invalidate(
+                            productDetailProvider(widget.productId),
+                          ),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Réessayer'),
+                        ),
+                      ],
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 32),
-                  FilledButton.icon(
-                    onPressed: () => context.pop(),
-                    icon: const Icon(Icons.arrow_back),
-                    label: const Text('Retour'),
-                  ),
-                  // IMPROVEMENT: Add retry for non-404 errors
-                  if (!is404) ...[
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () =>
-                          ref.invalidate(productDetailProvider(widget.productId)),
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Réessayer'),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
-      },
-    );
   }
 
   Widget _buildContent(BuildContext context, ProductModel product) {
@@ -115,10 +122,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   const SizedBox(height: 8),
                   Text(
                     product.title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   // IMPROVEMENT: Grouped info in a styled card instead of raw rows
@@ -160,7 +166,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   // ─── Image Sliver ────────────────────────────────────────────────────────────
 
-  Widget _buildImageSliver(List<String> images, ProductModel product, bool isOwner) {
+  Widget _buildImageSliver(
+    List<String> images,
+    ProductModel product,
+    bool isOwner,
+  ) {
     return SliverAppBar(
       expandedHeight: 320,
       pinned: true,
@@ -186,15 +196,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 if (images.isEmpty) {
                   return Container(
                     color: Colors.grey[100],
-                    child: Icon(Icons.image_not_supported_outlined,
-                        size: 64, color: Colors.grey[300]),
+                    child: Icon(
+                      Icons.image_not_supported_outlined,
+                      size: 64,
+                      color: Colors.grey[300],
+                    ),
                   );
                 }
                 return GestureDetector(
-                  onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => FullScreenImageViewer(
-                        imageUrls: images, initialIndex: index),
-                  )),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => FullScreenImageViewer(
+                        imageUrls: images,
+                        initialIndex: index,
+                      ),
+                    ),
+                  ),
                   child: Hero(
                     // IMPROVEMENT: Hero tag tied to productId, not just index
                     tag: 'product_${widget.productId}_img_$index',
@@ -207,8 +224,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           : Container(color: Colors.grey[200]),
                       errorBuilder: (_, __, ___) => Container(
                         color: Colors.grey[100],
-                        child: const Icon(Icons.broken_image_outlined,
-                            size: 48, color: Colors.grey),
+                        child: const Icon(
+                          Icons.broken_image_outlined,
+                          size: 48,
+                          color: Colors.grey,
+                        ),
                       ),
                     ),
                   ),
@@ -217,7 +237,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             ),
             // IMPROVEMENT: Gradient at bottom so back arrow stays visible
             Positioned(
-              top: 0, left: 0, right: 0,
+              top: 0,
+              left: 0,
+              right: 0,
               height: 80,
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -232,7 +254,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             // Page dots indicator
             if (images.length > 1)
               Positioned(
-                bottom: 14, left: 0, right: 0,
+                bottom: 14,
+                left: 0,
+                right: 0,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(images.length, (i) {
@@ -256,17 +280,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             // IMPROVEMENT: Image counter badge (e.g. "2 / 5")
             if (images.length > 1)
               Positioned(
-                bottom: 12, right: 16,
+                bottom: 12,
+                right: 16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black54,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '${_currentImageIndex + 1} / ${images.length}',
-                    style: const TextStyle(
-                        color: Colors.white, fontSize: 11),
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
                   ),
                 ),
               ),
@@ -337,12 +364,21 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   // IMPROVEMENT: Group product specs in a visual card with dividers
   Widget _buildProductInfoCard(BuildContext context, ProductModel product) {
     final rows = <_InfoItem>[
-      _InfoItem('Marque', product.brand.isEmpty ? 'Non spécifiée' : product.brand,
-          Icons.label_outline),
-      _InfoItem('Taille', product.size.isEmpty ? 'Non spécifiée' : product.size,
-          Icons.straighten_outlined),
-      _InfoItem('État', _conditionLabel(product.condition.name),
-          Icons.verified_outlined),
+      _InfoItem(
+        'Marque',
+        product.brand.isEmpty ? 'Non spécifiée' : product.brand,
+        Icons.label_outline,
+      ),
+      _InfoItem(
+        'Taille',
+        product.size.isEmpty ? 'Non spécifiée' : product.size,
+        Icons.straighten_outlined,
+      ),
+      _InfoItem(
+        'État',
+        _conditionLabel(product.condition.name),
+        Icons.verified_outlined,
+      ),
       _InfoItem('Catégorie', product.category, Icons.category_outlined),
       if (product.sellerCity != null)
         _InfoItem('Ville', product.sellerCity!, Icons.location_on_outlined),
@@ -360,22 +396,30 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           return Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 11,
+                ),
                 child: Row(
                   children: [
                     Icon(item.icon, size: 18, color: Colors.grey[500]),
                     const SizedBox(width: 10),
-                    Text(item.label,
-                        style: TextStyle(
-                            color: Colors.grey[600], fontSize: 13)),
+                    Text(
+                      item.label,
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
                     const Spacer(),
                     // IMPROVEMENT: Condition gets a colored chip
                     if (item.label == 'État')
                       _buildConditionChip(product.condition.name)
                     else
-                      Text(item.value,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 13)),
+                      Text(
+                        item.value,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -404,20 +448,25 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
-      child: Text(label,
-          style: TextStyle(
-              color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
   String _conditionLabel(String raw) => switch (raw) {
-        'newWithTags' => 'Neuf avec étiquette',
-        'newWithoutTags' => 'Neuf sans étiquette',
-        'veryGood' => 'Très bon état',
-        'good' => 'Bon état',
-        'fair' => 'État correct',
-        _ => raw.toUpperCase(),
-      };
+    'newWithTags' => 'Neuf avec étiquette',
+    'newWithoutTags' => 'Neuf sans étiquette',
+    'veryGood' => 'Très bon état',
+    'good' => 'Bon état',
+    'fair' => 'État correct',
+    _ => raw.toUpperCase(),
+  };
 
   // ─── Seller Card ─────────────────────────────────────────────────────────────
 
@@ -445,9 +494,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     ? Text(
                         (product.sellerName ?? '?')[0].toUpperCase(),
                         style: const TextStyle(
-                            color: AppColors.cloviGreen,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18),
+                          color: AppColors.cloviGreen,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
                       )
                     : null,
               ),
@@ -459,7 +509,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     Text(
                       product.sellerName ?? 'Vendeur anonyme',
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 15),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -468,14 +520,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         'Membre depuis ${Formatters.date(product.createdAt)}',
                         if (product.sellerCity != null) product.sellerCity!,
                       ].join(' • '),
-                      style:
-                          TextStyle(color: Colors.grey[600], fontSize: 12),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios_rounded,
-                  size: 15, color: Colors.grey[400]),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                size: 15,
+                color: Colors.grey[400],
+              ),
             ],
           ),
         ),
@@ -504,7 +558,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final hasReviews = product.reviews.isNotEmpty;
     final avgRating = hasReviews
         ? product.reviews.map((r) => r.rating).reduce((a, b) => a + b) /
-            product.reviews.length
+              product.reviews.length
         : 0.0;
 
     return Column(
@@ -512,21 +566,29 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       children: [
         Row(
           children: [
-            const Text('Avis',
-                style:
-                    TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const Text(
+              'Avis',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(width: 8),
             if (hasReviews) ...[
               Icon(Icons.star_rounded, color: Colors.amber, size: 18),
-              Text(avgRating.toStringAsFixed(1),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold, fontSize: 14)),
-              Text(' (${product.reviews.length})',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+              Text(
+                avgRating.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              Text(
+                ' (${product.reviews.length})',
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
+              ),
             ] else
-              Text('(0)',
-                  style:
-                      TextStyle(color: Colors.grey[500], fontSize: 13)),
+              Text(
+                '(0)',
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
+              ),
             const Spacer(),
             if (!isOwner)
               TextButton.icon(
@@ -534,14 +596,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 icon: const Icon(Icons.rate_review_outlined, size: 16),
                 label: const Text('Avis'),
                 style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact),
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
           ],
         ),
         const SizedBox(height: 8),
         if (!hasReviews)
           _buildEmptyState(
-              Icons.chat_bubble_outline, 'Aucun avis pour le moment')
+            Icons.chat_bubble_outline,
+            'Aucun avis pour le moment',
+          )
         else
           ListView.separated(
             shrinkWrap: true,
@@ -576,26 +641,30 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       children: [
         Row(
           children: [
-            const Text('Questions & Réponses',
-                style:
-                    TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const Text(
+              'Questions & Réponses',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(width: 6),
-            Text('(${product.comments.length})',
-                style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+            Text(
+              '(${product.comments.length})',
+              style: TextStyle(color: Colors.grey[500], fontSize: 13),
+            ),
             const Spacer(),
             TextButton.icon(
               onPressed: () => _showAddCommentDialog(product),
               icon: const Icon(Icons.help_outline, size: 16),
               label: const Text('Question'),
-              style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact),
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
             ),
           ],
         ),
         const SizedBox(height: 8),
         if (product.comments.isEmpty)
           _buildEmptyState(
-              Icons.question_answer_outlined, 'Aucune discussion pour le moment')
+            Icons.question_answer_outlined,
+            'Aucune discussion pour le moment',
+          )
         else
           ListView.separated(
             shrinkWrap: true,
@@ -604,18 +673,19 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             separatorBuilder: (_, __) =>
                 Divider(color: Colors.grey.shade100, height: 20),
             itemBuilder: (context, index) {
-        final comment = rootComments[index];
-        final currentUserId = ref.watch(userIdProvider).value;
-        return _CommentThread(
-          comment: comment,
-          product: product,
-          replies: grouped[comment.id] ?? [],
-          currentUserId: currentUserId,
-          onReply: (parent) => _showAddCommentDialog(product, parentCommentId: parent.id),
-          onEdit: (c) => _showAddCommentDialog(product, commentToEdit: c),
-          onDelete: (c) => _confirmDeleteComment(c),
-        );
-      },
+              final comment = rootComments[index];
+              final currentUserId = ref.watch(userIdProvider).value;
+              return _CommentThread(
+                comment: comment,
+                product: product,
+                replies: grouped[comment.id] ?? [],
+                currentUserId: currentUserId,
+                onReply: (parent) =>
+                    _showAddCommentDialog(product, parentCommentId: parent.id),
+                onEdit: (c) => _showAddCommentDialog(product, commentToEdit: c),
+                onDelete: (c) => _confirmDeleteComment(c),
+              );
+            },
           ),
       ],
     );
@@ -628,8 +698,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         children: [
           Icon(icon, size: 20, color: Colors.grey[350]),
           const SizedBox(width: 8),
-          Text(message,
-              style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+          Text(
+            message,
+            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+          ),
         ],
       ),
     );
@@ -638,7 +710,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   // ─── Bottom Bar ───────────────────────────────────────────────────────────────
 
   Widget _buildBottomBar(
-      BuildContext context, ProductModel product, bool isOwner) {
+    BuildContext context,
+    ProductModel product,
+    bool isOwner,
+  ) {
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -647,9 +722,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           color: Theme.of(context).scaffoldBackgroundColor,
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 8,
-                offset: const Offset(0, -2)),
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
           ],
         ),
         child: Row(
@@ -666,7 +742,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   onPressed: product.isAvailable
                       ? () => _showOfferDialog(context, product)
                       : null,
-                  child: const Text('Faire une offre'),
+                  child: const Text('Offre'),
                 ),
               ),
               const SizedBox(width: 10),
@@ -676,7 +752,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       ? () => _showPurchaseDialog(context, product)
                       : null,
                   style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.cloviGreen),
+                    backgroundColor: AppColors.cloviGreen,
+                  ),
                   child: Text(product.isAvailable ? 'Acheter' : 'Vendu'),
                 ),
               ),
@@ -689,7 +766,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     icon: const Icon(Icons.edit_outlined),
                     label: const Text('Modifier mon annonce'),
                     style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.cloviGreen),
+                      backgroundColor: AppColors.cloviGreen,
+                    ),
                   ),
                 )
               else
@@ -703,12 +781,19 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.lock_clock_outlined,
-                            color: Colors.grey[500], size: 16),
+                        Icon(
+                          Icons.lock_clock_outlined,
+                          color: Colors.grey[500],
+                          size: 16,
+                        ),
                         const SizedBox(width: 8),
-                        Text('Commande en cours',
-                            style: TextStyle(
-                                color: Colors.grey[600], fontSize: 13)),
+                        Text(
+                          'Commande en cours',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -720,7 +805,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
-  // ─── Actions ─────────────────────────────────────────────────────────────────
+  // ─── Actions
 
   Future<void> _openChat(BuildContext context, ProductModel product) async {
     try {
@@ -742,9 +827,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       builder: (dlgCtx) => _CheckoutDialog(
         product: product,
         onConfirm: (addr, svc, ship, total) => _createOrder(
-          context, dlgCtx, product, addr,
+          context,
+          dlgCtx,
+          product,
+          addr,
           OrderStatus.awaitingSellerConfirmation,
-          serviceFee: svc, shippingFee: ship, totalPrice: total,
+          serviceFee: svc,
+          shippingFee: ship,
+          totalPrice: total,
         ),
         onCancel: () => Navigator.pop(dlgCtx),
       ),
@@ -781,8 +871,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
           FilledButton(
             onPressed: () {
               final val = double.tryParse(controller.text.trim());
@@ -793,9 +884,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 builder: (dlgCtx) => _CheckoutDialog(
                   product: product.copyWith(price: val),
                   onConfirm: (addr, svc, ship, total) => _createOrder(
-                    context, dlgCtx, product.copyWith(price: val), addr,
+                    context,
+                    dlgCtx,
+                    product.copyWith(price: val),
+                    addr,
                     OrderStatus.offerMade,
-                    serviceFee: svc, shippingFee: ship, totalPrice: total,
+                    serviceFee: svc,
+                    shippingFee: ship,
+                    totalPrice: total,
                   ),
                   onCancel: () => Navigator.pop(dlgCtx),
                 ),
@@ -820,7 +916,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }) async {
     Navigator.pop(dlgCtx);
     try {
-      await ref.read(ordersServiceProvider).createOrder(
+      await ref
+          .read(ordersServiceProvider)
+          .createOrder(
             OrderModel(
               id: '',
               productId: product.id,
@@ -839,9 +937,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(status == OrderStatus.offerMade
-              ? '✅ Offre envoyée au vendeur !'
-              : '✅ Commande créée. Paiement à la livraison.'),
+          content: Text(
+            status == OrderStatus.offerMade
+                ? '✅ Offre envoyée au vendeur !'
+                : '✅ Commande créée. Paiement à la livraison.',
+          ),
           backgroundColor: AppColors.cloviGreen,
         ),
       );
@@ -875,7 +975,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   return GestureDetector(
                     onTap: () => setState(() => rating = i + 1),
                     child: Icon(
-                      i < rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                      i < rating
+                          ? Icons.star_rounded
+                          : Icons.star_outline_rounded,
                       size: 36,
                       color: Colors.amber,
                     ),
@@ -883,9 +985,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 }),
               ),
               const SizedBox(height: 4),
-              Text(_ratingLabel(rating),
-                  style: TextStyle(
-                      color: Colors.amber[800], fontWeight: FontWeight.w500)),
+              Text(
+                _ratingLabel(rating),
+                style: TextStyle(
+                  color: Colors.amber[800],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 16),
               TextField(
                 controller: ctrl,
@@ -899,8 +1005,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Annuler')),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler'),
+            ),
             FilledButton(
               onPressed: () async {
                 try {
@@ -923,8 +1030,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
   }
 
-  void _showAddCommentDialog(ProductModel product,
-      {String? parentCommentId, CommentModel? commentToEdit}) {
+  void _showAddCommentDialog(
+    ProductModel product, {
+    String? parentCommentId,
+    CommentModel? commentToEdit,
+  }) {
     final ctrl = TextEditingController(text: commentToEdit?.content);
     final isEdit = commentToEdit != null;
     final isReply = parentCommentId != null;
@@ -932,9 +1042,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(isEdit
-            ? 'Modifier'
-            : (isReply ? 'Répondre' : 'Poser une question')),
+        title: Text(
+          isEdit ? 'Modifier' : (isReply ? 'Répondre' : 'Poser une question'),
+        ),
         content: TextField(
           controller: ctrl,
           maxLines: 3,
@@ -943,15 +1053,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             hintText: isEdit
                 ? 'Écrivez votre message ici…'
                 : (isReply
-                    ? 'Écrivez votre réponse ici…'
-                    : 'Écrivez votre question ici…'),
+                      ? 'Écrivez votre réponse ici…'
+                      : 'Écrivez votre question ici…'),
             border: const OutlineInputBorder(),
           ),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annuler')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
           FilledButton(
             onPressed: () async {
               final content = ctrl.text.trim();
@@ -961,18 +1072,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 if (isEdit) {
                   await service.updateComment(commentToEdit.id, content);
                 } else {
-                  await service.addComment(product.id, content,
-                      parentCommentId: parentCommentId);
+                  await service.addComment(
+                    product.id,
+                    content,
+                    parentCommentId: parentCommentId,
+                  );
                 }
 
                 if (!mounted) return;
                 Navigator.pop(context);
                 ref.invalidate(productDetailProvider(product.id));
                 _showSuccess(
-                    context,
-                    isEdit
-                        ? 'Message mis à jour !'
-                        : (isReply ? 'Réponse envoyée !' : 'Question envoyée !'));
+                  context,
+                  isEdit
+                      ? 'Message mis à jour !'
+                      : (isReply ? 'Réponse envoyée !' : 'Question envoyée !'),
+                );
               } catch (e) {
                 _showError(context, 'Erreur: $e');
               }
@@ -990,11 +1105,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Supprimer ?'),
         content: const Text(
-            'Voulez-vous vraiment supprimer ce message ? Cette action est irréversible.'),
+          'Voulez-vous vraiment supprimer ce message ? Cette action est irréversible.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annuler')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
           TextButton(
             onPressed: () async {
               try {
@@ -1019,18 +1136,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   // ─── Helpers ──────────────────────────────────────────────────────────────────
 
   String _ratingLabel(int r) => switch (r) {
-        1 => 'Très mauvais',
-        2 => 'Mauvais',
-        3 => 'Correct',
-        4 => 'Bien',
-        _ => 'Excellent !',
-      };
+    1 => 'Très mauvais',
+    2 => 'Mauvais',
+    3 => 'Correct',
+    4 => 'Bien',
+    _ => 'Excellent !',
+  };
 
   void _showSuccess(BuildContext ctx, String msg) =>
       ScaffoldMessenger.of(ctx).showSnackBar(
-        SnackBar(
-            content: Text(msg),
-            backgroundColor: AppColors.cloviGreen),
+        SnackBar(content: Text(msg), backgroundColor: AppColors.cloviGreen),
       );
 
   void _showError(BuildContext ctx, String msg) =>
@@ -1076,28 +1191,36 @@ class _ReviewTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(review.user?.fullName ?? 'Utilisateur',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(
+                    review.user?.fullName ?? 'Utilisateur',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
                   const Spacer(),
-                  Text(Formatters.date(review.createdAt),
-                      style: TextStyle(color: Colors.grey[500], fontSize: 11)),
+                  Text(
+                    Formatters.date(review.createdAt),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                  ),
                 ],
               ),
               const SizedBox(height: 2),
               Row(
-                children: List.generate(5, (i) => Icon(
-                  i < review.rating
-                      ? Icons.star_rounded
-                      : Icons.star_outline_rounded,
-                  size: 14,
-                  color: i < review.rating ? Colors.amber : Colors.grey[300],
-                )),
+                children: List.generate(
+                  5,
+                  (i) => Icon(
+                    i < review.rating
+                        ? Icons.star_rounded
+                        : Icons.star_outline_rounded,
+                    size: 14,
+                    color: i < review.rating ? Colors.amber : Colors.grey[300],
+                  ),
+                ),
               ),
               if (review.comment?.isNotEmpty ?? false) ...[
                 const SizedBox(height: 4),
-                Text(review.comment!,
-                    style: const TextStyle(fontSize: 13)),
+                Text(review.comment!, style: const TextStyle(fontSize: 13)),
               ],
             ],
           ),
@@ -1144,17 +1267,19 @@ class _CommentThread extends StatelessWidget {
             padding: const EdgeInsets.only(left: 24, top: 8),
             child: Column(
               children: replies
-                  .map((reply) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _CommentTile(
-                          comment: reply,
-                          product: product,
-                          currentUserId: currentUserId,
-                          isReply: true,
-                          onEdit: () => onEdit(reply),
-                          onDelete: () => onDelete(reply),
-                        ),
-                      ))
+                  .map(
+                    (reply) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _CommentTile(
+                        comment: reply,
+                        product: product,
+                        currentUserId: currentUserId,
+                        isReply: true,
+                        onEdit: () => onEdit(reply),
+                        onDelete: () => onDelete(reply),
+                      ),
+                    ),
+                  )
                   .toList(),
             ),
           ),
@@ -1186,7 +1311,8 @@ class _CommentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isSeller = comment.userId == product.sellerId;
     final isOwner = currentUserId != null && comment.userId == currentUserId;
-    final canDelete = isOwner || (currentUserId != null && product.sellerId == currentUserId);
+    final canDelete =
+        isOwner || (currentUserId != null && product.sellerId == currentUserId);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1198,7 +1324,11 @@ class _CommentTile extends StatelessWidget {
               ? NetworkImage(comment.user!.avatarUrl!)
               : null,
           child: (comment.user?.avatarUrl?.isEmpty ?? true)
-              ? Icon(Icons.person, size: isReply ? 12 : 14, color: Colors.grey[400])
+              ? Icon(
+                  Icons.person,
+                  size: isReply ? 12 : 14,
+                  color: Colors.grey[400],
+                )
               : null,
         ),
         const SizedBox(width: 10),
@@ -1208,39 +1338,60 @@ class _CommentTile extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text(comment.user?.fullName ?? 'Utilisateur',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: isReply ? 12 : 13)),
+                  Text(
+                    comment.user?.fullName ?? 'Utilisateur',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: isReply ? 12 : 13,
+                    ),
+                  ),
                   if (isSeller) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.cloviGreen.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Text('Vendeur',
-                          style: TextStyle(
-                              color: AppColors.cloviGreen,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Vendeur',
+                        style: TextStyle(
+                          color: AppColors.cloviGreen,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                   const Spacer(),
-                  Text(Formatters.relativeTime(comment.createdAt),
-                      style:
-                          TextStyle(color: Colors.grey[500], fontSize: 11)),
+                  Text(
+                    Formatters.relativeTime(comment.createdAt),
+                    style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                  ),
                   if (onEdit != null || onDelete != null)
                     PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert, size: 16, color: Colors.grey),
+                      icon: const Icon(
+                        Icons.more_vert,
+                        size: 16,
+                        color: Colors.grey,
+                      ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(minWidth: 100),
                       onSelected: (value) {
                         if (value == 'edit') onEdit?.call();
                         if (value == 'delete') onDelete?.call();
                         if (value == 'report') {
-                          final state = (context as Element).findAncestorStateOfType<_ProductDetailScreenState>();
-                          state?._showReportDialog(commentId: comment.id, userId: comment.userId);
+                          final state = (context as Element)
+                              .findAncestorStateOfType<
+                                _ProductDetailScreenState
+                              >();
+                          state?._showReportDialog(
+                            commentId: comment.id,
+                            userId: comment.userId,
+                          );
                         }
                       },
                       itemBuilder: (context) => [
@@ -1251,7 +1402,10 @@ class _CommentTile extends StatelessWidget {
                               children: [
                                 Icon(Icons.edit_outlined, size: 16),
                                 SizedBox(width: 8),
-                                Text('Modifier', style: TextStyle(fontSize: 13)),
+                                Text(
+                                  'Modifier',
+                                  style: TextStyle(fontSize: 13),
+                                ),
                               ],
                             ),
                           ),
@@ -1260,10 +1414,19 @@ class _CommentTile extends StatelessWidget {
                             value: 'delete',
                             child: Row(
                               children: [
-                                Icon(Icons.delete_outline, size: 16, color: Colors.red[400]),
+                                Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                  color: Colors.red[400],
+                                ),
                                 const SizedBox(width: 8),
-                                Text('Supprimer', 
-                                    style: TextStyle(fontSize: 13, color: Colors.red[400])),
+                                Text(
+                                  'Supprimer',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.red[400],
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -1272,9 +1435,15 @@ class _CommentTile extends StatelessWidget {
                             value: 'report',
                             child: Row(
                               children: [
-                                Icon(Icons.report_gmailerrorred_outlined, size: 16),
+                                Icon(
+                                  Icons.report_gmailerrorred_outlined,
+                                  size: 16,
+                                ),
                                 const SizedBox(width: 8),
-                                Text('Signaler', style: TextStyle(fontSize: 13)),
+                                Text(
+                                  'Signaler',
+                                  style: TextStyle(fontSize: 13),
+                                ),
                               ],
                             ),
                           ),
@@ -1283,18 +1452,23 @@ class _CommentTile extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 3),
-              Text(comment.content,
-                  style: TextStyle(fontSize: isReply ? 12 : 13)),
+              Text(
+                comment.content,
+                style: TextStyle(fontSize: isReply ? 12 : 13),
+              ),
               if (onReply != null && currentUserId != null)
                 GestureDetector(
                   onTap: onReply,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Text('Répondre',
-                        style: TextStyle(
-                            color: AppColors.cloviGreen,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600)),
+                    child: Text(
+                      'Répondre',
+                      style: TextStyle(
+                        color: AppColors.cloviGreen,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -1336,16 +1510,15 @@ class _ProductDetailSkeleton extends StatelessWidget {
     );
   }
 
-  Widget _shimmer({required double height, required double width}) =>
-      Container(
-        height: height,
-        width: width,
-        margin: const EdgeInsets.only(bottom: 4),
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-        ),
-      );
+  Widget _shimmer({required double height, required double width}) => Container(
+    height: height,
+    width: width,
+    margin: const EdgeInsets.only(bottom: 4),
+    decoration: BoxDecoration(
+      color: Colors.grey[200],
+      borderRadius: BorderRadius.circular(8),
+    ),
+  );
 }
 
 /// IMPROVEMENT: Expandable text for long descriptions
@@ -1383,9 +1556,10 @@ class _ExpandableTextState extends State<_ExpandableText> {
             child: Text(
               _expanded ? 'Voir moins' : 'Voir plus',
               style: TextStyle(
-                  color: AppColors.cloviGreen,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13),
+                color: AppColors.cloviGreen,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
             ),
           ),
         ),
@@ -1431,7 +1605,8 @@ class _CheckoutDialog extends ConsumerStatefulWidget {
     double serviceFee,
     double shippingFee,
     double totalPrice,
-  ) onConfirm;
+  )
+  onConfirm;
   final VoidCallback onCancel;
 
   const _CheckoutDialog({
@@ -1460,224 +1635,306 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
     final product = widget.product;
     final userAsync = ref.watch(userIdProvider);
 
+    return ref
+        .watch(systemSettingsProvider)
+        .when(
+          data: (settings) {
+            final double serviceFee =
+                (product.price * (settings.serviceFeePercentage / 100))
+                    .ceilToDouble();
+            final double shippingFee = settings.shippingFee;
+            final double totalPayable =
+                product.price + serviceFee + shippingFee;
 
-    return ref.watch(systemSettingsProvider).when(
-      data: (settings) {
-        final double serviceFee = (product.price * (settings.serviceFeePercentage / 100)).ceilToDouble();
-        final double shippingFee = settings.shippingFee;
-        final double totalPayable = product.price + serviceFee + shippingFee;
-
-        return AlertDialog(
-          title: const Text(
-            'Vérifier votre commande',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          content: Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Product Card
-                  _buildSectionCard(
-                    context,
-                    'Résumé du paiement',
-                    Column(
-                      children: [
-                        _buildSummaryRow('Prix du produit', product.price),
-                        _buildSummaryRow(
-                          'Frais de service (${settings.serviceFeePercentage.toStringAsFixed(1)}%)',
-                          serviceFee,
+            return AlertDialog(
+              title: const Text(
+                'Vérifier votre commande',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              content: Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Product Card
+                      _buildSectionCard(
+                        context,
+                        'Résumé du paiement',
+                        Column(
+                          children: [
+                            _buildSummaryRow('Prix du produit', product.price),
+                            _buildSummaryRow(
+                              'Frais de service (${settings.serviceFeePercentage.toStringAsFixed(1)}%)',
+                              serviceFee,
+                            ),
+                            _buildSummaryRow('Frais de livraison', shippingFee),
+                            const Divider(height: 20),
+                            _buildSummaryRow(
+                              'Total à payer',
+                              totalPayable,
+                              isBold: true,
+                            ),
+                          ],
                         ),
-                        _buildSummaryRow('Frais de livraison', shippingFee),
-                        const Divider(height: 20),
-                        _buildSummaryRow('Total à payer', totalPayable, isBold: true),
-                      ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Address Section
+                      userAsync.when(
+                        data: (userId) {
+                          if (userId == null) return const Text('Non connecté');
+                          return ref
+                              .watch(userAddressesProvider(userId))
+                              .when(
+                                data: (addrs) {
+                                  if (addrs.isEmpty) {
+                                    return _buildSectionCard(
+                                      context,
+                                      'Adresse de livraison',
+                                      Column(
+                                        children: [
+                                          const Text(
+                                            'Aucune adresse enregistrée.',
+                                            style: TextStyle(fontSize: 13),
+                                          ),
+                                          TextButton.icon(
+                                            onPressed: () => context.push(
+                                              AppRoutes.addresses,
+                                            ),
+                                            icon: const Icon(
+                                              Icons.add,
+                                              size: 18,
+                                            ),
+                                            label: const Text(
+                                              'Ajouter une adresse',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+
+                                  // Auto-select once
+                                  if (_selectedAddress == null) {
+                                    _selectedAddress = addrs.firstWhere(
+                                      (a) => a.isDefault,
+                                      orElse: () => addrs.first,
+                                    );
+                                    if (_selectedAddress?.phone != null &&
+                                        _phoneController.text.isEmpty) {
+                                      _phoneController.text =
+                                          _selectedAddress!.phone!;
+                                    }
+                                  }
+
+                                  return _buildSectionCard(
+                                    context,
+                                    'Adresse de livraison',
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Indiquez où le livreur livrera le colis :',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: DropdownButtonFormField<AddressModel>(
+                                                value: _selectedAddress,
+                                                decoration: InputDecoration(
+                                                  labelText:
+                                                      'Adresse de livraison',
+                                                  prefixIcon: const Icon(
+                                                    Icons.location_on_outlined,
+                                                    size: 20,
+                                                  ),
+                                                  border: OutlineInputBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          8,
+                                                        ),
+                                                  ),
+                                                  contentPadding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 8,
+                                                      ),
+                                                ),
+                                                items: addrs
+                                                    .map(
+                                                      (a) => DropdownMenuItem(
+                                                        value: a,
+                                                        child: Text(
+                                                          a.label,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 14,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    )
+                                                    .toList(),
+                                                onChanged: (a) {
+                                                  setState(() {
+                                                    _selectedAddress = a;
+                                                    if (a?.phone != null) {
+                                                      _phoneController.text =
+                                                          a!.phone!;
+                                                    }
+                                                  });
+                                                },
+                                                validator: (a) =>
+                                                    a == null ? 'Requis' : null,
+                                              ),
+                                            ),
+                                            IconButton(
+                                              onPressed: () => context.push(
+                                                AppRoutes.addresses,
+                                              ),
+                                              icon: const Icon(
+                                                Icons.add_circle_outline,
+                                                color: AppColors.cloviGreen,
+                                              ),
+                                              tooltip: 'Ajouter une adresse',
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        TextFormField(
+                                          controller: _phoneController,
+                                          decoration: InputDecoration(
+                                            labelText: 'Téléphone de contact',
+                                            prefixIcon: const Icon(
+                                              Icons.phone_outlined,
+                                              size: 20,
+                                            ),
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 12,
+                                                ),
+                                          ),
+                                          keyboardType: TextInputType.phone,
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter
+                                                .digitsOnly,
+                                            LengthLimitingTextInputFormatter(
+                                              10,
+                                            ),
+                                          ],
+                                          validator: (v) =>
+                                              (v == null || v.trim().isEmpty)
+                                              ? 'Requis pour le livreur'
+                                              : (v.length < 10
+                                                    ? 'Numéro invalide'
+                                                    : null),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                loading: () => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                                error: (e, _) => Text('Erreur: $e'),
+                              );
+                        },
+                        loading: () => const SizedBox(height: 100),
+                        error: (e, _) => Text('Erreur: $e'),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Payment info
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.amber.shade100),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.payments_outlined,
+                              color: Colors.amber.shade800,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'Paiement à la livraison.',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: widget.onCancel,
+                  child: Text(
+                    'Annuler',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _selectedAddress == null
+                      ? null
+                      : () {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            final addressText =
+                                '${_selectedAddress!.street}, ${_selectedAddress!.postal} ${_selectedAddress!.city}';
+                            final phone = _phoneController.text.trim();
+                            var payload = addressText;
+                            if (phone.isNotEmpty) {
+                              payload = '$payload — Tél: $phone';
+                            }
+                            widget.onConfirm(
+                              payload,
+                              serviceFee,
+                              shippingFee,
+                              totalPayable,
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.cloviGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-
-              const SizedBox(height: 16),
-
-              // Address Section
-              userAsync.when(
-                data: (userId) {
-                  if (userId == null) return const Text('Non connecté');
-                  return ref.watch(userAddressesProvider(userId)).when(
-                        data: (addrs) {
-                          if (addrs.isEmpty) {
-                            return _buildSectionCard(
-                              context,
-                              'Adresse de livraison',
-                              Column(
-                                children: [
-                                  const Text(
-                                    'Aucune adresse enregistrée.',
-                                    style: TextStyle(fontSize: 13),
-                                  ),
-                                  TextButton.icon(
-                                    onPressed: () => context.push(AppRoutes.addresses),
-                                    icon: const Icon(Icons.add, size: 18),
-                                    label: const Text('Ajouter une adresse'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-
-                          // Auto-select once
-                          if (_selectedAddress == null) {
-                            _selectedAddress = addrs.firstWhere(
-                              (a) => a.isDefault,
-                              orElse: () => addrs.first,
-                            );
-                            if (_selectedAddress?.phone != null && _phoneController.text.isEmpty) {
-                              _phoneController.text = _selectedAddress!.phone!;
-                            }
-                          }
-
-                          return _buildSectionCard(
-                            context,
-                            'Adresse de livraison',
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Indiquez où le livreur livrera le colis :',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: DropdownButtonFormField<AddressModel>(
-                                        value: _selectedAddress,
-                                        decoration: InputDecoration(
-                                          labelText: 'Adresse de livraison',
-                                          prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                        ),
-                                        items: addrs
-                                            .map((a) => DropdownMenuItem(
-                                                  value: a,
-                                                  child: Text(a.label, style: const TextStyle(fontSize: 14)),
-                                                ))
-                                            .toList(),
-                                        onChanged: (a) {
-                                          setState(() {
-                                            _selectedAddress = a;
-                                            if (a?.phone != null) {
-                                              _phoneController.text = a!.phone!;
-                                            }
-                                          });
-                                        },
-                                        validator: (a) => a == null ? 'Requis' : null,
-                                      ),
-                                    ),
-                                    IconButton(
-                                      onPressed: () => context.push(AppRoutes.addresses),
-                                      icon: const Icon(Icons.add_circle_outline, color: AppColors.cloviGreen),
-                                      tooltip: 'Ajouter une adresse',
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                TextFormField(
-                                  controller: _phoneController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Téléphone de contact',
-                                    prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                                  ),
-                                  keyboardType: TextInputType.phone,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(10),
-                                  ],
-                                  validator: (v) => (v == null || v.trim().isEmpty)
-                                      ? 'Requis pour le livreur'
-                                      : (v.length < 10 ? 'Numéro invalide' : null),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                        loading: () => const Center(child: CircularProgressIndicator()),
-                        error: (e, _) => Text('Erreur: $e'),
-                      );
-                },
-                loading: () => const SizedBox(height: 100),
-                error: (e, _) => Text('Erreur: $e'),
-              ),
-              
-              const SizedBox(height: 16),
-              
-              // Payment info
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.amber.shade100),
+                  child: const Text('Confirmer'),
                 ),
-                child: Row(
-                  children: [
-                    Icon(Icons.payments_outlined, color: Colors.amber.shade800, size: 20),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Paiement à la livraison.',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: widget.onCancel,
-          child: Text('Annuler', style: TextStyle(color: Colors.grey.shade600)),
-        ),
-        ElevatedButton(
-          onPressed: _selectedAddress == null
-              ? null
-              : () {
-                  if (_formKey.currentState?.validate() ?? false) {
-                    final addressText =
-                        '${_selectedAddress!.street}, ${_selectedAddress!.postal} ${_selectedAddress!.city}';
-                    final phone = _phoneController.text.trim();
-                    var payload = addressText;
-                    if (phone.isNotEmpty) {
-                      payload = '$payload — Tél: $phone';
-                    }
-                    widget.onConfirm(payload, serviceFee, shippingFee, totalPayable);
-                  }
-                },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.cloviGreen,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          child: const Text('Confirmer'),
-        ),
-      ],
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, s) => Center(child: Text('Erreur settings: $e')),
         );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, s) => Center(child: Text('Erreur settings: $e')),
-    );
   }
 
   Widget _buildSummaryRow(String label, double amount, {bool isBold = false}) {
@@ -1740,5 +1997,3 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
     );
   }
 }
-
-

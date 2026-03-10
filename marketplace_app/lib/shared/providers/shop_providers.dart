@@ -17,6 +17,11 @@ import 'package:marketplace_app/features/chat/data/chat_service.dart';
 import 'package:marketplace_app/shared/models/address_model.dart';
 import 'package:marketplace_app/features/addresses/data/addresses_service.dart';
 import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
+import 'package:marketplace_app/features/users/data/users_service.dart';
+
+enum SearchMode { articles, members }
+
+final searchModeProvider = StateProvider<SearchMode>((ref) => SearchMode.articles);
 
 // Services
 // (usersServiceProvider moved to auth_providers.dart)
@@ -181,6 +186,18 @@ final productsProvider = FutureProvider.autoDispose<List<ProductModel>>((
     minPrice: filters.minPrice,
     maxPrice: filters.maxPrice,
   );
+});
+
+final userSearchProvider = FutureProvider.autoDispose<List<UserModel>>((ref) async {
+  final filters = ref.watch(productFilterProvider);
+  final service = ref.watch(usersServiceProvider);
+  final mode = ref.watch(searchModeProvider);
+
+  if (mode != SearchMode.members || filters.search == null || filters.search!.isEmpty) {
+    return [];
+  }
+
+  return service.searchUsers(filters.search!);
 });
 
 // Provider pour l'accueil (auto-refresh toutes les 30s)

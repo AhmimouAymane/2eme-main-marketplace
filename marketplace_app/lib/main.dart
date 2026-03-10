@@ -404,7 +404,10 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
           );
         }
         
-        return child!;
+        return SafeArea(
+          top: false,
+          child: child!,
+        );
       },
     );
   }

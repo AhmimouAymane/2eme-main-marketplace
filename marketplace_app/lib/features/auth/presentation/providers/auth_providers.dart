@@ -78,6 +78,12 @@ final userIdProvider = FutureProvider<String?>((ref) async {
   return prefs.getString(AppConstants.keyUserId);
 });
 
+/// Provider pour récupérer le nom de l'utilisateur stocké
+final userNameProvider = FutureProvider<String?>((ref) async {
+  final prefs = await SharedPreferences.getInstance();
+  return prefs.getString(AppConstants.keyUserName);
+});
+
 /// Provider pour récupérer l'URL de l'avatar de l'utilisateur stocké
 final userAvatarUrlProvider = FutureProvider<String?>((ref) async {
   final prefs = await SharedPreferences.getInstance();

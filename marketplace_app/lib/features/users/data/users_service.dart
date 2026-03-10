@@ -70,4 +70,18 @@ class UsersService {
       rethrow;
     }
   }
+
+  /// Rechercher des utilisateurs par nom/prénom
+  Future<List<UserModel>> searchUsers(String query) async {
+    try {
+      final response = await _dio.get('users/search', queryParameters: {'q': query});
+      final data = response.data;
+      if (data is List) {
+        return data.map((u) => UserModel.fromJson(u)).toList();
+      }
+      return [];
+    } catch (e) {
+      rethrow;
+    }
+  }
 }

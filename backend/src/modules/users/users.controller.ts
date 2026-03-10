@@ -20,6 +20,12 @@ export class UsersController {
         return res.json(data);
     }
 
+    @Get('search')
+    @ApiOperation({ summary: 'Search users by name' })
+    async search(@Query('q') query: string) {
+        return this.usersService.search(query);
+    }
+
     @Get('me')
     @UseGuards(AuthGuard('jwt'))
     @ApiBearerAuth()
@@ -54,7 +60,7 @@ export class UsersController {
     @Get(':id')
     @ApiOperation({ summary: 'Get a user profile by ID (public)' })
     async getOne(@Param('id') id: string) {
-        const user = await this.usersService.findOne(id, true);
+        const user = await this.usersService.findOne(id, true, true);
         if (!user) {
             throw new NotFoundException('User not found');
         }

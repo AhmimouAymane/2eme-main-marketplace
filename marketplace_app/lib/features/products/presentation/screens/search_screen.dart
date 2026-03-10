@@ -6,6 +6,8 @@ import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/category_model.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/features/products/presentation/widgets/product_card.dart';
+import 'package:marketplace_app/shared/models/user_model.dart';
+import '../../../auth/presentation/providers/auth_providers.dart';
 
 /// Écran de recherche et filtrage des produits
 class SearchScreen extends ConsumerStatefulWidget {
@@ -44,7 +46,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final searchMode = ref.watch(searchModeProvider);
     final productsAsync = ref.watch(productsProvider);
+    final usersAsync = ref.watch(userSearchProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -58,6 +62,31 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         elevation: 0,
         backgroundColor: Colors.transparent,
         automaticallyImplyLeading: false,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(50),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                _buildModeTab(
+                  label: 'Articles',
+                  isActive: searchMode == SearchMode.articles,
+                  onTap: () {
+                    ref.read(searchModeProvider.notifier).state = SearchMode.articles;
+                  },
+                ),
+                const SizedBox(width: 12),
+                _buildModeTab(
+                  label: 'Membres',
+                  isActive: searchMode == SearchMode.members,
+                  onTap: () {
+                    ref.read(searchModeProvider.notifier).state = SearchMode.members;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -81,7 +110,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 controller: _searchController,
                 focusNode: _focusNode,
                 decoration: InputDecoration(
-                  hintText: 'Search items...',
+                  hintText: searchMode == SearchMode.articles ? 'Search items...' : 'Search members...',
                   hintStyle: TextStyle(color: Colors.grey.withOpacity(0.7)),
                   prefixIcon: const Icon(
                     Icons.search,
@@ -119,114 +148,115 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           ),
 
-          // Filtres stylisés
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                _buildFilterButton(
-                  onPressed: () => _showCategoryFilter(),
-                  icon: Icons.category_outlined,
-                  label: ref.watch(categoriesProvider).maybeWhen(
-                        data: (categories) {
-                          final selectedId = ref.watch(productFilterProvider).categoryId;
-                          if (selectedId == null) return 'Category';
-                          
-                          // Helper for recursive search in SearchScreen
-                          CategoryModel? findById(List<CategoryModel> cats, String id) {
-                            for (var c in cats) {
-                              if (c.id == id) return c;
-                              if (c.children.isNotEmpty) {
-                                var found = findById(c.children, id);
-                                if (found != null) return found;
+          // Filtres stylisés (uniquement pour les articles)
+          if (searchMode == SearchMode.articles)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  _buildFilterButton(
+                    onPressed: () => _showCategoryFilter(),
+                    icon: Icons.category_outlined,
+                    label: ref.watch(categoriesProvider).maybeWhen(
+                          data: (categories) {
+                            final selectedId = ref.watch(productFilterProvider).categoryId;
+                            if (selectedId == null) return 'Category';
+                            
+                            // Helper for recursive search in SearchScreen
+                            CategoryModel? findById(List<CategoryModel> cats, String id) {
+                              for (var c in cats) {
+                                if (c.id == id) return c;
+                                if (c.children.isNotEmpty) {
+                                  var found = findById(c.children, id);
+                                  if (found != null) return found;
+                                }
                               }
+                              return null;
                             }
-                            return null;
-                          }
 
-                          return findById(categories, selectedId)?.name ?? 'Category';
-                        },
-                        orElse: () => 'Categories',
-                      ),
-                  isActive: ref.watch(productFilterProvider).categoryId != null,
-                ),
-                const SizedBox(width: 12),
-                _buildFilterButton(
-                  onPressed: () => _showPriceFilter(),
-                  icon: Icons.tune_rounded,
-                  label: 'Price',
-                  isActive: ref.watch(productFilterProvider).minPrice != null,
-                ),
-              ],
+                            return findById(categories, selectedId)?.name ?? 'Category';
+                          },
+                          orElse: () => 'Categories',
+                        ),
+                    isActive: ref.watch(productFilterProvider).categoryId != null,
+                  ),
+                  const SizedBox(width: 12),
+                  _buildFilterButton(
+                    onPressed: () => _showPriceFilter(),
+                    icon: Icons.tune_rounded,
+                    label: 'Price',
+                    isActive: ref.watch(productFilterProvider).minPrice != null,
+                  ),
+                ],
+              ),
             ),
-          ),
 
           // Résultats
           Expanded(
-            child: productsAsync.when(
-              data: (products) {
-                if (products.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off_rounded,
-                          size: 80,
-                          color: AppColors.cloviGreen.withOpacity(0.2),
+            child: searchMode == SearchMode.articles
+                ? productsAsync.when(
+                    data: (products) {
+                      if (products.isEmpty) {
+                        return _buildEmptyState('No results found');
+                      }
+                      return GridView.builder(
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.7,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No results found',
-                          style: TextStyle(
-                            color: AppColors.cloviGreen,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
+                        itemCount: products.length,
+                        itemBuilder: (context, index) {
+                          final product = products[index];
+                          return ProductCard(
+                            productId: product.id,
+                            imageUrl: product.fullMainImageUrl,
+                            title: product.title,
+                            price: product.price,
+                            isFavorite: product.isFavorite,
+                            onTap: () {
+                              _focusNode.unfocus();
+                              context.push('/product/${product.id}');
+                            },
+                            onFavoriteToggle: () {
+                              ref.read(favoritesProvider.notifier).toggleFavorite(product);
+                            },
+                          );
+                        },
+                      );
+                    },
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(color: AppColors.cloviGreen),
                     ),
-                  );
-                }
-                return GridView.builder(
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
+                    error: (error, stack) => Center(child: Text('Error: $error')),
+                  )
+                : usersAsync.when(
+                    data: (users) {
+                      if (users.isEmpty) {
+                        if (_searchController.text.isEmpty) {
+                          return _buildEmptyState('Type a name to search members');
+                        }
+                        return _buildEmptyState('No members found');
+                      }
+                      return ListView.separated(
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: users.length,
+                        separatorBuilder: (context, index) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final user = users[index];
+                          return _buildUserTile(context, user);
+                        },
+                      );
+                    },
+                    loading: () => const Center(
+                      child: CircularProgressIndicator(color: AppColors.cloviGreen),
+                    ),
+                    error: (error, stack) => Center(child: Text('Error: $error')),
                   ),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.7,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    final product = products[index];
-                    return ProductCard(
-                      productId: product.id,
-                      imageUrl: product.fullMainImageUrl,
-                      title: product.title,
-                      price: product.price,
-                      isFavorite: product.isFavorite,
-                      onTap: () {
-                        _focusNode.unfocus();
-                        context.push('/product/${product.id}');
-                      },
-                      onFavoriteToggle: () {
-                        ref
-                            .read(favoritesProvider.notifier)
-                            .toggleFavorite(product);
-                      },
-                    );
-                  },
-                );
-              },
-              loading: () => const Center(
-                child: CircularProgressIndicator(color: AppColors.cloviGreen),
-              ),
-              error: (error, stack) => Center(child: Text('Error: $error')),
-            ),
           ),
         ],
       ),
@@ -342,6 +372,87 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             .updatePriceRange(result['min'], result['max']);
       }
     }
+  }
+
+  Widget _buildModeTab({
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+              color: isActive ? AppColors.cloviGreen : Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            height: 3,
+            width: 40,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.cloviGreen : Colors.transparent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            size: 80,
+            color: AppColors.cloviGreen.withOpacity(0.2),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.cloviGreen,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserTile(BuildContext context, UserModel user) {
+    return ListTile(
+      onTap: () {
+        _focusNode.unfocus();
+        context.push('/seller/${user.id}');
+      },
+      leading: CircleAvatar(
+        radius: 25,
+        backgroundColor: Colors.grey[200],
+        backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+        child: user.avatarUrl == null ? const Icon(Icons.person, color: Colors.grey) : null,
+      ),
+      title: Text(
+        user.fullName,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: const Text('Membre Clovi'),
+      trailing: const Icon(Icons.chevron_right),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.grey.withOpacity(0.1)),
+      ),
+      tileColor: Colors.white,
+    );
   }
 }
 

@@ -19,119 +19,145 @@ class CloviBottomNav extends ConsumerWidget {
 
     return SafeArea(
       top: false,
-      left: false,
-      right: false,
-      bottom: true,
-      child: Container(
-        height: 70,
-        margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.cloviGreen,
-        borderRadius: BorderRadius.circular(35),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(25),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _buildNavItem(Icons.home_outlined, Icons.home, 'Home', 0)),
-          Expanded(child: _buildNavItem(Icons.search_outlined, Icons.search, 'Search', 1)),
-
-          // Central "+" button
-          Expanded(
-            child: Center(
-              child: GestureDetector(
-                onTap: () => onItemTapped(2),
-                child: Container(
-                  height: 50,
-                  width: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(20),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(Icons.add, color: AppColors.cloviGreen, size: 30),
-                ),
+      child: Padding(
+        // IMPROVEMENT: Smaller margin → bar sits closer to screen edge, less intrusive
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+        child: Container(
+          height: 58, // IMPROVEMENT: Reduced from 70 → more compact
+          decoration: BoxDecoration(
+            color: AppColors.cloviGreen,
+            borderRadius: BorderRadius.circular(30),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.cloviGreen.withOpacity(0.3),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
-            ),
+            ],
           ),
+          child: Row(
+            children: [
+              _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, index: 0, selectedIndex: selectedIndex, onTap: onItemTapped),
+              _NavItem(icon: Icons.search_outlined, activeIcon: Icons.search_rounded, index: 1, selectedIndex: selectedIndex, onTap: onItemTapped),
 
-          Expanded(
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                _buildNavItem(Icons.chat_bubble_outline, Icons.chat_bubble, 'Messages', 3),
-                if (unreadCount > 0)
-                  Positioned(
-                    top: 15,
-                    right: 15,
+              // Central "+" button
+              Expanded(
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => onItemTapped(2),
                     child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.error,
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                      constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
-                      ),
-                      child: Text(
-                        unreadCount > 9 ? '9+' : unreadCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
+                      child: const Icon(
+                        Icons.add_rounded,
+                        color: AppColors.cloviGreen,
+                        size: 26,
                       ),
                     ),
                   ),
-              ],
-            ),
+                ),
+              ),
+
+              // Messages with badge
+              Expanded(
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    _NavItem(
+                      icon: Icons.chat_bubble_outline_rounded,
+                      activeIcon: Icons.chat_bubble_rounded,
+                      index: 3,
+                      selectedIndex: selectedIndex,
+                      onTap: onItemTapped,
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        top: 8,
+                        right: 10,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: AppColors.error,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+
+              _NavItem(
+                icon: Icons.person_outline_rounded,
+                activeIcon: Icons.person_rounded,
+                index: 4,
+                selectedIndex: selectedIndex,
+                onTap: onItemTapped,
+              ),
+            ],
           ),
-          Expanded(child: _buildNavItem(Icons.person_outline, Icons.person, 'Profile', 4)),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
-  Widget _buildNavItem(IconData icon, IconData activeIcon, String label, int index) {
-    final bool active = selectedIndex == index;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => onItemTapped(index),
-      child: SizedBox(
-        height: double.infinity,
-        width: double.infinity,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              active ? activeIcon : icon,
-              color: active ? Colors.white : Colors.white.withOpacity(0.5),
-              size: 24,
+// IMPROVEMENT: Extracted to its own widget — no more passing 5 args to a method
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final IconData activeIcon;
+  final int index;
+  final int selectedIndex;
+  final Function(int) onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.index,
+    required this.selectedIndex,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isActive = selectedIndex == index;
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onTap(index),
+        child: Center(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: Icon(
+              isActive ? activeIcon : icon,
+              key: ValueKey(isActive),
+              // IMPROVEMENT: Active icon is full white + slightly larger, inactive is dimmed
+              color: isActive ? Colors.white : Colors.white.withOpacity(0.45),
+              size: isActive ? 26 : 23,
             ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                color: active ? Colors.white : Colors.white.withOpacity(0.5),
-                fontWeight: active ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
