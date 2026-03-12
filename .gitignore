@@ -13,3 +13,13 @@ marketplace_app/.env
 .DS_Store
 .vscode
 .idea
+
+# Admin Panel
+admin-panel-new/node_modules
+admin-panel-new/dist
+
+# Sync / Backup (Syncthing)
+*.sync-conflict-*
+~syncthing~*
+.stfolder
+.stversions
