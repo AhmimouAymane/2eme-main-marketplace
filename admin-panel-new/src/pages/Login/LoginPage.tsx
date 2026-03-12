@@ -21,7 +21,8 @@ const LoginPage: React.FC = () => {
             const response: any = await apiClient.post('auth/login', { json: values }).json();
             console.log('Login response:', response);
 
-            const token = response.token || response.accessToken;
+            const token = response.accessToken || response.token;
+            const refreshToken = response.refreshToken;
             const user = response.user || { name: 'Admin', role: 'USER' };
 
             if (token) {
@@ -33,7 +34,7 @@ const LoginPage: React.FC = () => {
                 }
 
                 console.log('Login success! Redirecting...');
-                setAuth(token, user);
+                setAuth(token, refreshToken || '', user);
                 message.success('Welcome back, Admin!');
                 navigate('/');
             } else {

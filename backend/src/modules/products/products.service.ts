@@ -85,6 +85,7 @@ export class ProductQuery {
 import { MediaService } from '../media/media.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType, Prisma } from '@prisma/client';
+import { ModerationService } from '../moderation/moderation.service';
 
 @Injectable()
 export class ProductsService {
@@ -92,6 +93,7 @@ export class ProductsService {
         private prisma: PrismaService,
         private mediaService: MediaService,
         private notificationsService: NotificationsService,
+        private moderationService: ModerationService,
     ) { }
 
     async findAll(query: ProductQuery, userId?: string) {
@@ -183,6 +185,14 @@ export class ProductsService {
         } else {
             // Anonymous users only see available items
             andConditions.push({ status: ProductStatus.PUBLISHED });
+        }
+
+        // Filter out blocked users
+        if (userId) {
+            const blockedUserIds = await this.moderationService.getAllBlockedUserIds(userId);
+            if (blockedUserIds.length > 0) {
+                andConditions.push({ sellerId: { notIn: blockedUserIds } });
+            }
         }
 
         // 2. Search logic (Title, Description, Brand)
@@ -279,6 +289,13 @@ export class ProductsService {
 
         if (!product) {
             throw new NotFoundException(`Product with ID ${id} not found`);
+        }
+
+        if (userId && product.sellerId !== userId) {
+            const isBlocked = await this.moderationService.isBlocked(userId, product.sellerId);
+            if (isBlocked) {
+                throw new NotFoundException(`Product with ID ${id} not found`);
+            }
         }
 
         let isFavorite = false;
@@ -458,7 +475,14 @@ export class ProductsService {
     }
 
     async addReview(productId: string, userId: string, rating: number, comment?: string) {
-        return (this.prisma as any).review.upsert({
+        const product = await this.prisma.product.findUnique({
+            where: { id: productId },
+            select: { sellerId: true, title: true }
+        });
+
+        if (!product) throw new NotFoundException('Product not found for review');
+
+        const review = await (this.prisma as any).review.upsert({
             where: {
                 userId_productId: {
                     userId,
@@ -476,17 +500,69 @@ export class ProductsService {
                 productId,
             },
         });
+
+        const reviewer = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { firstName: true }
+        });
+
+        if (product.sellerId !== userId) {
+            await this.notificationsService.create({
+                userId: product.sellerId,
+                title: '⭐ Nouvel avis reçu !',
+                message: `${reviewer?.firstName || 'quelqu\'un'} a noté votre produit "${product.title}".`,
+                type: NotificationType.NEW_REVIEW_RECEIVED,
+                data: { productId, screen: 'product_detail' },
+            });
+        }
+
+        return review;
     }
 
     async addComment(productId: string, userId: string, content: string, parentCommentId?: string) {
-        return this.prisma.comment.create({
+        const product = await this.prisma.product.findUnique({
+            where: { id: productId },
+            select: { sellerId: true, title: true }
+        });
+
+        if (!product) throw new NotFoundException('Product not found for comment');
+
+        const comment = await this.prisma.comment.create({
             data: {
                 content,
                 userId,
                 productId,
                 parentCommentId,
             },
+            include: { user: { select: { firstName: true } } }
         });
+
+        if (parentCommentId) {
+            const parentComment = await this.prisma.comment.findUnique({
+                where: { id: parentCommentId },
+                select: { userId: true }
+            });
+
+            if (parentComment && parentComment.userId !== userId) {
+                await this.notificationsService.create({
+                    userId: parentComment.userId,
+                    title: '💬 Nouvelle réponse',
+                    message: `${comment.user.firstName || 'Quelqu\'un'} a répondu à votre commentaire sur "${product.title}".`,
+                    type: NotificationType.COMMENT_REPLY_RECEIVED,
+                    data: { productId, screen: 'product_detail' },
+                });
+            }
+        } else if (product.sellerId !== userId) {
+            await this.notificationsService.create({
+                userId: product.sellerId,
+                title: '❓ Nouvelle question',
+                message: `${comment.user.firstName || 'Quelqu\'un'} a posé une question sur "${product.title}".`,
+                type: NotificationType.NEW_COMMENT_RECEIVED,
+                data: { productId, screen: 'product_detail' },
+            });
+        }
+
+        return comment;
     }
 
     async updateComment(commentId: string, userId: string, content: string) {

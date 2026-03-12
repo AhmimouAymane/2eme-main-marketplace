@@ -26,6 +26,7 @@ class AppConstants {
 
   // Storage Keys
   static const String keyAuthToken = 'auth_token';
+  static const String keyRefreshToken = 'refresh_token';
   static const String keyUserId = 'user_id';
   static const String keyUserName = 'user_name';
   static const String keyUserEmail = 'user_email';

@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/utils/formatters.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/shared/models/user_model.dart';
 
 /// Écran de profil utilisateur — design aligné avec le reste de l'app (Clovi)
 class ProfileScreen extends ConsumerWidget {
@@ -39,7 +41,7 @@ class ProfileScreen extends ConsumerWidget {
                       children: [
                         _buildProfileCard(context, user),
                         const SizedBox(height: 24),
-                        _buildMenuSection(context, ref),
+                        _buildMenuSection(context, ref, user),
                         const SizedBox(height: 100),
                       ],
                     ),
@@ -157,6 +159,21 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 20),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildStat(user.salesCount.toString(), 'Ventes'),
+              _buildVerticalDivider(),
+              _buildStat(user.products?.length.toString() ?? '0', 'Articles'),
+              _buildVerticalDivider(),
+              _buildStat(
+                user.averageRating == 0 ? '—' : user.averageRating.toStringAsFixed(1), 
+                'Note',
+                isRating: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
@@ -178,7 +195,50 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMenuSection(BuildContext context, WidgetRef ref) {
+  Widget _buildStat(String value, String label, {bool isRating = false}) {
+    return Expanded(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.cloviGreen,
+                ),
+              ),
+              if (isRating && value != '—') ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.star_rounded, color: Colors.amber, size: 18),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: AppColors.textSecondaryLight,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerticalDivider() {
+    return Container(
+      height: 30,
+      width: 1,
+      color: Colors.grey.shade200,
+    );
+  }
+
+  Widget _buildMenuSection(BuildContext context, WidgetRef ref, UserModel user) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -234,6 +294,12 @@ class ProfileScreen extends ConsumerWidget {
             icon: Icons.location_on_outlined,
             title: 'Adresses',
             onTap: () => context.push(AppRoutes.addresses),
+          ),
+          _buildDivider(),
+          _buildMenuTile(
+            icon: Icons.star_outline_rounded,
+            title: 'Mes avis',
+            onTap: () => _showReviewsBottomSheet(context, ref, user),
           ),
           _buildDivider(),
           _buildMenuTile(
@@ -402,6 +468,116 @@ class ProfileScreen extends ConsumerWidget {
             child: const Text('Supprimer définitivement'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showReviewsBottomSheet(BuildContext context, WidgetRef ref, UserModel user) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (_, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: AppColors.cloviBeige,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                height: 4,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Mes avis reçus',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimaryLight,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: user.receivedReviews == null || user.receivedReviews!.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Vous n\'avez pas encore reçu d\'avis.',
+                          style: TextStyle(color: AppColors.textSecondaryLight),
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: user.receivedReviews!.length,
+                        itemBuilder: (context, index) {
+                          final review = user.receivedReviews![index];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.02),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      review.reviewer?.fullName ?? 'Utilisateur Clovi',
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    Row(
+                                      children: List.generate(5, (starIndex) {
+                                        return Icon(
+                                          starIndex < review.rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                                          color: starIndex < review.rating ? Colors.amber : Colors.grey[300],
+                                          size: 16,
+                                        );
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                                if (review.comment != null && review.comment!.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    review.comment!,
+                                    style: TextStyle(color: Colors.grey[800], fontSize: 13),
+                                  ),
+                                ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  Formatters.date(review.createdAt),
+                                  style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

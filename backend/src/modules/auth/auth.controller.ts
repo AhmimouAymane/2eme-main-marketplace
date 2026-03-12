@@ -71,6 +71,15 @@ export class AuthController {
         });
     }
 
+    @Post('refresh')
+    @HttpCode(HttpStatus.OK)
+    @ApiOperation({ summary: 'Refresh access token' })
+    @ApiResponse({ status: 200, description: 'Tokens successfully refreshed' })
+    @ApiResponse({ status: 401, description: 'Invalid refresh token' })
+    async refresh(@Body('refreshToken') refreshToken: string) {
+        return this.authService.refreshTokens(refreshToken);
+    }
+
     @Post('fcm-token')
     @UseGuards(AuthGuard('jwt'))
     @HttpCode(HttpStatus.OK)

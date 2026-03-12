@@ -22,6 +22,14 @@ export class ModerationController {
         return this.moderationService.reportContent(req.user.sub, data);
     }
 
+    @Get('reports')
+    async getAllReports(@Req() req: any) {
+        if (req.user.role !== 'ADMIN') {
+            throw new Error('Forbidden');
+        }
+        return this.moderationService.getAllReports();
+    }
+
     @Post('block/:userId')
     async blockUser(@Req() req: any, @Param('userId') blockedUserId: string) {
         return this.moderationService.blockUser(req.user.sub, blockedUserId);

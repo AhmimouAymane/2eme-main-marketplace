@@ -15,6 +15,11 @@ enum NotificationType {
   welcome,
   securityAlert,
   promotion,
+  sellerVerified,
+  sellerRejected,
+  newReviewReceived,
+  newCommentReceived,
+  commentReplyReceived,
   system;
 
   String toJson() => name.toUpperCase();

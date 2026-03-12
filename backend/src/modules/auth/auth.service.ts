@@ -102,6 +102,27 @@ export class AuthService {
         }
     }
 
+    async refreshTokens(refreshToken: string) {
+        try {
+            const decoded = await this.jwtService.verifyAsync(refreshToken, {
+                secret: process.env.JWT_REFRESH_SECRET || 'secret',
+            });
+
+            const user = await this.usersService.findOne(decoded.sub);
+            if (!user) {
+                throw new UnauthorizedException('User not found');
+            }
+
+            const tokens = await this.getTokens(user.id, user.email, user.role);
+            return {
+                user: this.sanitizeUser(user),
+                ...tokens,
+            };
+        } catch (error) {
+            throw new UnauthorizedException('Invalid or expired refresh token');
+        }
+    }
+
     async updateFcmToken(userId: string, token: string) {
         return this.usersService.update(userId, { fcmToken: token });
     }

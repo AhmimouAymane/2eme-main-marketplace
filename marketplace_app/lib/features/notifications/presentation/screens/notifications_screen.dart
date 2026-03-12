@@ -142,6 +142,15 @@ class _NotificationTile extends ConsumerWidget {
         iconData = Icons.person_outline_rounded;
         color = Colors.teal;
         break;
+      case NotificationType.newReviewReceived:
+        iconData = Icons.star_outline_rounded;
+        color = Colors.amber;
+        break;
+      case NotificationType.newCommentReceived:
+      case NotificationType.commentReplyReceived:
+        iconData = Icons.comment_outlined;
+        color = Colors.indigo;
+        break;
       case NotificationType.securityAlert:
         iconData = Icons.security_rounded;
         color = Colors.deepOrange;
@@ -189,6 +198,9 @@ class _NotificationTile extends ConsumerWidget {
         break;
       case 'my_products':
         context.push('/my-products');
+        break;
+      case 'profile':
+        context.go('/profile');
         break;
       case 'notifications':
         // Déjà sur l'écran notifications

@@ -32,6 +32,26 @@ export class ModerationService {
         });
     }
 
+    async getAllReports() {
+        return this.prisma.report.findMany({
+            orderBy: { createdAt: 'desc' },
+            include: {
+                reporter: {
+                    select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+                },
+                reportedUser: {
+                    select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+                },
+                reportedProduct: {
+                    select: { id: true, title: true },
+                },
+                reportedComment: {
+                    select: { id: true, content: true },
+                },
+            },
+        });
+    }
+
     async blockUser(blockerId: string, blockedUserId: string) {
         if (blockerId === blockedUserId) {
             throw new BadRequestException('Vous ne pouvez pas vous bloquer vous-même.');
@@ -89,5 +109,28 @@ export class ModerationService {
             },
         });
         return !!block;
+    }
+
+    async getAllBlockedUserIds(userId: string): Promise<string[]> {
+        const blocks = await this.prisma.block.findMany({
+            where: {
+                OR: [
+                    { blockerId: userId },
+                    { blockedUserId: userId }
+                ]
+            },
+            select: {
+                blockerId: true,
+                blockedUserId: true
+            }
+        });
+
+        const blockedIds = new Set<string>();
+        for (const block of blocks) {
+            if (block.blockerId !== userId) blockedIds.add(block.blockerId);
+            if (block.blockedUserId !== userId) blockedIds.add(block.blockedUserId);
+        }
+
+        return Array.from(blockedIds);
     }
 }

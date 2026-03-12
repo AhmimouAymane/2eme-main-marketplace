@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Row, Col, Typography, Tag, List, Avatar, Space, Button } from 'antd';
+import { Card, Row, Col, Typography, Tag, List, Avatar, Space, Button, Alert } from 'antd';
 import {
     TrendingUp,
     Users,
@@ -26,15 +26,19 @@ const IconMap: Record<string, React.ReactNode> = {
 const DashboardPage: React.FC = () => {
     const [data, setData] = React.useState<DashboardStats | null>(null);
     const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
     const navigate = useNavigate();
 
     React.useEffect(() => {
         const fetchStats = async () => {
             try {
+                setLoading(true);
+                setError(null);
                 const response = await apiClient.get('dashboard/stats').json<DashboardStats>();
                 setData(response);
-            } catch (error) {
-                console.error('Failed to fetch dashboard stats:', error);
+            } catch (err: any) {
+                console.error('Failed to fetch dashboard stats:', err);
+                setError(err?.response?.status === 403 ? 'Accès refusé. Droits admin requis.' : 'Échec du chargement des statistiques.');
             } finally {
                 setLoading(false);
             }
@@ -57,6 +61,8 @@ const DashboardPage: React.FC = () => {
                 </Title>
                 <Text type="secondary">Here's what's happening with Clovi today.</Text>
             </div>
+
+            {error && <Alert message={error} type="error" showIcon closable style={{ marginBottom: 24 }} />}
 
             {/* Stats Overview */}
             <Row gutter={[24, 24]}>

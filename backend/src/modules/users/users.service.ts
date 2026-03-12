@@ -1,13 +1,17 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
-import { User, Prisma } from '@prisma/client';
+import { User, Prisma, NotificationType } from '@prisma/client';
+import { ModerationService } from '../moderation/moderation.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class UsersService {
     constructor(
         private prisma: PrismaService,
         @Inject('FIREBASE_ADMIN') private firebaseAdmin: any,
+        private moderationService: ModerationService,
+        private notificationsService: NotificationsService,
     ) { }
 
     async findAll(query: { _start?: number, _end?: number }) {
@@ -49,7 +53,12 @@ export class UsersService {
         });
     }
 
-    async findOne(id: string, includeProducts = false, isPublic = false) {
+    async findOne(id: string, includeProducts = false, isPublic = false, viewerId?: string) {
+        if (viewerId && viewerId !== id) {
+            const isBlocked = await this.moderationService.isBlocked(viewerId, id);
+            if (isBlocked) return null;
+        }
+
         const user = await this.prisma.user.findUnique({
             where: { id },
             include: {
@@ -183,7 +192,7 @@ export class UsersService {
     }
 
     async rateUser(reviewerId: string, targetUserId: string, rating: number, comment?: string) {
-        return (this.prisma as any).userReview.upsert({
+        const review = await (this.prisma as any).userReview.upsert({
             where: {
                 reviewerId_targetUserId: {
                     reviewerId,
@@ -201,5 +210,22 @@ export class UsersService {
                 comment,
             },
         });
+
+        const reviewer = await this.prisma.user.findUnique({
+            where: { id: reviewerId },
+            select: { firstName: true }
+        });
+
+        if (reviewerId !== targetUserId) {
+            await this.notificationsService.create({
+                userId: targetUserId,
+                title: '⭐ Nouvelle évaluation reçue !',
+                message: `${reviewer?.firstName || 'Quelqu\'un'} vous a laissé une évaluation de ${rating} étoile(s).`,
+                type: NotificationType.NEW_REVIEW_RECEIVED,
+                data: { screen: 'profile' },
+            });
+        }
+
+        return review;
     }
 }

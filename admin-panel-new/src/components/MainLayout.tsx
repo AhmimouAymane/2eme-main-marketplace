@@ -10,6 +10,7 @@ import {
     TagsOutlined,
     SettingOutlined,
     UserOutlined,
+    FlagOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
@@ -54,6 +55,11 @@ const MainLayout: React.FC = () => {
             key: '/verifications',
             icon: <UserOutlined />,
             label: 'Vérification Vendeurs',
+        },
+        {
+            key: '/reports',
+            icon: <FlagOutlined style={{ color: '#ff4d4f' }} />,
+            label: 'Signalements',
         },
         {
             key: '/settings',

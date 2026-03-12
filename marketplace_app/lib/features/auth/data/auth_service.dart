@@ -240,10 +240,15 @@ class AuthService {
   /// Sauvegarde les données d'authentification localement
   Future<void> _saveAuthData(Map<String, dynamic> data) async {
     final token = data['accessToken'];
+    final refreshToken = data['refreshToken'];
     final user = data['user'];
     
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.keyAuthToken, token);
+    
+    if (refreshToken != null) {
+      await prefs.setString(AppConstants.keyRefreshToken, refreshToken);
+    }
     
     // Update Riverpod state immediately
     _ref.read(authTokenProvider.notifier).state = token;
@@ -300,6 +305,7 @@ class AuthService {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.keyAuthToken);
+    await prefs.remove(AppConstants.keyRefreshToken);
     await prefs.remove(AppConstants.keyUserId);
     await prefs.remove(AppConstants.keyUserName);
     await prefs.remove(AppConstants.keyUserEmail);
@@ -322,6 +328,41 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString(AppConstants.keyAuthToken);
     return token != null && token.isNotEmpty;
+  }
+
+  /// Renouveler le token d'accès via le refresh token
+  Future<String?> refreshToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedRefreshToken = prefs.getString(AppConstants.keyRefreshToken);
+      
+      if (storedRefreshToken == null || storedRefreshToken.isEmpty) return null;
+
+      final response = await _dio.post('auth/refresh', data: {
+        'refreshToken': storedRefreshToken,
+      });
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data;
+        final newToken = data['accessToken'];
+        final newRefreshToken = data['refreshToken'];
+
+        if (newToken != null) {
+          await prefs.setString(AppConstants.keyAuthToken, newToken);
+          _ref.read(authTokenProvider.notifier).state = newToken;
+        }
+        
+        if (newRefreshToken != null) {
+          await prefs.setString(AppConstants.keyRefreshToken, newRefreshToken);
+        }
+
+        return newToken;
+      }
+      return null;
+    } catch (e) {
+      print('DEBUG: Refresh token error: $e');
+      return null;
+    }
   }
 
   String _handleError(DioException e) {

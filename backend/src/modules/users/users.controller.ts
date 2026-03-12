@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException, Query, Res } from '@nestjs/common';
-import type { Response } from 'express';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundException, Query, Res, Req } from '@nestjs/common';
+import type { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
 import { UsersService } from './users.service';
 import { GetCurrentUser } from '../../common/decorators/get-current-user.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
 
 @ApiTags('users')
 @Controller('users')
@@ -31,7 +32,7 @@ export class UsersController {
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get current user profile' })
     async getMe(@GetCurrentUser('sub') userId: string) {
-        const user = await this.usersService.findOne(userId);
+        const user = await this.usersService.findOne(userId, true, false, userId);
         if (!user) {
             throw new NotFoundException('User profile not found in database');
         }
@@ -58,9 +59,11 @@ export class UsersController {
     }
 
     @Get(':id')
+    @UseGuards(OptionalAuthGuard)
     @ApiOperation({ summary: 'Get a user profile by ID (public)' })
-    async getOne(@Param('id') id: string) {
-        const user = await this.usersService.findOne(id, true, true);
+    async getOne(@Param('id') id: string, @Req() req: Request) {
+        const viewerId = (req.user as any)?.sub;
+        const user = await this.usersService.findOne(id, true, true, viewerId);
         if (!user) {
             throw new NotFoundException('User not found');
         }

@@ -15,9 +15,33 @@ export const apiClient = ky.create({
         ],
         afterResponse: [
             async (request, _options, response) => {
-                // Don't redirect if we're already trying to login and it fails
+                const { token, refreshToken, logout, setToken } = useAuthStore.getState();
+
+                // If 401 and we have a refresh token, try to refresh
+                if (response.status === 401 && !request.url.includes('auth/login') && !request.url.includes('auth/refresh') && refreshToken) {
+                    try {
+                        const refreshResponse: any = await ky.post(`${API_URL}auth/refresh`, {
+                            json: { refreshToken }
+                        }).json();
+
+                        const newToken = refreshResponse.accessToken;
+                        if (newToken) {
+                            setToken(newToken);
+                            
+                            // Retry original request
+                            request.headers.set('Authorization', `Bearer ${newToken}`);
+                            return ky(request);
+                        }
+                    } catch (error) {
+                        console.error('Token refresh failed:', error);
+                        logout();
+                        window.location.href = '/login';
+                    }
+                }
+
+                // Normal 401 handling
                 if (response.status === 401 && !request.url.includes('auth/login')) {
-                    useAuthStore.getState().logout();
+                    logout();
                     window.location.href = '/login';
                 }
             },

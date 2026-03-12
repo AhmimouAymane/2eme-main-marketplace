@@ -7,11 +7,12 @@ import '../../core/constants/app_constants.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
 
 /// Routes qui ne doivent pas recevoir le token (authentification en cours)
-const _publicPaths = ['/auth/register', '/auth/login'];
+const _publicPaths = ['/auth/register', '/auth/login', '/auth/refresh'];
 
 /// Intercepteur pour ajouter le token d'authentification aux requêtes
 class ApiInterceptor extends Interceptor {
   final Ref _ref;
+  bool _isRefreshing = false; // Pour éviter les boucles infinies
 
   ApiInterceptor(this._ref);
 
@@ -62,52 +63,64 @@ class ApiInterceptor extends Interceptor {
   
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
+    // Si déjà en cours de rafraîchissement, ne pas réessayer
+    if (_isRefreshing) {
+      return handler.next(err);
+    }
+
     // Gestion des erreurs globales
     if (err.response?.statusCode == 401) {
-      // Tenter de rafraîchir le token via Firebase avant de déconnecter
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        try {
-          // 1. Obtenir un nouveau token Firebase ID
-          final idToken = await user.getIdToken(true); // true pour forcer le rafraîchissement
-          
+      _isRefreshing = true;
+      String? newToken;
+
+      try {
+        // 1. Tenter de rafraîchir le token via Firebase si c'est un user social
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final idToken = await user.getIdToken(true);
           if (idToken != null) {
-            // 2. Synchroniser avec le backend pour obtenir un nouveau JWT
             final result = await _ref.read(authServiceProvider).syncWithBackend(idToken);
-            final newToken = result['accessToken'];
-            
-            if (newToken != null) {
-              // 3. Mettre à jour le provider (ce qui mettra à jour l'intercepteur pour les prochaines requêtes)
-              _ref.read(authTokenProvider.notifier).state = newToken;
-              
-              // 4. Réessayer la requête originale avec le nouveau token
-              final options = err.requestOptions;
-              options.headers['Authorization'] = 'Bearer $newToken';
-              
-              // Ensure we use the full URL if it's not already absolute
-              final fullPath = options.path.startsWith('http') 
-                  ? options.path 
-                  : '${AppConstants.apiBaseUrl}${options.path}';
-              
-              final dio = Dio(); 
-              final response = await dio.request(
-                fullPath,
-                data: options.data,
-                queryParameters: options.queryParameters,
-                options: Options(
-                  method: options.method,
-                  headers: options.headers,
-                ),
-              );
-              return handler.resolve(response);
-            }
+            newToken = result['accessToken'];
           }
-        } catch (e) {
-          print('Token refresh failed: $e');
+        } 
+        
+        // 2. Si pas de user Firebase ou refresh a échoué, tenter via notre propre refresh token
+        if (newToken == null) {
+          newToken = await _ref.read(authServiceProvider).refreshToken();
         }
+
+        if (newToken != null) {
+          // Mettre à jour le provider
+          _ref.read(authTokenProvider.notifier).state = newToken;
+          
+          // Réessayer la requête originale
+          final options = err.requestOptions;
+          options.headers['Authorization'] = 'Bearer $newToken';
+          
+          final fullPath = options.path.startsWith('http') 
+              ? options.path 
+              : '${AppConstants.apiBaseUrl}${options.path}';
+          
+          final dio = Dio(); 
+          final response = await dio.request(
+            fullPath,
+            data: options.data,
+            queryParameters: options.queryParameters,
+            options: Options(
+              method: options.method,
+              headers: options.headers,
+            ),
+          );
+          _isRefreshing = false;
+          return handler.resolve(response);
+        }
+      } catch (e) {
+        print('DEBUG: Auto refresh failed: $e');
+      } finally {
+        _isRefreshing = false;
       }
       
-      // Si le rafraîchissement échoue ou pas de user, redirection vers login
+      // Si tout a échoué, redirection vers login
       _handleUnauthorized();
     }
     

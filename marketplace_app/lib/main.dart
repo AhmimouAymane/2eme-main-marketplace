@@ -148,6 +148,9 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       case 'my_products':
         router.push('/my-products');
         break;
+      case 'profile':
+        router.go('/profile');
+        break;
       case 'notifications':
         router.push('/notifications');
         break;

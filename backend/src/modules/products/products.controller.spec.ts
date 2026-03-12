@@ -37,11 +37,15 @@ describe('ProductsController', () => {
 
     describe('findAll', () => {
         it('should return an array of products', async () => {
-            const result = [{ id: '1', title: 'Product 1' }];
+            const result = { data: [{ id: '1', title: 'Product 1' }], total: 1 };
             mockProductsService.findAll.mockResolvedValue(result);
 
-            expect(await controller.findAll({ query: {} } as any, {})).toBe(result);
-            expect(service.findAll).toHaveBeenCalledWith({});
+            const mockReq = { user: { sub: 'user1' } } as any;
+            const mockRes = { setHeader: jest.fn(), json: jest.fn().mockReturnValue(result.data) } as any;
+
+            await controller.findAll(mockReq, mockRes, {} as any);
+            expect(service.findAll).toHaveBeenCalledWith({}, 'user1');
+            expect(mockRes.json).toHaveBeenCalledWith(result.data);
         });
     });
 
