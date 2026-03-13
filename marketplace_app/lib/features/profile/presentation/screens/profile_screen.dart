@@ -32,18 +32,23 @@ class ProfileScreen extends ConsumerWidget {
                       ),
                     );
                   }
-                  return SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                    child: Column(
-                      children: [
-                        _buildProfileCard(context, user),
-                        const SizedBox(height: 24),
-                        _buildMenuSection(context, ref, user),
-                        const SizedBox(height: 100),
-                      ],
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      ref.invalidate(userProfileProvider);
+                    },
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      child: Column(
+                        children: [
+                          _buildProfileCard(context, user),
+                          const SizedBox(height: 24),
+                          _buildMenuSection(context, ref, user),
+                          const SizedBox(height: 100),
+                        ],
+                      ),
                     ),
                   );
                 },

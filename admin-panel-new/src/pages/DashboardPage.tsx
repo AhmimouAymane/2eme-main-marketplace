@@ -30,6 +30,7 @@ const DashboardPage: React.FC = () => {
     const navigate = useNavigate();
 
     React.useEffect(() => {
+        let retryCount = 0;
         const fetchStats = async () => {
             try {
                 setLoading(true);
@@ -37,8 +38,16 @@ const DashboardPage: React.FC = () => {
                 const response = await apiClient.get('dashboard/stats').json<DashboardStats>();
                 setData(response);
             } catch (err: any) {
-                console.error('Failed to fetch dashboard stats:', err);
-                setError(err?.response?.status === 403 ? 'Accès refusé. Droits admin requis.' : 'Échec du chargement des statistiques.');
+                console.error('Dashboard Stats Error:', err);
+                if (retryCount < 1) {
+                    retryCount++;
+                    setTimeout(fetchStats, 1000); // Small delay then retry
+                    return;
+                }
+                const msg = err?.response?.status === 403 ? 'Accès refusé. Droits admin requis.' : 
+                            err?.response?.status === 401 ? 'Session expirée. Reconnectez-vous.' :
+                            'Échec du chargement des statistiques. Vérifiez la connexion au serveur.';
+                setError(msg);
             } finally {
                 setLoading(false);
             }
@@ -62,7 +71,20 @@ const DashboardPage: React.FC = () => {
                 <Text type="secondary">Here's what's happening with Clovi today.</Text>
             </div>
 
-            {error && <Alert message={error} type="error" showIcon closable style={{ marginBottom: 24 }} />}
+            {error && (
+                <Alert 
+                    message={error} 
+                    type="error" 
+                    showIcon 
+                    closable 
+                    style={{ marginBottom: 24 }}
+                    action={
+                        <Button size="small" type="primary" danger onClick={() => window.location.reload()}>
+                            Actualiser
+                        </Button>
+                    }
+                />
+            )}
 
             {/* Stats Overview */}
             <Row gutter={[24, 24]}>

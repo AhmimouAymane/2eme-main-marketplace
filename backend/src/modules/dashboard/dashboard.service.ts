@@ -75,24 +75,23 @@ export class DashboardService {
             };
         }).reverse();
 
-        const salesGrowth = await Promise.all(
-            months.map(async (m) => {
-                const result = await this.prisma.order.aggregate({
-                    where: {
-                        status: OrderStatus.COMPLETED,
-                        createdAt: {
-                            gte: m.start,
-                            lte: m.end,
-                        },
+        const salesGrowth = [];
+        for (const m of months) {
+            const result = await this.prisma.order.aggregate({
+                where: {
+                    status: OrderStatus.COMPLETED,
+                    createdAt: {
+                        gte: m.start,
+                        lte: m.end,
                     },
-                    _sum: { totalPrice: true },
-                });
-                return {
-                    month: m.label,
-                    value: result._sum.totalPrice || 0,
-                };
-            }),
-        );
+                },
+                _sum: { totalPrice: true },
+            });
+            salesGrowth.push({
+                month: m.label,
+                value: result._sum.totalPrice || 0,
+            });
+        }
 
         // Trends (Mocked for now as we don't have historical snapshots easily, 
         // but we could compare with last month if needed)

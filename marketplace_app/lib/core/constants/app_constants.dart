@@ -13,13 +13,13 @@ class AppConstants {
 
   static String get apiBaseUrl {
     // For local development, use the local IP or localhost
-    // return 'http://154.70.207.29:8085/api/v1/';
-    return 'http://$_host:8080/api/v1/';
+    return 'http://154.70.207.29:8085/api/v1/';
+    //return 'http://$_host:8080/api/v1/';
   }
 
   static String get mediaBaseUrl {
-    // return 'http://154.70.207.29:8085/';
-    return 'http://$_host:8080/';
+    return 'http://154.70.207.29:8085/';
+    //return 'http://$_host:8080/';
   }
 
   static const Duration apiTimeout = Duration(seconds: 60);
