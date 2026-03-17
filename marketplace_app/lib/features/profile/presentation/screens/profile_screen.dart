@@ -75,14 +75,7 @@ class ProfileScreen extends ConsumerWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios_new,
-              size: 22,
-              color: AppColors.cloviGreen,
-            ),
-            onPressed: () => context.go(AppRoutes.home),
-          ),
+          const SizedBox(width: 48), // Spacer to balance the settings button
           const Text(
             'Mon profil',
             style: TextStyle(
@@ -172,7 +165,9 @@ class ProfileScreen extends ConsumerWidget {
               _buildStat(user.products?.length.toString() ?? '0', 'Articles'),
               _buildVerticalDivider(),
               _buildStat(
-                user.averageRating == 0 ? '—' : user.averageRating.toStringAsFixed(1), 
+                user.averageRating == 0
+                    ? '—'
+                    : user.averageRating.toStringAsFixed(1),
                 'Note',
                 isRating: true,
               ),
@@ -236,14 +231,14 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   Widget _buildVerticalDivider() {
-    return Container(
-      height: 30,
-      width: 1,
-      color: Colors.grey.shade200,
-    );
+    return Container(height: 30, width: 1, color: Colors.grey.shade200);
   }
 
-  Widget _buildMenuSection(BuildContext context, WidgetRef ref, UserModel user) {
+  Widget _buildMenuSection(
+    BuildContext context,
+    WidgetRef ref,
+    UserModel user,
+  ) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -477,7 +472,11 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showReviewsBottomSheet(BuildContext context, WidgetRef ref, UserModel user) {
+  void _showReviewsBottomSheet(
+    BuildContext context,
+    WidgetRef ref,
+    UserModel user,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -514,7 +513,9 @@ class ProfileScreen extends ConsumerWidget {
                 ),
               ),
               Expanded(
-                child: user.receivedReviews == null || user.receivedReviews!.isEmpty
+                child:
+                    user.receivedReviews == null ||
+                        user.receivedReviews!.isEmpty
                     ? const Center(
                         child: Text(
                           'Vous n\'avez pas encore reçu d\'avis.',
@@ -523,7 +524,10 @@ class ProfileScreen extends ConsumerWidget {
                       )
                     : ListView.builder(
                         controller: scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         itemCount: user.receivedReviews!.length,
                         itemBuilder: (context, index) {
                           final review = user.receivedReviews![index];
@@ -545,34 +549,49 @@ class ProfileScreen extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      review.reviewer?.fullName ?? 'Utilisateur Clovi',
-                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                      review.reviewer?.fullName ??
+                                          'Utilisateur Clovi',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                     Row(
                                       children: List.generate(5, (starIndex) {
                                         return Icon(
-                                          starIndex < review.rating ? Icons.star_rounded : Icons.star_outline_rounded,
-                                          color: starIndex < review.rating ? Colors.amber : Colors.grey[300],
+                                          starIndex < review.rating
+                                              ? Icons.star_rounded
+                                              : Icons.star_outline_rounded,
+                                          color: starIndex < review.rating
+                                              ? Colors.amber
+                                              : Colors.grey[300],
                                           size: 16,
                                         );
                                       }),
                                     ),
                                   ],
                                 ),
-                                if (review.comment != null && review.comment!.isNotEmpty) ...[
+                                if (review.comment != null &&
+                                    review.comment!.isNotEmpty) ...[
                                   const SizedBox(height: 8),
                                   Text(
                                     review.comment!,
-                                    style: TextStyle(color: Colors.grey[800], fontSize: 13),
+                                    style: TextStyle(
+                                      color: Colors.grey[800],
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
                                 const SizedBox(height: 8),
                                 Text(
                                   Formatters.date(review.createdAt),
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 11),
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 11,
+                                  ),
                                 ),
                               ],
                             ),

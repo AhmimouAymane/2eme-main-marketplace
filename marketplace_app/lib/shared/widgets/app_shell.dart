@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
@@ -67,11 +68,43 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: CloviBottomNav(
-        selectedIndex: _selectedBarIndex,
-        onItemTapped: (index) => _onItemTapped(context, ref, index),
+    print('DEBUG: AppShell Build - currentIndex: ${navigationShell.currentIndex}');
+    return PopScope(
+      canPop: false, // On intercepte tout pour gérer le retour inter-onglets
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        
+        final currentIndex = navigationShell.currentIndex;
+        print('DEBUG: PopScope Invoked - currentIndex: $currentIndex');
+
+        if (currentIndex != 0) {
+          print('DEBUG: Switching to Home branch (index 0)');
+          
+          // Feedback visuel TRÈS visible pour confirmer que l'appui est bien détecté
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Retour à l'onglet Accueil..."),
+                duration: Duration(seconds: 1),
+                backgroundColor: Colors.black87,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          
+          navigationShell.goBranch(0);
+        } else {
+          print('DEBUG: Already on Home, exiting app via SystemNavigator.pop()');
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: navigationShell,
+        bottomNavigationBar: CloviBottomNav(
+          selectedIndex: _selectedBarIndex,
+          onItemTapped: (index) => _onItemTapped(context, ref, index),
+        ),
       ),
     );
   }

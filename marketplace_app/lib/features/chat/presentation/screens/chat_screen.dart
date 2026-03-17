@@ -12,6 +12,7 @@ import 'package:marketplace_app/features/auth/presentation/providers/auth_provid
 import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:marketplace_app/features/moderation/data/moderation_service.dart';
 import 'package:marketplace_app/shared/widgets/report_dialog.dart';
+import 'package:marketplace_app/core/routes/app_routes.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -268,7 +269,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              try {
+                try {
                 await ref.read(moderationServiceProvider).blockUser(userId);
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -277,7 +278,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       backgroundColor: AppColors.error,
                   ),
                 );
-                Navigator.pop(context); // Quitter le chat
+                if (context.canPop()) {
+                  context.pop(); // Quitter le chat
+                } else {
+                  context.go(AppRoutes.conversations);
+                }
               } catch (e) {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -309,16 +314,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final messagesAsync = ref.watch(conversationMessagesProvider(widget.conversationId));
     final currentUserIdAsync = ref.watch(userIdProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.cloviBeige,
-      appBar: AppBar(
-        elevation: 1,
-        backgroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: conversationAsync.when(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          // Si on ne peut pas pop (ex: ouvert via notification), on force le retour vers la liste
+          context.go(AppRoutes.conversations);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.cloviBeige,
+        appBar: AppBar(
+          elevation: 1,
+          backgroundColor: Colors.white,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(AppRoutes.conversations);
+              }
+            },
+          ),
+          title: conversationAsync.when(
           data: (conversation) {
             final currentUserId = currentUserIdAsync.maybeWhen(
               data: (id) => id,
@@ -603,7 +625,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           _buildInputBar(),
         ],
       ),
-    );
+    ),);
   }
 
   /// Carte du produit affiché en haut du chat

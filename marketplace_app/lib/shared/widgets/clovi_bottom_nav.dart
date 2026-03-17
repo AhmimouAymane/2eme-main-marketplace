@@ -20,10 +20,9 @@ class CloviBottomNav extends ConsumerWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        // IMPROVEMENT: Smaller margin → bar sits closer to screen edge, less intrusive
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
         child: Container(
-          height: 58, // IMPROVEMENT: Reduced from 70 → more compact
+          height: 58,
           decoration: BoxDecoration(
             color: AppColors.cloviGreen,
             borderRadius: BorderRadius.circular(30),
@@ -37,8 +36,24 @@ class CloviBottomNav extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, index: 0, selectedIndex: selectedIndex, onTap: onItemTapped),
-              _NavItem(icon: Icons.search_outlined, activeIcon: Icons.search_rounded, index: 1, selectedIndex: selectedIndex, onTap: onItemTapped),
+              Expanded(
+                child: _NavItem(
+                  icon: Icons.home_outlined,
+                  activeIcon: Icons.home_rounded,
+                  index: 0,
+                  selectedIndex: selectedIndex,
+                  onTap: onItemTapped,
+                ),
+              ),
+              Expanded(
+                child: _NavItem(
+                  icon: Icons.search_outlined,
+                  activeIcon: Icons.search_rounded,
+                  index: 1,
+                  selectedIndex: selectedIndex,
+                  onTap: onItemTapped,
+                ),
+              ),
 
               // Central "+" button
               Expanded(
@@ -108,12 +123,14 @@ class CloviBottomNav extends ConsumerWidget {
                 ),
               ),
 
-              _NavItem(
-                icon: Icons.person_outline_rounded,
-                activeIcon: Icons.person_rounded,
-                index: 4,
-                selectedIndex: selectedIndex,
-                onTap: onItemTapped,
+              Expanded(
+                child: _NavItem(
+                  icon: Icons.person_outline_rounded,
+                  activeIcon: Icons.person_rounded,
+                  index: 4,
+                  selectedIndex: selectedIndex,
+                  onTap: onItemTapped,
+                ),
               ),
             ],
           ),
@@ -123,7 +140,6 @@ class CloviBottomNav extends ConsumerWidget {
   }
 }
 
-// IMPROVEMENT: Extracted to its own widget — no more passing 5 args to a method
 class _NavItem extends StatelessWidget {
   final IconData icon;
   final IconData activeIcon;
@@ -143,20 +159,17 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = selectedIndex == index;
 
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => onTap(index),
-        child: Center(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: Icon(
-              isActive ? activeIcon : icon,
-              key: ValueKey(isActive),
-              // IMPROVEMENT: Active icon is full white + slightly larger, inactive is dimmed
-              color: isActive ? Colors.white : Colors.white.withOpacity(0.45),
-              size: isActive ? 26 : 23,
-            ),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onTap(index),
+      child: Center(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: Icon(
+            isActive ? activeIcon : icon,
+            key: ValueKey(isActive),
+            color: isActive ? Colors.white : Colors.white.withOpacity(0.45),
+            size: isActive ? 26 : 23,
           ),
         ),
       ),
