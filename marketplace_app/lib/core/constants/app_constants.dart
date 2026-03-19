@@ -3,23 +3,25 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 
 /// Constantes de l'application marketplace
 class AppConstants {
-
   // API Configuration
   static String get _host {
     if (kIsWeb) return 'localhost';
-    if (Platform.isAndroid) return '10.0.2.2'; // Standard Android emulator loopback
+    if (Platform.isAndroid)
+      return '10.0.2.2'; // Standard Android emulator loopback
+    if (Platform.isIOS) 
+      return '192.168.100.118'; // Pour l'émulateur ios
     return 'localhost';
   }
 
   static String get apiBaseUrl {
     // For local development, use the local IP or localhost
-    return 'http://154.70.207.29:8085/api/v1/';
-    //return 'http://$_host:8080/api/v1/';
+    //return 'http://154.70.207.29:8085/api/v1/';
+    return 'http://$_host:8085/api/v1/';
   }
 
   static String get mediaBaseUrl {
-    return 'http://154.70.207.29:8085/';
-    //return 'http://$_host:8080/';
+    //return 'http://154.70.207.29:8085/';
+    return 'http://$_host:8085/';
   }
 
   static const Duration apiTimeout = Duration(seconds: 60);
@@ -58,4 +60,4 @@ class AppConstants {
   // App Info
   static const String appName = 'Marketplace';
   static const String appVersion = '1.0.1';
-} 
+}

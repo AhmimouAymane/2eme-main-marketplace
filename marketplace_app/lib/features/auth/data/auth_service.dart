@@ -276,10 +276,11 @@ class AuthService {
     await syncFcmToken(token);
   }
 
-  /// Synchroniser le token FCM avec le backend
-  Future<void> syncFcmToken([String? token]) async {
+  /// Synchroniser le token FCM avec le backend (ou l'effacer en passant '')
+  Future<void> syncFcmToken([String? token, String? explicitFcmToken]) async {
     try {
-      final fcmToken = await FirebaseMessaging.instance.getToken();
+      final String? fcmToken = explicitFcmToken ?? await FirebaseMessaging.instance.getToken();
+      
       if (fcmToken != null) {
         await _dio.post(
           'auth/fcm-token', 
@@ -290,17 +291,26 @@ class AuthService {
         );
       }
     } catch (e) {
-      print('Erreur synchronisation FCM: $e');
+      final errorStr = e.toString();
+      if (errorStr.contains('apns-token-not-set')) {
+        print('DEBUG: Sync FCM ignoré (APNS non configuré ou simulateur)');
+      } else {
+        print('Erreur synchronisation FCM: $e');
+      }
     }
   }
 
   /// Déconnexion
   Future<void> logout() async {
     try {
-      // Supprimer le token FCM (important pour arrêter les notifications)
+      // D'abord, informer le backend d'effacer le token FCM
+      // pour éviter les interférences (bleeding) de notifications vers ce téléphone
+      await syncFcmToken('');
+      
+      // Ensuite, supprimer le token localement
       await FirebaseMessaging.instance.deleteToken();
     } catch (e) {
-       print('Erreur lors de la suppression du token FCM: $e');
+       print('Erreur lors du nettoyage du token FCM: $e');
     }
 
     final prefs = await SharedPreferences.getInstance();

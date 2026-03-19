@@ -41,6 +41,7 @@ export class ProductsController {
     @ApiQuery({ name: 'maxPrice', type: Number, required: false })
     @ApiQuery({ name: 'sortBy', enum: ['price', 'createdAt'], required: false })
     @ApiQuery({ name: 'order', enum: ['asc', 'desc'], required: false })
+    @ApiQuery({ name: 'limit', type: Number, required: false })
     @ApiQuery({ name: 'sellerId', required: false })
     async findAll(@Req() req: Request, @Res() res: Response, @Query() query: ProductQuery) {
         const userId = (req.user as any)?.sub;

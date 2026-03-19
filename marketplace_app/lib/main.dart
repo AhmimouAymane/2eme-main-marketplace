@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/router_config.dart';
@@ -84,9 +86,21 @@ void main() async {
     },
   );
 
+  // Charger les préférences partagées AVANT de démarrer l'UI
+  // Cela empêche le flash de la page de login au démarrage
+  final prefs = await SharedPreferences.getInstance();
+  final initialToken = prefs.getString(AppConstants.keyAuthToken);
+
   runApp(
-    const ProviderScope(
-      child: MarketplaceApp(),
+    UncontrolledProviderScope(
+      container: ProviderContainer(
+        overrides: [
+          // On injecte le token immédiatement pour que isAuthenticated le voit dès la première frame
+          if (initialToken != null)
+            authTokenProvider.overrideWith((ref) => initialToken),
+        ],
+      ),
+      child: const MarketplaceApp(),
     ),
   );
 }
@@ -239,40 +253,47 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
     messengerState.showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isSystem ? Icons.notifications_active : Icons.chat_bubble,
-              color: Colors.white,
-              size: 28,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Text(
-                    body,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+        content: GestureDetector(
+          onTap: () {
+            if (message != null) {
+              _handleNotificationClick(message);
+            }
+          },
+          child: Row(
+            children: [
+              Icon(
+                isSystem ? Icons.notifications_active : Icons.chat_bubble,
+                color: Colors.white,
+                size: 28,
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                    Text(
+                      body,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.white,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.cloviGreen,
@@ -283,16 +304,7 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
           right: 16,
         ),
         elevation: 6,
-        duration: const Duration(seconds: 2), // Durée réduite (2s) pour moins d'encombrement
-        action: SnackBarAction(
-          label: 'VOIR',
-          textColor: Colors.white70,
-          onPressed: () {
-            if (message != null) {
-              _handleNotificationClick(message);
-            }
-          },
-        ),
+        duration: const Duration(seconds: 3), // Durée réduite (3s) pour moins d'encombrement
       ),
     );
   }

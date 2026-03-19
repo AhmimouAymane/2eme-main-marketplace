@@ -56,9 +56,15 @@ export class ProductQuery {
     @IsEnum(['price', 'createdAt'])
     sortBy?: 'price' | 'createdAt';
 
-    @IsOptional()
+                    @IsOptional()
     @IsEnum(['asc', 'desc'])
     order?: 'asc' | 'desc';
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsNumber()
+    @Min(1)
+    limit?: number;
 
     // Refine / Simple-Rest parameters
     @IsOptional()
@@ -109,6 +115,7 @@ export class ProductsService {
             sellerId,
             minPrice,
             maxPrice,
+            limit,
             sortBy = query._sort || 'createdAt',
             order = query._order || 'desc',
         } = query;
@@ -217,6 +224,20 @@ export class ProductsService {
 
         const total = await this.prisma.product.count({ where });
 
+        let takeRows: number | undefined;
+        let skipRows: number | undefined;
+
+        if (limit) {
+            takeRows = Number(limit);
+            skipRows = query._start ? Number(query._start) : undefined;
+        } else if (query._end !== undefined && query._start !== undefined) {
+             takeRows = Number(query._end) - Number(query._start);
+             skipRows = Number(query._start);
+        } else {
+            takeRows = 50; // default limit to protect DB
+            skipRows = query._start ? Number(query._start) : undefined;
+        }
+
         const products = await this.prisma.product.findMany({
             where,
             include: {
@@ -243,8 +264,8 @@ export class ProductsService {
                 },
             },
             orderBy: { [sortBy]: (order as string).toLowerCase() },
-            skip: query._start ? Number(query._start) : undefined,
-            take: (query._end !== undefined && query._start !== undefined) ? (Number(query._end) - Number(query._start)) : undefined,
+            skip: skipRows,
+            take: takeRows,
         });
 
         const result = (products as any).map((p: any) => ({

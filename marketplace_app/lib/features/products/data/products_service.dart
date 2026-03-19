@@ -20,6 +20,7 @@ class ProductsService {
     String? sortBy,
     String? order,
     String? sellerId,
+    int? limit,
   }) async {
     try {
       final queryParams = {
@@ -33,6 +34,7 @@ class ProductsService {
         'sortBy': sortBy,
         'order': order,
         'sellerId': sellerId,
+        'limit': limit,
       };
       
       queryParams.removeWhere((key, value) => value == null);

@@ -67,7 +67,7 @@ final categoriesProvider = FutureProvider.autoDispose<List<CategoryModel>>((
   ref,
 ) async {
   final service = ref.watch(categoriesServiceProvider);
-  return service.getCategories();
+  return service.getCategories(); // Fait maintenant appel au cache local implicitement
 });
 
 /// Provider to find a category ID by its slug
@@ -185,6 +185,7 @@ final productsProvider = FutureProvider.autoDispose<List<ProductModel>>((
     category: filters.categoryId,
     minPrice: filters.minPrice,
     maxPrice: filters.maxPrice,
+    limit: 50, // default limit for generic listings
   );
 });
 
@@ -219,23 +220,23 @@ final homeProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((
   print(
     'DEBUG: homeProductsProvider fetching all products (periodic refresh active)',
   );
-  return service.getProducts();
+  return service.getProducts(limit: 20); // only need newest items for home grid
 });
 
 // Category specific providers for Home Page
 final jewelryProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
   final service = ref.watch(productsServiceProvider);
-  return service.getProducts(categorySlug: 'femme-accessoires-bijoux');
+  return service.getProducts(categorySlug: 'femme-accessoires-bijoux', limit: 10);
 });
 
 final womenShoesProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
   final service = ref.watch(productsServiceProvider);
-  return service.getProducts(categorySlug: 'femme-chaussures');
+  return service.getProducts(categorySlug: 'femme-chaussures', limit: 10);
 });
 
 final bagsProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
   final service = ref.watch(productsServiceProvider);
-  return service.getProducts(categorySlug: 'femme-accessoires-sacs');
+  return service.getProducts(categorySlug: 'femme-accessoires-sacs', limit: 10);
 });
 
 // User Products Provider (My Ads)
@@ -246,7 +247,7 @@ final userProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((
   if (userId == null) return [];
 
   final service = ref.watch(productsServiceProvider);
-  return service.getProducts(sellerId: userId);
+  return service.getProducts(sellerId: userId, limit: 50);
 });
 
 // Single Product Provider
