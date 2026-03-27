@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,6 +8,7 @@ import 'package:marketplace_app/features/auth/data/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
 import 'package:marketplace_app/features/users/data/users_service.dart';
+import 'package:marketplace_app/shared/providers/cache_providers.dart';
 
 /// Provider pour le token (synchrone pour l'intercepteur)
 final authTokenProvider = StateProvider<String?>((ref) => null);
@@ -38,7 +40,7 @@ final authInitializerProvider = FutureProvider<void>((ref) async {
   if (savedToken != null) {
     ref.read(authTokenProvider.notifier).state = savedToken;
     // On synchronise le token FCM au démarrage si on est connecté
-    ref.read(authServiceProvider).syncFcmToken(savedToken);
+    ref.read(authServiceProvider).syncFcmToken();
   }
 
   // Écouter les changements d'auth Firebase pour une synchronisation automatique
@@ -56,10 +58,10 @@ final authInitializerProvider = FutureProvider<void>((ref) async {
           print('Auto-sync error: $e');
         }
       }
-    } else {
-      // Firebase déconnecté -> Nettoyer le backend token
-      ref.read(authTokenProvider.notifier).state = null;
     }
+    // NOTATION: We removed the 'else { state = null }' block here because 
+    // it was forcibly logging out email/password users who don't have a Firebase account.
+    // Manual logout is already handled by AuthService.logout().
   });
 });
 
@@ -93,14 +95,52 @@ final userAvatarUrlProvider = FutureProvider<String?>((ref) async {
 /// Provider pour le service des utilisateurs
 final usersServiceProvider = Provider((ref) {
   final dio = ref.watch(dioProvider);
-  return UsersService(dio);
+  final cache = ref.watch(cacheServiceProvider);
+  return UsersService(dio, cache);
 });
 
 /// Provider pour récupérer le profil de l'utilisateur actuel
-final userProfileProvider = FutureProvider.autoDispose<UserModel?>((ref) async {
-  final service = ref.watch(usersServiceProvider);
-  final userId = await ref.watch(userIdProvider.future);
-  if (userId == null) return null;
-
-  return service.getMe();
+final userProfileProvider = AsyncNotifierProvider.autoDispose<UserProfileNotifier, UserModel?>(() {
+  return UserProfileNotifier();
 });
+
+class UserProfileNotifier extends AutoDisposeAsyncNotifier<UserModel?> {
+  @override
+  FutureOr<UserModel?> build() {
+    final service = ref.watch(usersServiceProvider);
+    
+    // 1. Retourner le cache immédiatement
+    final cached = service.getCachedProfile();
+    
+    // 2. Lancer la mise à jour en arrière-plan
+    _fetchProfile();
+    
+    return cached;
+  }
+
+  Future<void> _fetchProfile() async {
+    final token = ref.read(authTokenProvider);
+    if (token == null || token.isEmpty) return;
+
+    try {
+      final service = ref.read(usersServiceProvider);
+      final user = await service.getMe();
+      
+      // Mettre à jour le cache
+      await service.cacheProfile(user);
+      
+      // Mettre à jour l'état
+      state = AsyncData(user);
+    } catch (e, stack) {
+      print('UserProfileNotifier error: $e');
+      if (!state.hasValue || state.value == null) {
+        state = AsyncError(e, stack);
+      }
+    }
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    await _fetchProfile();
+  }
+}

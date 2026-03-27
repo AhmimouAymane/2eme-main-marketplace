@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/shared/models/system_settings_model.dart';
 

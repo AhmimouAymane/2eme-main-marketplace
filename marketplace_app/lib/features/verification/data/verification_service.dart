@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/presentation/providers/auth_providers.dart';
-import '../../../shared/providers/shop_providers.dart';
 
 final verificationServiceProvider = Provider((ref) {
   final dio = ref.watch(dioProvider);

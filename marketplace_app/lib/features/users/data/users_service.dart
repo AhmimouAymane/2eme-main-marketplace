@@ -1,10 +1,24 @@
 import 'package:dio/dio.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
+import 'package:marketplace_app/shared/services/cache_service.dart';
 
 class UsersService {
   final Dio _dio;
+  final CacheService _cache;
+  static const String profileCacheKey = 'cached_user_profile';
 
-  UsersService(this._dio);
+  UsersService(this._dio, this._cache);
+
+  /// Récupère le profil mis en cache
+  UserModel? getCachedProfile() {
+    final list = _cache.getList(profileCacheKey, (json) => UserModel.fromJson(json));
+    return list.isNotEmpty ? list.first : null;
+  }
+
+  /// Sauvegarde le profil en cache (on utilise une liste d'un seul élément pour CacheService)
+  Future<void> cacheProfile(UserModel user) async {
+    await _cache.saveList(profileCacheKey, [user.toJson()]);
+  }
 
   Future<UserModel> getMe() async {
     try {

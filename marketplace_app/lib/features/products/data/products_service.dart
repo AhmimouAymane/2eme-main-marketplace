@@ -1,12 +1,25 @@
 import 'package:dio/dio.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
-//import 'package:marketplace_app/shared/services/api_client.dart';
+import 'package:marketplace_app/shared/services/cache_service.dart';
 
 /// Service pour gérer les appels API liés aux produits
 class ProductsService {
   final Dio _dio;
+  final CacheService _cache;
+  static const String homeProductsCacheKey = 'cached_home_products';
 
-  ProductsService(this._dio);
+  ProductsService(this._dio, this._cache);
+
+  /// Récupérer les produits depuis le cache local (immédiat)
+  List<ProductModel> getCachedHomeProducts() {
+    return _cache.getList(homeProductsCacheKey, ProductModel.fromJson);
+  }
+
+  /// Sauvegarder les produits dans le cache local
+  Future<void> cacheHomeProducts(List<ProductModel> products) async {
+    final jsonList = products.map((p) => p.toJson()).toList();
+    await _cache.saveList(homeProductsCacheKey, jsonList);
+  }
 
   /// Récupérer tous les produits avec filtres optionnels
   Future<List<ProductModel>> getProducts({

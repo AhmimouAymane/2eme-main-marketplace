@@ -18,6 +18,7 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       // backgroundColor: AppColors.cloviBeige, // Inherited from theme
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             _buildTopBar(context),

@@ -1750,7 +1750,7 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
                                           children: [
                                             Expanded(
                                               child: DropdownButtonFormField<AddressModel>(
-                                                value: _selectedAddress,
+                                                initialValue: _selectedAddress,
                                                 decoration: InputDecoration(
                                                   labelText:
                                                       'Adresse de livraison',

@@ -150,6 +150,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } catch (e) {
       if (mounted) {
         final message = e.toString().replaceAll('Exception: ', '');
+        
+        // On ne montre pas d'erreur si c'est une annulation volontaire
+        if (message == 'canceled') return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message), 

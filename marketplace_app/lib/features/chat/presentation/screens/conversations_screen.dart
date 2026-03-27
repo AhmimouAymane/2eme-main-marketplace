@@ -28,6 +28,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
 
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: [
             _buildTopBar(),
@@ -89,6 +90,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 _buildConversationsList(filteredConversations),
+                                const SizedBox(height: 100),
                               ],
                             ),
                           ),

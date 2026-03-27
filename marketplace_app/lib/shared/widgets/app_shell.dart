@@ -100,6 +100,7 @@ class AppShell extends ConsumerWidget {
         }
       },
       child: Scaffold(
+        extendBody: true,
         body: navigationShell,
         bottomNavigationBar: CloviBottomNav(
           selectedIndex: _selectedBarIndex,

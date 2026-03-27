@@ -8,7 +8,6 @@ import 'package:marketplace_app/core/utils/validators.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
-import 'package:marketplace_app/shared/models/user_model.dart';
 
 /// Écran d'édition du profil — même design que la page profil (Clovi)
 class EditProfileScreen extends ConsumerStatefulWidget {

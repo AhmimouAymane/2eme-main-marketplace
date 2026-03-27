@@ -2,25 +2,57 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/user_review_model.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../features/auth/presentation/providers/auth_providers.dart';
+import '../../../shared/services/cache_service.dart';
+import '../../../shared/providers/cache_providers.dart';
 
 final userReviewsServiceProvider = Provider((ref) {
   final dio = ref.watch(dioProvider);
-  return UserReviewsService(dio);
+  final cache = ref.watch(cacheServiceProvider);
+  return UserReviewsService(dio, cache);
 });
 
-final topSellersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  // Mise en place d'un rafraîchissement automatique toutes les 30 secondes
-  final timer = Timer(const Duration(seconds: 30), () {
-    ref.invalidateSelf();
-  });
-  
-  // S'assurer de nettoyer le timer quand le provider est détruit ou invalidé
-  ref.onDispose(() => timer.cancel());
-
-  return ref.watch(userReviewsServiceProvider).getTopSellers();
+final topSellersProvider = AsyncNotifierProvider<TopSellersNotifier, List<Map<String, dynamic>>>(() {
+  return TopSellersNotifier();
 });
+
+class TopSellersNotifier extends AsyncNotifier<List<Map<String, dynamic>>> {
+  @override
+  FutureOr<List<Map<String, dynamic>>> build() {
+    final service = ref.watch(userReviewsServiceProvider);
+    
+    // 1. Retourner le cache immédiatement
+    final cached = service.getCachedTopSellers();
+    
+    // 2. Lancer la mise à jour en arrière-plan
+    _fetchTopSellers();
+    
+    return cached;
+  }
+
+  Future<void> _fetchTopSellers() async {
+    try {
+      final service = ref.read(userReviewsServiceProvider);
+      final sellers = await service.getTopSellers();
+      
+      // Mettre à jour le cache
+      await service.cacheTopSellers(sellers);
+      
+      // Mettre à jour l'état
+      state = AsyncData(sellers);
+    } catch (e, stack) {
+      print('TopSellersNotifier error: $e');
+      if (!state.hasValue || state.value!.isEmpty) {
+        state = AsyncError(e, stack);
+      }
+    }
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    await _fetchTopSellers();
+  }
+}
 
 final myReviewForOrderProvider = FutureProvider.autoDispose.family<UserReviewModel?, String>((ref, orderId) async {
   return ref.watch(userReviewsServiceProvider).getMyReviewForOrder(orderId);
@@ -28,8 +60,18 @@ final myReviewForOrderProvider = FutureProvider.autoDispose.family<UserReviewMod
 
 class UserReviewsService {
   final Dio _dio;
+  final CacheService _cache;
+  static const String topSellersCacheKey = 'cached_top_sellers';
 
-  UserReviewsService(this._dio);
+  UserReviewsService(this._dio, this._cache);
+
+  List<Map<String, dynamic>> getCachedTopSellers() {
+    return _cache.getList(topSellersCacheKey, (json) => json.cast<String, dynamic>());
+  }
+
+  Future<void> cacheTopSellers(List<Map<String, dynamic>> sellers) async {
+    await _cache.saveList(topSellersCacheKey, sellers);
+  }
 
   Future<UserReviewModel> createReview({
     required String orderId,

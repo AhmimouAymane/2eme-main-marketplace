@@ -48,6 +48,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       key: _scaffoldKey,
       drawer: const CloviDrawer(),
       body: SafeArea(
+          bottom: false,
           child: Column(
             children: [
               // Custom Top Bar
@@ -60,7 +61,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       'DEBUG: HomeScreen.onRefresh - Clearing filters and refreshing products',
                     );
                     ref.read(productFilterProvider.notifier).clearAll();
-                    await ref.refresh(homeProductsProvider.future);
+                    await ref.read(homeProductsProvider.notifier).refresh();
                   },
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(vertical: 16),

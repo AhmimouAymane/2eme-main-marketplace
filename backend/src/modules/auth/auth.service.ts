@@ -98,7 +98,8 @@ export class AuthService {
                 ...tokens,
             };
         } catch (error) {
-            throw new UnauthorizedException('Invalid Firebase token');
+            console.error('[AuthService] Firebase token verification failed:', error);
+            throw new UnauthorizedException(`Invalid Firebase token: ${error.message}`);
         }
     }
 
@@ -124,6 +125,21 @@ export class AuthService {
     }
 
     async updateFcmToken(userId: string, token: string) {
+        if (!token || token === '') {
+            return this.usersService.update(userId, { fcmToken: null });
+        }
+
+        // 1. De-duplication: Clear this token from any other user who might have it
+        // (prevents "bleeding" notifications when swapping accounts on the same device)
+        await this.prisma.user.updateMany({
+            where: {
+                fcmToken: token,
+                id: { not: userId }
+            },
+            data: { fcmToken: null }
+        });
+
+        // 2. Assign token to current user
         return this.usersService.update(userId, { fcmToken: token });
     }
 
@@ -295,14 +311,14 @@ export class AuthService {
                 { sub: userId, email, role } as any,
                 {
                     secret: process.env.JWT_ACCESS_SECRET || 'secret',
-                    expiresIn: (process.env.JWT_ACCESS_EXPIRATION || '1h') as any,
+                    expiresIn: (process.env.JWT_ACCESS_EXPIRATION || '24h') as any,
                 },
             ),
             this.jwtService.signAsync(
                 { sub: userId, email, role } as any,
                 {
                     secret: process.env.JWT_REFRESH_SECRET || 'secret',
-                    expiresIn: (process.env.JWT_REFRESH_EXPIRATION || '7d') as any,
+                    expiresIn: (process.env.JWT_REFRESH_EXPIRATION || '365d') as any,
                 },
             ),
         ]);

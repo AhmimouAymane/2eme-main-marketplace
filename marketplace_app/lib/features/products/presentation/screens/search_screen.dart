@@ -7,7 +7,6 @@ import 'package:marketplace_app/shared/models/category_model.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/features/products/presentation/widgets/product_card.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
-import '../../../auth/presentation/providers/auth_providers.dart';
 
 /// Écran de recherche et filtrage des produits
 class SearchScreen extends ConsumerStatefulWidget {
@@ -201,7 +200,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       }
                       return GridView.builder(
                         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           childAspectRatio: 0.7,
@@ -243,7 +242,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       }
                       return ListView.separated(
                         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                         itemCount: users.length,
                         separatorBuilder: (context, index) => const SizedBox(height: 12),
                         itemBuilder: (context, index) {

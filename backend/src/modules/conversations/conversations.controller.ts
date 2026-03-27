@@ -80,10 +80,14 @@ export class ConversationsController {
   ) {
     return this.conversationsService
       .createMessage(id, userId, body.content)
-      .then((message) => {
-        // Diffuse globalement, le client filtrera par conversationId
+      .then(async (message) => {
         if (this.chatGateway?.server) {
-          this.chatGateway.server.emit('new_message', message);
+          const conversation = await this.conversationsService.getConversation(id, userId);
+          const recipientId = conversation.buyerId === userId ? conversation.sellerId : conversation.buyerId;
+          
+          // En émettant vers un tableau de rooms, Socket.IO se charge automatiquement
+          // de dé-dupliquer l'événement pour un client qui serait dans les deux rooms.
+          this.chatGateway.server.to([id, `user_${recipientId}`]).emit('new_message', message);
         }
         return message;
       });

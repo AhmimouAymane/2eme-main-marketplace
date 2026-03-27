@@ -32,11 +32,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _isSending = false;
 
   @override
+  void didUpdateWidget(ChatScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.conversationId != widget.conversationId) {
+      // Mettre à jour l'ID actif si l'on change de conversation (ex: via notification)
+      Future.microtask(() {
+        ref.read(currentChatConversationIdProvider.notifier).state =
+            widget.conversationId;
+      });
+      
+      // Rejoindre le nouveau salon
+      ref.read(chatSocketProvider)?.emit('join_conversation', {
+        'conversationId': widget.conversationId,
+      });
+      
+      _markAsRead();
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
+    // On définit l'ID de la conversation actuelle via microtask pour éviter l'erreur de build
     Future.microtask(() {
-      ref.read(currentChatConversationIdProvider.notifier).state =
-          widget.conversationId;
+      ref.read(currentChatConversationIdProvider.notifier).state = widget.conversationId;
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -52,9 +71,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   void dispose() {
-    // S'assurer que le provider est réinitialisé quand on quitte l'écran
-    // pour que les notifications de ce chat s'affichent à nouveau
-    ref.read(currentChatConversationIdProvider.notifier).state = null;
+    // Le provider auto-dispose se chargera de la remise à null automatiquement
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -86,21 +103,50 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty || _isSending) return;
 
-    setState(() => _isSending = true);
+    final currentUserId = ref.read(userIdProvider).value;
+    if (currentUserId == null) return;
+
+    // --- OPTIMISTIC UI ---
+    final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final optimisticMessage = MessageModel(
+      id: tempId,
+      conversationId: widget.conversationId,
+      senderId: currentUserId,
+      content: text,
+      createdAt: DateTime.now(),
+      isRead: false,
+    );
+
+    // 1. Ajouter immédiatement à la liste (UI)
+    ref.read(conversationMessagesProvider(widget.conversationId).notifier).addMessage(optimisticMessage);
+    
+    // 2. Nettoyer le champ et scroller
     _controller.clear();
+    _scrollToBottom();
+    // -----------------------
+
+    // setState(() => _isSending = true); // On ne bloque plus l'UI avec un spinner global
 
     try {
       final service = ref.read(chatServiceProvider);
       await service.sendMessage(widget.conversationId, text);
-      ref.invalidate(conversationMessagesProvider(widget.conversationId));
+      
+      // On rafraîchit la liste des conversations en arrière-plan pour le dernier message
       ref.invalidate(conversationsProvider);
-      _scrollToBottom();
+      
+      // Note: Le "vrai" message reviendra via Socket.IO et remplacera l'optimiste
+      // grâce à la logique de dédoublonnement dans le Notifier.
+      
     } catch (e) {
+      // En cas d'erreur, on retire le message optimiste
+      ref.read(conversationMessagesProvider(widget.conversationId).notifier).removeMessage(tempId);
+      
+      // On remet le texte dans le contrôleur pour que l'utilisateur puisse réessayer
+      _controller.text = text;
+
       if (!mounted) return;
       
       String errorMessage = 'Erreur lors de l\'envoi: $e';
-      
-      // Check for 403 Forbidden (Blocked user)
       if (e.toString().contains('403') || e.toString().contains('Forbidden')) {
         errorMessage = 'Vous ne pouvez pas envoyer de message à cet utilisateur.';
       }
@@ -112,10 +158,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
     }
   }
 
@@ -313,6 +355,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final conversationAsync = ref.watch(conversationProvider(widget.conversationId));
     final messagesAsync = ref.watch(conversationMessagesProvider(widget.conversationId));
     final currentUserIdAsync = ref.watch(userIdProvider);
+    
+    // Observer le provider pour le garder en vie via autoDispose tant que l'écran est affiché
+    ref.watch(currentChatConversationIdProvider);
 
     return PopScope(
       canPop: false,

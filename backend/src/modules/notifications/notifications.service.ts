@@ -75,6 +75,7 @@ export class NotificationsService {
                     // All values MUST be Strings for FCM data payload
                     data: {
                         type: notificationData.type,
+                        targetUserId: notificationData.userId,
                         ...(notificationData.data ?
                             Object.entries(notificationData.data).reduce((acc, [k, v]) => ({
                                 ...acc, [k]: String(v)

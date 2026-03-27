@@ -8,7 +8,7 @@ import 'core/theme/app_theme.dart';
 import 'core/routes/router_config.dart';
 import 'core/routes/app_routes.dart';
 import 'shared/providers/shop_providers.dart';
-import 'shared/providers/settings_providers.dart';
+import 'shared/providers/cache_providers.dart';
 import 'shared/models/conversation_model.dart';
 import 'features/auth/presentation/providers/auth_providers.dart';
 import 'features/notifications/presentation/providers/notifications_provider.dart';
@@ -95,6 +95,8 @@ void main() async {
     UncontrolledProviderScope(
       container: ProviderContainer(
         overrides: [
+          // On injecte l'instance SharedPreferences pour le CacheService
+          sharedPreferencesProvider.overrideWith((ref) => prefs),
           // On injecte le token immédiatement pour que isAuthenticated le voit dès la première frame
           if (initialToken != null)
             authTokenProvider.overrideWith((ref) => initialToken),
@@ -124,10 +126,17 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
   }
 
   void _handleNotificationClick(RemoteMessage message) {
-    print("Notification clicked: ${message.data}");
     final data = message.data;
-    final screen = data['screen'];
+    final currentUserId = ref.read(userIdProvider).value;
+    final targetUserId = data['targetUserId'];
     
+    // Si la notification est destinée à un autre utilisateur, on ignore le clic
+    if (targetUserId != null && currentUserId != null && targetUserId != currentUserId) {
+      print("Clic notification ignoré: destinée à un autre utilisateur (Target: $targetUserId, Current: $currentUserId)");
+      return;
+    }
+
+    final screen = data['screen'];
     if (screen == null) return;
 
     final router = ref.read(routerProvider);
@@ -186,8 +195,17 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       
       // Vérifier si l'utilisateur est authentifié avant toute action
       final token = ref.read(authTokenProvider);
-      if (token == null) {
+      final currentUserId = ref.read(userIdProvider).value;
+      
+      if (token == null || currentUserId == null) {
         print("Notification reçue en premier plan mais ignorée: Utilisateur non connecté");
+        return;
+      }
+
+      // Filtrer les notifications destinées à un autre utilisateur (anti-bleeding)
+      final targetUserId = data['targetUserId'];
+      if (targetUserId != null && targetUserId != currentUserId) {
+        print("Notification ignorée: destinée à un autre utilisateur (Target: $targetUserId, Current: $currentUserId)");
         return;
       }
 
@@ -207,10 +225,18 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       ref.invalidate(unreadNotificationsCountProvider);
 
       if (message.notification != null) {
-        // Ne pas afficher de notification si c'est un message chat
+        // Ne pas afficher de notification en double si c'est un message chat et que le Socket fonctionne
         // (Socket.io s'en occupe déjà au premier plan pour plus de réactivité)
         if (data['screen'] == 'chat') {
-          return;
+          final chatSocket = ref.read(chatSocketProvider);
+          final isSocketConnected = chatSocket?.connected ?? false;
+          
+          if (isSocketConnected) {
+            print('DEBUG: FCM chat push ignored because Socket.IO is handling it');
+            return;
+          } else {
+            print('DEBUG: Socket.IO disconnected! Falling back to FCM for chat notification');
+          }
         }
 
         _showCloviNotification(
@@ -348,18 +374,16 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
           return;
         }
 
-        // 2. On est déjà dans la conversation en question
-        if (currentChatId == next.conversationId) {
-          print('DEBUG: Notification skipped (already in this chat)');
+        // 2. On est déjà dans la conversation en question ? 
+        // (Vérifié via le provider géré par ChatScreen)
+        
+        if (currentChatId != null && currentChatId.toLowerCase() == next.conversationId.toLowerCase()) {
+          print('DEBUG: Notification skipped (already in this chat: $currentChatId)');
           return;
         }
 
-        // 3. On est sur la liste des discussions (qui se met à jour seule)
-        final currentPath = ref.read(routerProvider).routeInformationProvider.value.uri.toString();
-        if (currentPath == AppRoutes.conversations) {
-          print('DEBUG: Notification skipped (on conversations list screen)');
-          return;
-        }
+        // 3. (Supprimé) On affiche la notification même si l'on est sur la liste des discussions
+        // pour que l'utilisateur soit clairement alerté
 
         print('DEBUG: Showing SnackBar for message: ${next.content}');
         _showCloviNotification(
@@ -376,20 +400,9 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       },
     );
 
-    // Initialise le token au démarrage
-    final authInit = ref.watch(authInitializerProvider);
-
-    if (authInit.isLoading) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(color: AppColors.cloviGreen),
-          ),
-        ),
-      );
-    }
+    // On garde le watch pour les effets de bord (sync FCM, auth state changes)
+    // mais on n'attend plus le chargement car on a déjà injecté le token dans le ProviderContainer
+    ref.watch(authInitializerProvider);
 
     return MaterialApp.router(
       title: 'Marketplace',
@@ -419,10 +432,7 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
           );
         }
         
-        return SafeArea(
-          top: false,
-          child: child!,
-        );
+        return child!;
       },
     );
   }

@@ -128,9 +128,10 @@ class ApiInterceptor extends Interceptor {
   }
   
   Future<void> _handleUnauthorized() async {
-    // 1. Nettoyer le stockage local
+    // 1. Nettoyer le stockage local complet
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.keyAuthToken);
+    await prefs.remove(AppConstants.keyRefreshToken);
     await prefs.remove(AppConstants.keyUserId);
     
     // 2. Mettre à jour le provider d'auth pour déclencher la redirection GoRouter

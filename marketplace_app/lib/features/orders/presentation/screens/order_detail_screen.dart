@@ -756,7 +756,7 @@ class OrderDetailScreen extends ConsumerWidget {
                                         children: [
                                           Expanded(
                                             child: DropdownButtonFormField<AddressModel>(
-                                              value: selectedAddress,
+                                              initialValue: selectedAddress,
                                               decoration: InputDecoration(
                                                 labelText: 'Adresse de collecte',
                                                 prefixIcon: const Icon(Icons.location_on_outlined, size: 20),

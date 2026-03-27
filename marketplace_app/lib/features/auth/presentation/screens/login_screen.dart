@@ -105,6 +105,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (mounted) {
         final message = e.toString().replaceAll('Exception: ', '');
+        
+        // On ne montre pas d'erreur si c'est une annulation volontaire
+        if (message == 'canceled') return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message), backgroundColor: AppColors.error),
         );
@@ -121,290 +125,285 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       backgroundColor: AppColors.cloviDarkGreen,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo de l'application
-                Image.asset(
-                  'assets/images/appiconB.png',
-                  height: 120,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 12),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              // Logo de l'application
+              Image.asset(
+                'assets/images/appiconB.png',
+                height: 120,
+                fit: BoxFit.contain,
+              ),
+              const SizedBox(height: 12),
 
-                // Sous-titre
-                Text(
-                  'Votre compagnon de mode d\'occasion',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white.withOpacity(0.9),
-                    fontWeight: FontWeight.w500,
-                    height: 1.4,
-                  ),
-                  textAlign: TextAlign.center,
+              // Sous-titre
+              Text(
+                'Votre compagnon de mode d\'occasion',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white.withOpacity(0.9),
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
                 ),
-                const SizedBox(height: 40),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
 
-                // Carte de connexion
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppColors.cloviBeige,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
+              // Carte de connexion
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: AppColors.cloviBeige,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Titre "Connexion"
+                      Text(
+                        'Connexion',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.cloviDarkGreen,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                    ],
-                  ),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Titre "Connexion"
-                        Text(
-                          'Connexion',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
+                      const SizedBox(height: 32),
+
+                      // Email field
+                      TextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: Validators.email,
+                        decoration: InputDecoration(
+                          labelText: 'Email',
+                          labelStyle: TextStyle(
+                            color: AppColors.cloviDarkGreen,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.email_outlined,
                             color: AppColors.cloviDarkGreen,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 32),
-
-                        // Email field
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          validator: Validators.email,
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            labelStyle: TextStyle(
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
                               color: AppColors.cloviDarkGreen,
-                              fontWeight: FontWeight.w500,
+                              width: 1.5,
                             ),
-                            prefixIcon: Icon(
-                              Icons.email_outlined,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
                               color: AppColors.cloviDarkGreen,
+                              width: 1.5,
                             ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.cloviDarkGreen,
-                                width: 1.5,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.cloviDarkGreen,
-                                width: 1.5,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.cloviDarkGreen,
-                                width: 2,
-                              ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppColors.cloviDarkGreen,
+                              width: 2,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                      ),
+                      const SizedBox(height: 16),
 
-                        // Password field
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          validator: Validators.password,
-                          decoration: InputDecoration(
-                            labelText: 'Mot de passe',
-                            labelStyle: TextStyle(
+                      // Password field
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        validator: Validators.password,
+                        decoration: InputDecoration(
+                          labelText: 'Mot de passe',
+                          labelStyle: TextStyle(
+                            color: AppColors.cloviDarkGreen,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.lock_outlined,
+                            color: AppColors.cloviDarkGreen,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
                               color: AppColors.cloviDarkGreen,
-                              fontWeight: FontWeight.w500,
                             ),
-                            prefixIcon: Icon(
-                              Icons.lock_outlined,
+                            onPressed: () {
+                              setState(
+                                () => _obscurePassword = !_obscurePassword,
+                              );
+                            },
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
                               color: AppColors.cloviDarkGreen,
+                              width: 1.5,
                             ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_outlined
-                                    : Icons.visibility_off_outlined,
-                                color: AppColors.cloviDarkGreen,
-                              ),
-                              onPressed: () {
-                                setState(
-                                  () => _obscurePassword = !_obscurePassword,
-                                );
-                              },
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppColors.cloviDarkGreen,
+                              width: 1.5,
                             ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.cloviDarkGreen,
-                                width: 1.5,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.cloviDarkGreen,
-                                width: 1.5,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.cloviDarkGreen,
-                                width: 2,
-                              ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: AppColors.cloviDarkGreen,
+                              width: 2,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                      ),
+                      const SizedBox(height: 24),
 
-                        // Login button
-                        ElevatedButton(
-                          onPressed: _isLoading ? null : _handleLogin,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.cloviDarkGreen,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : const Text(
-                                  'Se connecter',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Forgot password link
-                        TextButton(
-                          onPressed: _handleForgotPassword,
-                          child: const Text(
-                            'Mot de passe oublié ?',
-                            style: TextStyle(
-                              color: Color(0xFF1A1A1A),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Social Logins Title
-                        Padding(
+                      // Login button
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _handleLogin,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.cloviDarkGreen,
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: Row(
-                            children: [
-                              const Expanded(child: Divider()),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: Text(
-                                  'Ou continuer avec',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 14,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
                                   ),
                                 ),
+                              )
+                            : const Text(
+                                'Se connecter',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                              const Expanded(child: Divider()),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Forgot password link
+                      TextButton(
+                        onPressed: _handleForgotPassword,
+                        child: const Text(
+                          'Mot de passe oublié ?',
+                          style: TextStyle(
+                            color: Color(0xFF1A1A1A),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Social Logins Title
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Row(
+                          children: [
+                            const Expanded(child: Divider()),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                'Ou continuer avec',
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            const Expanded(child: Divider()),
+                          ],
+                        ),
+                      ),
+
+                      // Social Login Buttons (Vertical List)
+                      Column(
+                        children: [
+                          // Google Button
+                          _buildSocialButton(
+                            iconSvg:
+                                '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48px" height="48px"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C40,22.659,39.948,21.356,39.862,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083L43.611,20.083L42,20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.948,21.356,43.611,20.083z"/></svg>''',
+                            label: 'Google',
+                            onPressed: () => _handleSocialLogin('google'),
+                          ),
+                          const SizedBox(height: 12),
+                          // Apple Button
+                          _buildSocialButton(
+                            iconSvg:
+                                '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="384" height="512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 21.8-88.5 21.8-11.4 0-43.8-19.1-72.9-19.1-38.6 0-77.1 22.1-98.3 54.7-33.1 52.3-10.7 130.3 21.8 175.6 15.9 22.1 34.9 44 57.2 43.1 22.1-.9 30.5-13.8 56.4-13.8 25.8 0 33.6 13.8 56.5 13.5 23.2-.3 40-19.8 55.9-41.8 18.4-25.5 26.1-50.2 26.3-51.5-.5-.2-50.5-18.4-50.7-73.2zM271.8 81.6c17.5-20.9 29.4-49.9 26.2-78.8-25.1 1-55.5 16.3-73.5 36.9-16.1 18.2-30.2 47.7-26.4 75.7 27.9 2.2 56.2-12.9 73.7-33.8z"/></svg>''',
+                            label: 'Apple',
+                            onPressed: () => _handleSocialLogin('apple'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Divider
+                      Container(height: 1, color: const Color(0xFFE0E0E0)),
+                      const SizedBox(height: 16),
+
+                      // Register link
+                      TextButton(
+                        onPressed: () => context.push(AppRoutes.register),
+                        child: RichText(
+                          text: TextSpan(
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF1A1A1A),
+                            ),
+                            children: [
+                              const TextSpan(
+                                text: "Vous n'avez pas de compte ? ",
+                                style: TextStyle(fontWeight: FontWeight.normal),
+                              ),
+                              TextSpan(
+                                text: "S'inscrire",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.cloviDarkGreen,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-
-                        // Social Login Buttons (Vertical List)
-                        Column(
-                          children: [
-                            // Google Button
-                            _buildSocialButton(
-                              iconSvg:
-                                  '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48px" height="48px"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C40,22.659,39.948,21.356,39.862,20.083z"/><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/><path fill="#1976D2" d="M43.611,20.083L43.611,20.083L42,20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.948,21.356,43.611,20.083z"/></svg>''',
-                              label: 'Google',
-                              onPressed: () => _handleSocialLogin('google'),
-                            ),
-                            const SizedBox(height: 12),
-                            // Apple Button
-                            _buildSocialButton(
-                              iconSvg:
-                                  '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="384" height="512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 21.8-88.5 21.8-11.4 0-43.8-19.1-72.9-19.1-38.6 0-77.1 22.1-98.3 54.7-33.1 52.3-10.7 130.3 21.8 175.6 15.9 22.1 34.9 44 57.2 43.1 22.1-.9 30.5-13.8 56.4-13.8 25.8 0 33.6 13.8 56.5 13.5 23.2-.3 40-19.8 55.9-41.8 18.4-25.5 26.1-50.2 26.3-51.5-.5-.2-50.5-18.4-50.7-73.2zM271.8 81.6c17.5-20.9 29.4-49.9 26.2-78.8-25.1 1-55.5 16.3-73.5 36.9-16.1 18.2-30.2 47.7-26.4 75.7 27.9 2.2 56.2-12.9 73.7-33.8z"/></svg>''',
-                              label: 'Apple',
-                              onPressed: () => _handleSocialLogin('apple'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Divider
-                        Container(height: 1, color: const Color(0xFFE0E0E0)),
-                        const SizedBox(height: 16),
-
-                        // Register link
-                        TextButton(
-                          onPressed: () => context.push(AppRoutes.register),
-                          child: RichText(
-                            text: TextSpan(
-                              style: const TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF1A1A1A),
-                              ),
-                              children: [
-                                const TextSpan(
-                                  text: "Vous n'avez pas de compte ? ",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: "S'inscrire",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.cloviDarkGreen,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

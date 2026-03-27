@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/shared/services/api_client.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
@@ -175,38 +176,63 @@ class AuthService {
   /// Connexion via Apple
   Future<Map<String, dynamic>> signInWithApple() async {
     try {
-      // Sur Android, Apple Sign-in nécessite une configuration web (Service ID, Redirect URI)
-      // Si non configuré, SignInWithApple.getAppleIDCredential lèvera une exception brute.
-      // On peut ajouter un check préalable ou un catch spécifique.
-      
-      final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
+      String? idToken;
+      String? firstName;
+      String? lastName;
 
-      final OAuthProvider oAuthProvider = OAuthProvider('apple.com');
-      final AuthCredential credential = oAuthProvider.credential(
-        idToken: appleCredential.identityToken,
-        accessToken: appleCredential.authorizationCode,
-      );
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        // Flux NATIF Firebase pour Android (évite l'erreur "missing initial state")
+        final appleProvider = AppleAuthProvider();
+        appleProvider.addScope('email');
+        appleProvider.addScope('name');
+        
+        final UserCredential userCredential = await FirebaseAuth.instance.signInWithProvider(appleProvider);
+        idToken = await userCredential.user?.getIdToken();
+        
+        // Extraire le nom s'il est disponible (Firebase concatène souvent en displayName)
+        final displayName = userCredential.user?.displayName;
+        if (displayName != null && displayName.contains(' ')) {
+          final parts = displayName.split(' ');
+          firstName = parts.first;
+          lastName = parts.last;
+        } else {
+          firstName = displayName;
+        }
+      } else {
+        // Flux natif iOS via le package sign_in_with_apple
+        final appleCredential = await SignInWithApple.getAppleIDCredential(
+          scopes: [
+            AppleIDAuthorizationScopes.email,
+            AppleIDAuthorizationScopes.fullName,
+          ],
+        );
 
-      final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-      final String? idToken = await userCredential.user?.getIdToken();
+        final OAuthProvider oAuthProvider = OAuthProvider('apple.com');
+        final AuthCredential credential = oAuthProvider.credential(
+          idToken: appleCredential.identityToken,
+          accessToken: appleCredential.authorizationCode,
+        );
+
+        final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        idToken = await userCredential.user?.getIdToken();
+        firstName = appleCredential.givenName;
+        lastName = appleCredential.familyName;
+      }
 
       if (idToken == null) throw 'Impossible d\'obtenir le token Firebase';
 
       return await syncWithBackend(
         idToken,
-        firstName: appleCredential.givenName,
-        lastName: appleCredential.familyName,
+        firstName: firstName,
+        lastName: lastName,
       );
     } catch (e) {
-      if (e.toString().contains('webAuthenticationOptions') || e.toString().contains('Android')) {
-        throw 'La connexion Apple n\'est pas encore configurée pour Android. Veuillez utiliser Google ou votre email.';
+      final errorStr = e.toString();
+      // On ignore l'erreur si l'utilisateur a juste annulé le processus (Error Code -7003 ou "canceled")
+      if (errorStr.contains('7003') || errorStr.contains('canceled') || errorStr.contains('1001')) { // 1001 is canceled on Android
+        throw 'canceled';
       }
-      throw e.toString();
+      throw errorStr;
     }
   }
 
@@ -273,23 +299,22 @@ class AuthService {
     _ref.invalidate(userProfileProvider);
     
     // Synchroniser le token FCM
-    await syncFcmToken(token);
+    await syncFcmToken();
   }
 
-  /// Synchroniser le token FCM avec le backend (ou l'effacer en passant '')
-  Future<void> syncFcmToken([String? token, String? explicitFcmToken]) async {
+  /// Synchroniser le token FCM avec le backend (ou l'effacer en passant une chaîne vide)
+  Future<void> syncFcmToken({String? fcmTokenOverride}) async {
     try {
-      final String? fcmToken = explicitFcmToken ?? await FirebaseMessaging.instance.getToken();
+      final String? sessionToken = _ref.read(authTokenProvider);
+      if (sessionToken == null || sessionToken.isEmpty) return;
+
+      final String? fcmToken = fcmTokenOverride ?? await FirebaseMessaging.instance.getToken();
       
-      if (fcmToken != null) {
-        await _dio.post(
-          'auth/fcm-token', 
-          data: {'token': fcmToken},
-          options: token != null 
-            ? Options(headers: {'Authorization': 'Bearer $token'})
-            : null,
-        );
-      }
+      await _dio.post(
+        'auth/fcm-token', 
+        data: {'token': fcmToken ?? ''},
+        options: Options(headers: {'Authorization': 'Bearer $sessionToken'}),
+      );
     } catch (e) {
       final errorStr = e.toString();
       if (errorStr.contains('apns-token-not-set')) {
@@ -303,11 +328,11 @@ class AuthService {
   /// Déconnexion
   Future<void> logout() async {
     try {
-      // D'abord, informer le backend d'effacer le token FCM
-      // pour éviter les interférences (bleeding) de notifications vers ce téléphone
-      await syncFcmToken('');
+      // 1. Informer d'abord le backend d'effacer le token FCM
+      // On utilise le sessionToken actuel AVANT de vider le state
+      await syncFcmToken(fcmTokenOverride: '');
       
-      // Ensuite, supprimer le token localement
+      // 2. Supprimer le token localement auprès de Firebase
       await FirebaseMessaging.instance.deleteToken();
     } catch (e) {
        print('Erreur lors du nettoyage du token FCM: $e');

@@ -17,7 +17,7 @@ import 'package:marketplace_app/features/chat/data/chat_service.dart';
 import 'package:marketplace_app/shared/models/address_model.dart';
 import 'package:marketplace_app/features/addresses/data/addresses_service.dart';
 import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
-import 'package:marketplace_app/features/users/data/users_service.dart';
+import 'package:marketplace_app/shared/providers/cache_providers.dart';
 
 enum SearchMode { articles, members }
 
@@ -27,9 +27,12 @@ final searchModeProvider = StateProvider<SearchMode>((ref) => SearchMode.article
 // (usersServiceProvider moved to auth_providers.dart)
 
 
+// Providers are now central in cache_providers.dart
+
 final productsServiceProvider = Provider((ref) {
   final dio = ref.watch(dioProvider);
-  return ProductsService(dio);
+  final cache = ref.watch(cacheServiceProvider);
+  return ProductsService(dio, cache);
 });
 
 final favoritesServiceProvider = Provider((ref) {
@@ -39,7 +42,8 @@ final favoritesServiceProvider = Provider((ref) {
 
 final categoriesServiceProvider = Provider((ref) {
   final dio = ref.watch(dioProvider);
-  return CategoriesService(dio);
+  final cache = ref.watch(cacheServiceProvider);
+  return CategoriesService(dio, cache);
 });
 
 final ordersServiceProvider = Provider((ref) {
@@ -201,26 +205,58 @@ final userSearchProvider = FutureProvider.autoDispose<List<UserModel>>((ref) asy
   return service.searchUsers(filters.search!);
 });
 
-// Provider pour l'accueil (auto-refresh toutes les 30s)
-final homeProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((
-  ref,
-) async {
-  // On observe les filtres pour que l'accueil se rafraîchisse quand ils sont réinitialisés
-  ref.watch(productFilterProvider);
-  final service = ref.watch(productsServiceProvider);
+// Notifier pour l'accueil avec SWR (Stale-While-Revalidate)
+class HomeProductsNotifier extends AsyncNotifier<List<ProductModel>> {
+  @override
+  Future<List<ProductModel>> build() async {
+    final service = ref.watch(productsServiceProvider);
 
-  // Mise en place d'un timer pour rafraîchir la page automatiquement
-  final timer = Timer(const Duration(seconds: 30), () {
-    ref.invalidateSelf();
-  });
+    // Initialisation : on essaie de retourner le cache immédiatement si possible
+    // Note: build() doit retourner le contenu initial. 
+    // Si on veut vraiment de l'instantané, on lit le cache ici.
+    final cached = service.getCachedHomeProducts();
+    
+    // On lance la mise à jour réseau en arrière-plan sans attendre
+    _refreshInBackground();
 
-  // Nettoyage du timer à la disposition du provider pour éviter les fuites de mémoire
-  ref.onDispose(() => timer.cancel());
+    // On retourne le cache (cela évite le 'loading' si le cache est plein)
+    // Si le cache est vide, return [] permettra d'afficher une structure vide 
+    // au lieu d'un spinner, jusqu'à l'arrivée du réseau.
+    return cached;
+  }
 
-  print(
-    'DEBUG: homeProductsProvider fetching all products (periodic refresh active)',
-  );
-  return service.getProducts(limit: 20); // only need newest items for home grid
+  Future<void> _refreshInBackground() async {
+    try {
+      final service = ref.read(productsServiceProvider);
+      print('DEBUG: HomeProductsNotifier fetching fresh data in background');
+      
+      final freshProducts = await service.getProducts(limit: 20);
+      
+      // Mettre à jour le cache
+      await service.cacheHomeProducts(freshProducts);
+      
+      // Mettre à jour l'état UI
+      state = AsyncData(freshProducts);
+    } catch (e, stack) {
+      print('DEBUG: HomeProductsNotifier background fetch failed: $e');
+      // On ne change pas l'état en erreur si on a déjà des données (on garde le cache)
+      if (state.hasValue && state.value!.isNotEmpty) {
+        // Optionnel: On pourrait notifier l'utilisateur via un snackbar discret
+      } else {
+        state = AsyncError(e, stack);
+      }
+    }
+  }
+
+  /// Méthode manuelle de rafraîchissement (ex: Pull-to-refresh)
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    await _refreshInBackground();
+  }
+}
+
+final homeProductsProvider = AsyncNotifierProvider<HomeProductsNotifier, List<ProductModel>>(() {
+  return HomeProductsNotifier();
 });
 
 // Category specific providers for Home Page
@@ -379,7 +415,8 @@ final isFavoriteProvider = Provider.family<bool, String>((ref, productId) {
 final lastIncomingMessageProvider = StateProvider<MessageModel?>((ref) => null);
 
 // Conversation actuellement ouverte dans l'écran de chat (ou null)
-final currentChatConversationIdProvider = StateProvider<String?>((ref) => null);
+// autoDispose permet de s'assurer que l'ID est réinitialisé quand l'écran est quitté
+final currentChatConversationIdProvider = StateProvider.autoDispose<String?>((ref) => null);
 
 // Socket.io global pour le chat
 final chatSocketProvider = Provider<IO.Socket?>((ref) {
@@ -408,19 +445,40 @@ final chatSocketProvider = Provider<IO.Socket?>((ref) {
   );
 
   socket
-    ..onConnect((_) {
+    ..onConnect((_) async {
       print('DEBUG: Socket connected to /chat namespace');
-      final userId = ref.read(userIdProvider).value;
-      if (userId != null) {
-        print('DEBUG: Socket emitting identify for user $userId');
-        socket.emit('identify', {'userId': userId});
+      try {
+        final userId = await ref.read(userIdProvider.future);
+        if (userId != null) {
+          print('DEBUG: Socket emitting identify for user $userId');
+          socket.emit('identify', {'userId': userId});
+        }
+      } catch (e) {
+        print('DEBUG: Socket identify error: $e');
       }
     })
     ..onConnectError((err) {
       print('DEBUG: Socket connection error: $err');
     })
-    ..onReconnect((_) {
+    ..onReconnect((_) async {
       print('DEBUG: Socket reconnected');
+      try {
+        // Re-identify the socket to explicitly join its personal room again
+        final userId = await ref.read(userIdProvider.future);
+        if (userId != null) {
+          print('DEBUG: Socket re-emitting identify for user $userId');
+          socket.emit('identify', {'userId': userId});
+        }
+        
+        // If we are currently in a chat, re-join that conversation room too
+        final currentChatId = ref.read(currentChatConversationIdProvider);
+        if (currentChatId != null) {
+          print('DEBUG: Socket re-joining conversation $currentChatId');
+          socket.emit('join_conversation', {'conversationId': currentChatId});
+        }
+      } catch (e) {
+        print('DEBUG: Socket reconnect identify error: $e');
+      }
     })
     ..on('new_message', (data) {
       print('DEBUG: Socket received new_message event: $data');
@@ -435,9 +493,11 @@ final chatSocketProvider = Provider<IO.Socket?>((ref) {
           // Met à jour le dernier message reçu
           ref.read(lastIncomingMessageProvider.notifier).state = message;
 
-          // Rafraîchit les conversations et la conversation ciblée
+          // Rafraîchit les conversations (liste globale)
           ref.invalidate(conversationsProvider);
-          ref.invalidate(conversationMessagesProvider(message.conversationId));
+          
+          // Mise à jour granulaire de la conversation ciblée (sans recharger tout le réseau)
+          ref.read(conversationMessagesProvider(message.conversationId).notifier).addMessage(message);
           
           // AUSSI : rafraîchir le compteur de notifications non lues (point rouge)
           ref.invalidate(unreadNotificationsCountProvider);
@@ -467,12 +527,50 @@ final conversationProvider = FutureProvider.autoDispose
       return service.getConversation(id);
     });
 
-// Messages for a conversation
-final conversationMessagesProvider = FutureProvider.autoDispose
-    .family<List<MessageModel>, String>((ref, conversationId) async {
-      final service = ref.watch(chatServiceProvider);
-      return service.getMessages(conversationId);
-    });
+// Messages for a conversation - Refactored to AsyncNotifier for Optimistic UI and real-time updates
+final conversationMessagesProvider = AsyncNotifierProvider.autoDispose
+    .family<MessagesNotifier, List<MessageModel>, String>(() => MessagesNotifier());
+
+class MessagesNotifier extends AutoDisposeFamilyAsyncNotifier<List<MessageModel>, String> {
+  @override
+  FutureOr<List<MessageModel>> build(String arg) async {
+    final service = ref.watch(chatServiceProvider);
+    return service.getMessages(arg);
+  }
+
+  /// Adds a message to the list manually (used by Socket.IO or Optimistic UI)
+  void addMessage(MessageModel message) {
+    if (!state.hasValue) return;
+
+    final currentMessages = state.value!;
+    
+    // Check if message already exists to avoid duplicates (e.g., Optimistic vs Socket)
+    final exists = currentMessages.any((m) => 
+      m.id == message.id || 
+      (m.content == message.content && 
+       m.senderId == message.senderId && 
+       m.createdAt.difference(message.createdAt).inSeconds.abs() < 2)
+    );
+
+    if (exists) {
+      // If it exists but was optimistic (different ID), update it with the real one
+      if (message.id.length > 20) { // Assuming real IDs are longer/different format
+         state = AsyncData(currentMessages.map((m) => 
+           (m.content == message.content && m.senderId == message.senderId) ? message : m
+         ).toList());
+      }
+      return;
+    }
+
+    state = AsyncData([...currentMessages, message]);
+  }
+
+  /// Removes an optimistic message (used on failure)
+  void removeMessage(String tempId) {
+    if (!state.hasValue) return;
+    state = AsyncData(state.value!.where((m) => m.id != tempId).toList());
+  }
+}
 
 /// Provider pour calculer le nombre total de messages non lus
 final unreadMessagesCountProvider = Provider.autoDispose<int>((ref) {
