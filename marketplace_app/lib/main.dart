@@ -6,7 +6,6 @@ import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'core/routes/router_config.dart';
-import 'core/routes/app_routes.dart';
 import 'shared/providers/shop_providers.dart';
 import 'shared/providers/cache_providers.dart';
 import 'shared/models/conversation_model.dart';
@@ -14,6 +13,7 @@ import 'features/auth/presentation/providers/auth_providers.dart';
 import 'features/notifications/presentation/providers/notifications_provider.dart';
 import 'dart:async';
 import 'core/theme/app_colors.dart';
+import 'package:go_router/go_router.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'shared/providers/connectivity_provider.dart';
@@ -181,6 +181,21 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
   }
 
   void _setupNotifications() async {
+    // Log des tokens pour le débogage iOS
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+    final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+    print('DEBUG: FCM Token = $fcmToken');
+    print('DEBUG: APNS Token = $apnsToken');
+
+    // 0. IMPORTANT : Demander les permissions iOS/Android 13+
+    final settings = await FirebaseMessaging.instance.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false,
+    );
+    print('DEBUG: Notification permission status = ${settings.authorizationStatus}');
+
     // Désactiver les notifications système en premier plan pour iOS
     // afin d'utiliser nos SnackBars personnalisés à la place (évite les doublons)
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
@@ -400,24 +415,23 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       },
     );
 
-    // On garde le watch pour les effets de bord (sync FCM, auth state changes)
-    // mais on n'attend plus le chargement car on a déjà injecté le token dans le ProviderContainer
-    ref.watch(authInitializerProvider);
+    return MarketplaceAppContent(
+      router: ref.watch(routerProvider),
+    );
+  }
+}
 
+class MarketplaceAppContent extends ConsumerWidget {
+  final GoRouter router;
+  const MarketplaceAppContent({super.key, required this.router});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'Marketplace',
+      title: 'Clovi',
       debugShowCheckedModeBanner: false,
-
-      // Thème personnalisé
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light,
-
-      // Utilise une clé globale pour le ScaffoldMessenger
       scaffoldMessengerKey: rootScaffoldMessengerKey,
-
-      // Configuration du routeur (utilise le provider pour réagir aux changements d'auth)
-      routerConfig: ref.watch(routerProvider),
+      routerConfig: router,
       
       // Gestion globale du mode hors ligne
       builder: (context, child) {

@@ -85,6 +85,8 @@ export class ConversationsController {
           const conversation = await this.conversationsService.getConversation(id, userId);
           const recipientId = conversation.buyerId === userId ? conversation.sellerId : conversation.buyerId;
           
+          console.log(`DEBUG: [SOCKET] New message in ${id}. Notifying recipient user_${recipientId}`);
+          
           // En émettant vers un tableau de rooms, Socket.IO se charge automatiquement
           // de dé-dupliquer l'événement pour un client qui serait dans les deux rooms.
           this.chatGateway.server.to([id, `user_${recipientId}`]).emit('new_message', message);

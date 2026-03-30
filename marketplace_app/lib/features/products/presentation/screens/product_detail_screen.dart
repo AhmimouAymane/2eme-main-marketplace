@@ -15,7 +15,6 @@ import 'package:marketplace_app/shared/models/comment_model.dart';
 import 'package:marketplace_app/shared/providers/system_settings_provider.dart';
 import 'package:marketplace_app/shared/widgets/full_screen_image_viewer.dart';
 import 'package:marketplace_app/shared/widgets/report_dialog.dart';
-import 'package:marketplace_app/features/moderation/data/moderation_service.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;

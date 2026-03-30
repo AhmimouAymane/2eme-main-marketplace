@@ -376,8 +376,8 @@ class FavoritesNotifier extends AsyncNotifier<List<ProductModel>> {
       // We don't invalidateSelf() here to keep the optimistic transition smooth.
       // If we really need a fresh list, we can use ref.refresh() or just let it be.
       
-      ref.invalidate(homeProductsProvider);
-      ref.invalidate(productsProvider);
+      // ref.invalidate(homeProductsProvider); // REMOVED: causes flicker
+      // ref.invalidate(productsProvider);     // REMOVED: causes flicker
       ref.invalidate(productDetailProvider(product.id));
     } catch (e) {
       // Rollback on error
@@ -433,20 +433,23 @@ final chatSocketProvider = Provider<IO.Socket?>((ref) {
       ? '${baseUrl}chat' 
       : '$baseUrl/chat';
 
-  print('DEBUG: Connecting to Socket: $socketUrl with token');
+  print('DEBUG: [SOCKET] Attempting connection to: $socketUrl');
+  print('DEBUG: [SOCKET] Using token: ${token.substring(0, 10)}...');
 
   final socket = IO.io(
     socketUrl,
     IO.OptionBuilder()
-        .setTransports(['websocket'])
+        .setTransports(['websocket', 'polling']) // Allow polling as fallback
         .setAuth({'token': token})
-        .disableAutoConnect()
+        .enableAutoConnect() // Enable auto-connect
+        .setReconnectionAttempts(10)
+        .setReconnectionDelay(2000)
         .build(),
   );
 
   socket
     ..onConnect((_) async {
-      print('DEBUG: Socket connected to /chat namespace');
+      print('DEBUG: [SOCKET] SUCCESS - Connected to /chat namespace');
       try {
         final userId = await ref.read(userIdProvider.future);
         if (userId != null) {
@@ -458,7 +461,14 @@ final chatSocketProvider = Provider<IO.Socket?>((ref) {
       }
     })
     ..onConnectError((err) {
-      print('DEBUG: Socket connection error: $err');
+      print('DEBUG: [SOCKET] CONNECTION ERROR: $err');
+      print('DEBUG: [SOCKET] URL used: $socketUrl');
+    })
+    ..onConnectTimeout((_) {
+      print('DEBUG: [SOCKET] CONNECTION TIMEOUT');
+    })
+    ..onDisconnect((reason) {
+      print('DEBUG: [SOCKET] DISCONNECTED: $reason');
     })
     ..onReconnect((_) async {
       print('DEBUG: Socket reconnected');
@@ -493,10 +503,10 @@ final chatSocketProvider = Provider<IO.Socket?>((ref) {
           // Met à jour le dernier message reçu
           ref.read(lastIncomingMessageProvider.notifier).state = message;
 
-          // Rafraîchit les conversations (liste globale)
-          ref.invalidate(conversationsProvider);
+          // Mise à jour granulaire des conversations (LISTE GLOBAUX / INBOX)
+          ref.read(conversationsProvider.notifier).updateWithNewMessage(message);
           
-          // Mise à jour granulaire de la conversation ciblée (sans recharger tout le réseau)
+          // Mise à jour granulaire de la conversation ciblée (ÉCRAN DE CHAT OUVERT)
           ref.read(conversationMessagesProvider(message.conversationId).notifier).addMessage(message);
           
           // AUSSI : rafraîchir le compteur de notifications non lues (point rouge)
@@ -513,12 +523,66 @@ final chatSocketProvider = Provider<IO.Socket?>((ref) {
   return socket;
 });
 
-// Conversations list
-final conversationsProvider =
-    FutureProvider.autoDispose<List<ConversationModel>>((ref) async {
-      final service = ref.watch(chatServiceProvider);
-      return service.getConversations();
-    });
+// Conversations list - Refactored to AsyncNotifier for real-time silent UI updates
+final conversationsProvider = AsyncNotifierProvider.autoDispose<ConversationsNotifier, List<ConversationModel>>(() {
+  return ConversationsNotifier();
+});
+
+class ConversationsNotifier extends AutoDisposeAsyncNotifier<List<ConversationModel>> {
+  @override
+  FutureOr<List<ConversationModel>> build() async {
+    final service = ref.watch(chatServiceProvider);
+    return service.getConversations();
+  }
+
+  /// Updates the inbox list with a new message without a full refresh (no flicker)
+  void updateWithNewMessage(MessageModel message) {
+    if (!state.hasValue) return;
+    
+    final currentList = List<ConversationModel>.from(state.value!);
+    final index = currentList.indexWhere((c) => c.id == message.conversationId);
+    
+    if (index != -1) {
+      final oldConv = currentList[index];
+      
+      // Avoid duplicate adding
+      if (oldConv.messages.any((m) => m.id == message.id)) return;
+      
+      // Create updated conversation object
+      final updatedConv = ConversationModel(
+        id: oldConv.id,
+        productId: oldConv.productId,
+        product: oldConv.product,
+        buyerId: oldConv.buyerId,
+        buyer: oldConv.buyer,
+        sellerId: oldConv.sellerId,
+        seller: oldConv.seller,
+        createdAt: oldConv.createdAt,
+        updatedAt: DateTime.now(),
+        lastMessageAt: message.createdAt,
+        messages: [...oldConv.messages, message],
+      );
+      
+      // Move to top and update state
+      currentList.removeAt(index);
+      currentList.insert(0, updatedConv);
+      state = AsyncData(currentList);
+    } else {
+      // It's a new conversation thread, silent re-fetch to include it
+      _silentRefresh();
+    }
+  }
+
+  Future<void> _silentRefresh() async {
+    try {
+      final service = ref.read(chatServiceProvider);
+      final freshList = await service.getConversations();
+      state = AsyncData(freshList);
+    } catch (e) {
+      print('DEBUG: Silent inbox refresh failed: $e');
+    }
+  }
+}
 
 // Single conversation
 final conversationProvider = FutureProvider.autoDispose
