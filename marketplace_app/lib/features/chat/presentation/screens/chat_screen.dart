@@ -131,7 +131,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       final service = ref.read(chatServiceProvider);
       await service.sendMessage(widget.conversationId, text);
       
-      // On rafraîchit la liste des conversations en arrière-plan pour le dernier message
+      // Mettre à jour la liste des conversations immédiatement (sans attendre Socket.IO)
+      ref.read(conversationsProvider.notifier).updateWithNewMessage(optimisticMessage);
       ref.invalidate(conversationsProvider);
       
       // Note: Le "vrai" message reviendra via Socket.IO et remplacera l'optimiste
@@ -847,13 +848,16 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   bool _isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year &&
-        date1.month == date2.month &&
-        date1.day == date2.day;
+    final d1 = date1.toLocal();
+    final d2 = date2.toLocal();
+    return d1.year == d2.year &&
+        d1.month == d2.month &&
+        d1.day == d2.day;
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
+  String _formatDate(DateTime dateUtc) {
+    final date = dateUtc.toLocal();
+    final now = DateTime.now().toLocal();
     final yesterday = DateTime(now.year, now.month, now.day - 1);
     final messageDate = DateTime(date.year, date.month, date.day);
 
@@ -986,7 +990,8 @@ class _MessageBubble extends StatelessWidget {
     );
   }
 
-  String _formatTime(DateTime date) {
+  String _formatTime(DateTime dateUtc) {
+    final date = dateUtc.toLocal();
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
     return '$hour:$minute';

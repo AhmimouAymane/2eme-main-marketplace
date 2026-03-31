@@ -356,15 +356,16 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     );
   }
 
-  String _formatTime(DateTime date) {
+  String _formatTime(DateTime dateUtc) {
+    final date = dateUtc.toLocal();
     final now = DateTime.now();
     final difference = now.difference(date);
 
-    if (difference.inDays == 0) {
+    if (difference.inDays == 0 && now.day == date.day) {
       final hour = date.hour.toString().padLeft(2, '0');
       final minute = date.minute.toString().padLeft(2, '0');
       return '$hour:$minute';
-    } else if (difference.inDays == 1) {
+    } else if (difference.inDays <= 1) {
       return 'Hier';
     } else if (difference.inDays < 7) {
       final weekday = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];

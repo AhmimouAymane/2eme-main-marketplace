@@ -74,7 +74,7 @@ model Product {
   orders            Order[]
   images            ProductImage[]
   category          Category         @relation(fields: [categoryId], references: [id])
-  seller            User             @relation("UserProducts", fields: [sellerId], references: [id])
+  seller            User             @relation("UserProducts", fields: [sellerId], references: [id], onDelete: Cascade)
   reviews           Review[]
   reports           Report[]
 
@@ -120,9 +120,9 @@ model Order {
   completedAt     DateTime?
   expiresAt       DateTime? // For auto-cancelation if not confirmed
   
-  buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
   product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  seller          User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  seller          User        @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: Cascade)
   userReviews     UserReview[]
 
   @@map("orders")
@@ -136,9 +136,9 @@ model Conversation {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   lastMessageAt DateTime  @default(now())
-  buyer         User      @relation("BuyerConversations", fields: [buyerId], references: [id])
+  buyer         User      @relation("BuyerConversations", fields: [buyerId], references: [id], onDelete: Cascade)
   product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  seller        User      @relation("SellerConversations", fields: [sellerId], references: [id])
+  seller        User      @relation("SellerConversations", fields: [sellerId], references: [id], onDelete: Cascade)
   deletedByBuyer Boolean  @default(false)
   deletedBySeller Boolean  @default(false)
   messages      Message[]
@@ -155,7 +155,7 @@ model Message {
   createdAt      DateTime     @default(now())
   isRead         Boolean      @default(false)
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender         User         @relation("UserMessages", fields: [senderId], references: [id])
+  sender         User         @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@map("messages")
 }
@@ -198,7 +198,7 @@ model Review {
   locale       String?  @db.VarChar(255)
   published_at String?  @db.VarChar(255)
   product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user         User     @relation("UserReviews", fields: [userId], references: [id])
+  user         User     @relation("UserReviews", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productId])
   @@map("reviews")
@@ -213,8 +213,8 @@ model UserReview {
   orderId      String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  reviewer     User     @relation("Reviewer", fields: [reviewerId], references: [id])
-  targetUser   User     @relation("TargetUser", fields: [targetUserId], references: [id])
+  reviewer     User     @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  targetUser   User     @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
   order        Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([reviewerId, targetUserId])
@@ -229,7 +229,7 @@ model Comment {
   parentCommentId String?
   createdAt       DateTime  @default(now())
   product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user            User      @relation("UserComments", fields: [userId], references: [id])
+  user            User      @relation("UserComments", fields: [userId], references: [id], onDelete: Cascade)
   parent          Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
   replies         Comment[] @relation("CommentReplies")
   reports         Report[]
@@ -328,8 +328,8 @@ model Report {
   
   createdAt       DateTime     @default(now())
   
-  reporter        User         @relation("Reporter", fields: [reporterId], references: [id])
-  reportedUser    User?        @relation("ReportedUser", fields: [reportedUserId], references: [id])
+  reporter        User         @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser    User?        @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
   reportedProduct Product?     @relation(fields: [reportedProductId], references: [id])
   reportedComment Comment?     @relation(fields: [reportedCommentId], references: [id])
 
@@ -342,8 +342,8 @@ model Block {
   blockedUserId String
   createdAt     DateTime @default(now())
 
-  blocker       User     @relation("Blocker", fields: [blockerId], references: [id])
-  blockedUser   User     @relation("BlockedUser", fields: [blockedUserId], references: [id])
+  blocker       User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedUser   User     @relation("BlockedUser", fields: [blockedUserId], references: [id], onDelete: Cascade)
 
   @@unique([blockerId, blockedUserId])
   @@map("blocks")

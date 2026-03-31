@@ -42,8 +42,9 @@ export class NotificationsService {
         });
 
         if (user?.fcmToken) {
+            console.log(`DEBUG: [FCM] Sending push to user ${notificationData.userId} (Token: ${user.fcmToken.substring(0, 10)}...)`);
             try {
-                await this.firebaseAdmin.messaging().send({
+                const response = await this.firebaseAdmin.messaging().send({
                     token: user.fcmToken,
                     notification: {
                         title: notificationData.title,
@@ -83,9 +84,12 @@ export class NotificationsService {
                         ),
                     },
                 });
+                console.log('DEBUG: [FCM] Push sent successfully:', response);
             } catch (error) {
-                console.error('FCM Push Error:', error);
+                console.error('DEBUG: [FCM] Push Error:', error);
             }
+        } else {
+            console.log(`DEBUG: [FCM] Skip push for user ${notificationData.userId}: No fcmToken found in database.`);
         }
 
         return notification;

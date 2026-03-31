@@ -43,8 +43,15 @@
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Cette application nécessite l'accès à votre appareil photo pour prendre une photo de profil.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Cette application utilise le réseau local pour se connecter au serveur de développement Clovi.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Cette application nécessite l'accès à votre galerie pour modifier votre photo de profil.</string>
 	<key>UIApplicationSceneManifest</key>
@@ -73,6 +80,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>fetch</string>
 	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
@@ -91,12 +99,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>Cette application utilise le réseau local pour se connecter au serveur de développement Clovi.</string>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-	</dict>
 </dict>
 </plist>

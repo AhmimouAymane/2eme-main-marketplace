@@ -302,25 +302,43 @@ class AuthService {
     await syncFcmToken();
   }
 
-  /// Synchroniser le token FCM avec le backend (ou l'effacer en passant une chaîne vide)
-  Future<void> syncFcmToken({String? fcmTokenOverride}) async {
+  /// Synchroniser le token FCM avec le backend
+  Future<void> syncFcmToken({String? fcmTokenOverride, int retryCount = 0}) async {
     try {
       final String? sessionToken = _ref.read(authTokenProvider);
       if (sessionToken == null || sessionToken.isEmpty) return;
 
+      // Sur iOS, le token APNS peut mettre quelques secondes à arriver (surtout au 1er lancement)
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+        if (apnsToken == null && retryCount < 5) {
+          print('DEBUG: [FCM] APNS token non prêt, nouvel essai dans 3s... (Essai ${retryCount + 1}/5)');
+          await Future.delayed(const Duration(seconds: 3));
+          return syncFcmToken(fcmTokenOverride: fcmTokenOverride, retryCount: retryCount + 1);
+        }
+      }
+
       final String? fcmToken = fcmTokenOverride ?? await FirebaseMessaging.instance.getToken();
+      if (fcmToken == null && fcmTokenOverride == null) return;
+      
+      print('DEBUG: [FCM] Syncing token with backend: ${fcmToken?.substring(0, 8)}...');
       
       await _dio.post(
         'auth/fcm-token', 
         data: {'token': fcmToken ?? ''},
         options: Options(headers: {'Authorization': 'Bearer $sessionToken'}),
       );
+      print('DEBUG: [FCM] Token synced successfully');
     } catch (e) {
       final errorStr = e.toString();
       if (errorStr.contains('apns-token-not-set')) {
-        print('DEBUG: Sync FCM ignoré (APNS non configuré ou simulateur)');
+        if (retryCount < 3) {
+          await Future.delayed(const Duration(seconds: 3));
+          return syncFcmToken(fcmTokenOverride: fcmTokenOverride, retryCount: retryCount + 1);
+        }
+        print('DEBUG: [FCM] Échec définitif : APNS non configuré.');
       } else {
-        print('Erreur synchronisation FCM: $e');
+        print('DEBUG: [FCM] Erreur synchronisation : $e');
       }
     }
   }

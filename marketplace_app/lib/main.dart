@@ -196,10 +196,40 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
     );
     print('DEBUG: Notification permission status = ${settings.authorizationStatus}');
 
-    // Désactiver les notifications système en premier plan pour iOS
-    // afin d'utiliser nos SnackBars personnalisés à la place (évite les doublons)
+    // 0.1 Synchro du token avec le backend (CRUCIAL pour les notifs en arrière-plan)
+    final authService = ref.read(authServiceProvider);
+    
+    // Attendre un peu que tout soit bien chargé
+    Future.delayed(const Duration(seconds: 2), () async {
+      try {
+        await authService.syncFcmToken();
+        print('DEBUG: [FCM] Sync attempt finished');
+        
+        // Optionnel : Afficher un succès discret pour le débogage (à retirer en prod)
+        /*
+        rootScaffoldMessengerKey.currentState?.showSnackBar(
+          const SnackBar(
+            content: Text('🔔 [FCM] Notifications synchronisées'),
+            backgroundColor: Colors.blueGrey,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        */
+      } catch (e) {
+        print('DEBUG: [FCM] Sync Error: $e');
+        rootScaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('⚠️ [FCM] Erreur synchronisation : $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    });
+
+    // Autoriser les notifications système en premier plan sur iOS
+    // (les doublons avec nos SnackBars sont gérés dans le listener onMessage)
     await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: false,
+      alert: true,
       badge: true,
       sound: true,
     );
@@ -355,10 +385,10 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
     // Initialise le socket global
     ref.watch(chatSocketProvider);
 
-    // Écoute la reconnexion pour rafraîchir les données
+    // Écoute la reconnexion pour rafraîchir les données (uniquement si on a perdu la connexion entretemps)
     ref.listen<bool>(isOnlineProvider, (previous, next) {
       if (previous == false && next == true) {
-        print('DEBUG: App reconnected, refreshing key providers');
+        print('DEBUG: [CONNEXION] App reconnected, refreshing key providers');
         ref.invalidate(userProfileProvider);
         ref.invalidate(homeProductsProvider);
         ref.invalidate(unreadNotificationsCountProvider);
@@ -427,12 +457,46 @@ class MarketplaceAppContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // ÉCOUTER LE STATUT DU SOCKET POUR LE DIAGNOSTIC VISUEL
+    /*ref.listen(chatSocketProvider, (previous, next) {
+      if (next == null) return;
+      
+      next.on('connect', (_) {
+        rootScaffoldMessengerKey.currentState?.showSnackBar(
+          const SnackBar(
+            content: Text('✅ [SOCKET] Connecté au serveur'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      });
+      
+      next.on('connect_error', (err) {
+        rootScaffoldMessengerKey.currentState?.showSnackBar(
+          SnackBar(
+            content: Text('❌ [SOCKET] Erreur de connexion: $err'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      });
+      
+      next.on('disconnect', (reason) {
+        print('DEBUG: [SOCKET] Déconnecté: $reason');
+      });
+    });*/
+
     return MaterialApp.router(
       title: 'Clovi',
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: rootScaffoldMessengerKey,
       routerConfig: router,
       
+      // RESTAURATION DU THÈME PERSONNALISÉ
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.light,
+
       // Gestion globale du mode hors ligne
       builder: (context, child) {
         final isOnline = ref.watch(isOnlineProvider);

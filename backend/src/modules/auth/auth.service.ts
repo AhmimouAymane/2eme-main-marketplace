@@ -92,6 +92,12 @@ export class AuthService {
                 await this.sendWelcomeNotification(user.id, user.firstName);
             }
 
+            // Capture du token FCM s'il est passé dans les métadonnées (optionnel)
+            const fcmToken = (metadata as any)?.fcmToken;
+            if (fcmToken) {
+                await this.updateFcmToken(user.id, fcmToken);
+            }
+
             const tokens = await this.getTokens(user.id, user.email, user.role);
             return {
                 user: this.sanitizeUser(user),
@@ -125,6 +131,7 @@ export class AuthService {
     }
 
     async updateFcmToken(userId: string, token: string) {
+        console.log(`DEBUG: [AUTH] updateFcmToken called for user ${userId}. Token: ${token ? token.substring(0, 10) + '...' : 'null'}`);
         if (!token || token === '') {
             return this.usersService.update(userId, { fcmToken: null });
         }

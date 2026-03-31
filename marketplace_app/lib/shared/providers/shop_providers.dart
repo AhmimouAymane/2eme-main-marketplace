@@ -448,26 +448,32 @@ final chatSocketProvider = Provider<IO.Socket?>((ref) {
   );
 
   socket
-    ..onConnect((_) async {
+    ..on('connect', (_) async {
       print('DEBUG: [SOCKET] SUCCESS - Connected to /chat namespace');
       try {
         final userId = await ref.read(userIdProvider.future);
         if (userId != null) {
-          print('DEBUG: Socket emitting identify for user $userId');
+          print('DEBUG: [SOCKET] Socket emitting identify for user $userId');
           socket.emit('identify', {'userId': userId});
         }
       } catch (e) {
-        print('DEBUG: Socket identify error: $e');
+        print('DEBUG: [SOCKET] Socket identify error: $e');
       }
     })
-    ..onConnectError((err) {
+    ..on('connect_error', (err) {
       print('DEBUG: [SOCKET] CONNECTION ERROR: $err');
       print('DEBUG: [SOCKET] URL used: $socketUrl');
+      
+      // FALLBACK SPÉCIFIQUE ANDROID EMULATOR
+      if (err.toString().contains('Connection failed') && !socketUrl.contains('10.0.2.2')) {
+        final fallbackUrl = socketUrl.replaceFirst('192.168.1.13', '10.0.2.2');
+        print('DEBUG: [SOCKET] Falling back to Emulator Alias: $fallbackUrl');
+      }
     })
-    ..onConnectTimeout((_) {
+    ..on('connect_timeout', (_) {
       print('DEBUG: [SOCKET] CONNECTION TIMEOUT');
     })
-    ..onDisconnect((reason) {
+    ..on('disconnect', (reason) {
       print('DEBUG: [SOCKET] DISCONNECTED: $reason');
     })
     ..onReconnect((_) async {

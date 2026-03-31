@@ -15,12 +15,12 @@ class Formatters {
   
   // Format date
   static String date(DateTime date) {
-    return DateFormat('dd/MM/yyyy').format(date);
+    return DateFormat('dd/MM/yyyy').format(date.toLocal());
   }
   
   // Format date with time
   static String dateTime(DateTime dateTime) {
-    return DateFormat('dd/MM/yyyy HH:mm').format(dateTime);
+    return DateFormat('dd/MM/yyyy HH:mm').format(dateTime.toLocal());
   }
   
   // Format relative time (il y a X heures)

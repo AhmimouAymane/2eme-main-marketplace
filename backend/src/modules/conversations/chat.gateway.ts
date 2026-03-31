@@ -44,6 +44,7 @@ export class ChatGateway {
     @ConnectedSocket() client: Socket,
   ) {
     if (data.userId) {
+      console.log(`DEBUG: [SOCKET] User ${data.userId} identified and joined private room.`);
       client.join(`user_${data.userId}`);
     }
   }

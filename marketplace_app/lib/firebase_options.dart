@@ -60,20 +60,20 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAu-XPNbe_f8DdG2fDos-39cUf1QABQ46o',
-    appId: '1:735878764760:ios:a4f8673feb31dea09d1fad',
+    appId: '1:735878764760:ios:6e0a9aba3a6628c39d1fad',
     messagingSenderId: '735878764760',
     projectId: 'clovi-17ec1',
     storageBucket: 'clovi-17ec1.firebasestorage.app',
-    iosBundleId: 'com.example.marketplaceApp',
+    iosBundleId: 'com.techpal.clovi',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyAu-XPNbe_f8DdG2fDos-39cUf1QABQ46o',
-    appId: '1:735878764760:ios:a4f8673feb31dea09d1fad',
+    appId: '1:735878764760:ios:6e0a9aba3a6628c39d1fad',
     messagingSenderId: '735878764760',
     projectId: 'clovi-17ec1',
     storageBucket: 'clovi-17ec1.firebasestorage.app',
-    iosBundleId: 'com.example.marketplaceApp',
+    iosBundleId: 'com.techpal.clovi',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
