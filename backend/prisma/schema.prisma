@@ -9,43 +9,43 @@ datasource db {
 }
 
 model User {
-  id                  String         @id @default(uuid())
-  email               String         @unique
-  password            String
-  firstName           String
-  lastName            String
-  phone               String?
-  avatarUrl           String?
-  bio                 String?
-  fcmToken            String?
-  role                Role           @default(USER)
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  isEmailVerified     Boolean        @default(false)
-  document_id         String?        @db.VarChar(255)
-  locale              String?        @db.VarChar(255)
-  published_at        String?        @db.VarChar(255)
-  addresses           Address[]
-  comments            Comment[]      @relation("UserComments")
-  buyerConversations  Conversation[] @relation("BuyerConversations")
-  sellerConversations Conversation[] @relation("SellerConversations")
-  favorites           Favorite[]
-  messages            Message[]      @relation("UserMessages")
-  notifications       Notification[]
-  buyerOrders         Order[]        @relation("BuyerOrders")
-  sellerOrders        Order[]        @relation("SellerOrders")
-  products            Product[]      @relation("UserProducts")
-  reviews             Review[]       @relation("UserReviews")
-  givenReviews        UserReview[]   @relation("Reviewer")
-  receivedReviews     UserReview[]   @relation("TargetUser")
-  isSellerVerified      Boolean        @default(false)
-  sellerStatus          SellerStatus   @default(NOT_SUBMITTED)
+  id                    String                 @id @default(uuid())
+  email                 String                 @unique
+  password              String
+  firstName             String
+  lastName              String
+  phone                 String?
+  avatarUrl             String?
+  role                  Role                   @default(USER)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  bio                   String?
+  fcmToken              String?
+  document_id           String?                @db.VarChar(255)
+  isEmailVerified       Boolean                @default(false)
+  locale                String?                @db.VarChar(255)
+  published_at          String?                @db.VarChar(255)
+  isSellerVerified      Boolean                @default(false)
+  sellerStatus          SellerStatus           @default(NOT_SUBMITTED)
   verificationComment   String?
+  addresses             Address[]
+  blockedBy             Block[]                @relation("BlockedUser")
+  blockedUsers          Block[]                @relation("Blocker")
+  comments              Comment[]              @relation("UserComments")
+  buyerConversations    Conversation[]         @relation("BuyerConversations")
+  sellerConversations   Conversation[]         @relation("SellerConversations")
+  favorites             Favorite[]
+  messages              Message[]              @relation("UserMessages")
+  notifications         Notification[]
+  buyerOrders           Order[]                @relation("BuyerOrders")
+  sellerOrders          Order[]                @relation("SellerOrders")
+  products              Product[]              @relation("UserProducts")
+  reportsReceived       Report[]               @relation("ReportedUser")
+  reportsSent           Report[]               @relation("Reporter")
+  reviews               Review[]               @relation("UserReviews")
+  givenReviews          UserReview[]           @relation("Reviewer")
+  receivedReviews       UserReview[]           @relation("TargetUser")
   verificationDocuments VerificationDocument[]
-  reportsSent         Report[]       @relation("Reporter")
-  reportsReceived     Report[]       @relation("ReportedUser")
-  blockedUsers        Block[]        @relation("Blocker")
-  blockedBy           Block[]        @relation("BlockedUser")
 
   @@map("users")
 }
@@ -55,16 +55,16 @@ model Product {
   title             String
   description       String
   price             Float
-  categoryId        String
   size              String
   brand             String
   condition         ProductCondition
   status            ProductStatus    @default(PENDING_APPROVAL)
-  moderationComment String?
   sellerId          String
-  deletedAt         DateTime?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+  categoryId        String
+  moderationComment String?
+  deletedAt         DateTime?
   document_id       String?          @db.VarChar(255)
   locale            String?          @db.VarChar(255)
   published_at      String?          @db.VarChar(255)
@@ -75,8 +75,8 @@ model Product {
   images            ProductImage[]
   category          Category         @relation(fields: [categoryId], references: [id])
   seller            User             @relation("UserProducts", fields: [sellerId], references: [id], onDelete: Cascade)
-  reviews           Review[]
   reports           Report[]
+  reviews           Review[]
 
   @@index([deletedAt])
   @@map("products")
@@ -95,53 +95,50 @@ model Favorite {
 }
 
 model Order {
-  id              String      @id @default(uuid())
-  productId       String
-  buyerId         String
-  sellerId        String
-  totalPrice      Float
-  serviceFee      Float       @default(0)
-  shippingFee     Float       @default(0)
-  status          OrderStatus @default(AWAITING_SELLER_CONFIRMATION)
-  shippingAddress String?
-  pickupAddress   String?
-  rejectionReason String? // For admin/seller rejection
-  cancellationReason String? // For buyer cancellation
-  returnReason    String? // For return requests
-  
-  // Timestamps for each milestone
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  confirmedAt     DateTime?
-  shippedAt       DateTime?
-  deliveredAt     DateTime?
-  returnRequestedAt DateTime?
-  returnedAt      DateTime?
-  completedAt     DateTime?
-  expiresAt       DateTime? // For auto-cancelation if not confirmed
-  
-  buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
-  product         Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
-  seller          User        @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: Cascade)
-  userReviews     UserReview[]
+  id                 String       @id @default(uuid())
+  productId          String
+  buyerId            String
+  sellerId           String
+  totalPrice         Float
+  status             OrderStatus  @default(AWAITING_SELLER_CONFIRMATION)
+  shippingAddress    String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  deliveredAt        DateTime?
+  pickupAddress      String?
+  rejectionReason    String?
+  cancellationReason String?
+  completedAt        DateTime?
+  confirmedAt        DateTime?
+  expiresAt          DateTime?
+  returnReason       String?
+  returnRequestedAt  DateTime?
+  returnedAt         DateTime?
+  shippedAt          DateTime?
+  serviceFee         Float        @default(0)
+  shippingFee        Float        @default(0)
+  buyer              User         @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Cascade)
+  product            Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  seller             User         @relation("SellerOrders", fields: [sellerId], references: [id], onDelete: Cascade)
+  userReviews        UserReview[]
 
   @@map("orders")
 }
 
 model Conversation {
-  id            String    @id @default(uuid())
-  productId     String
-  buyerId       String
-  sellerId      String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastMessageAt DateTime  @default(now())
-  buyer         User      @relation("BuyerConversations", fields: [buyerId], references: [id], onDelete: Cascade)
-  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  seller        User      @relation("SellerConversations", fields: [sellerId], references: [id], onDelete: Cascade)
-  deletedByBuyer Boolean  @default(false)
-  deletedBySeller Boolean  @default(false)
-  messages      Message[]
+  id              String    @id @default(uuid())
+  productId       String
+  buyerId         String
+  sellerId        String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastMessageAt   DateTime  @default(now())
+  deletedByBuyer  Boolean   @default(false)
+  deletedBySeller Boolean   @default(false)
+  buyer           User      @relation("BuyerConversations", fields: [buyerId], references: [id], onDelete: Cascade)
+  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  seller          User      @relation("SellerConversations", fields: [sellerId], references: [id], onDelete: Cascade)
+  messages        Message[]
 
   @@unique([buyerId, sellerId, productId])
   @@map("conversations")
@@ -168,10 +165,10 @@ model Address {
   city      String
   postal    String
   country   String
-  phone     String?
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  phone     String?
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -210,12 +207,12 @@ model UserReview {
   comment      String?
   reviewerId   String
   targetUserId String
-  orderId      String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  orderId      String?
+  order        Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   reviewer     User     @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
   targetUser   User     @relation("TargetUser", fields: [targetUserId], references: [id], onDelete: Cascade)
-  order        Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([reviewerId, targetUserId])
   @@map("user_reviews")
@@ -226,28 +223,28 @@ model Comment {
   content         String
   userId          String
   productId       String
-  parentCommentId String?
   createdAt       DateTime  @default(now())
-  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user            User      @relation("UserComments", fields: [userId], references: [id], onDelete: Cascade)
+  parentCommentId String?
   parent          Comment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
   replies         Comment[] @relation("CommentReplies")
+  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user            User      @relation("UserComments", fields: [userId], references: [id], onDelete: Cascade)
   reports         Report[]
 
   @@map("comments")
 }
 
 model Category {
-  id       String     @id @default(uuid())
-  name     String
-  slug     String     @unique
-  level    Int
-  parentId String?
-  sizeType SizeType?
+  id            String     @id @default(uuid())
+  name          String
+  slug          String     @unique
+  level         Int
+  parentId      String?
+  sizeType      SizeType?
   possibleSizes String[]
-  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children Category[] @relation("CategoryHierarchy")
-  products Product[]
+  parent        Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children      Category[] @relation("CategoryHierarchy")
+  products      Product[]
 
   @@map("categories")
 }
@@ -291,7 +288,7 @@ model SystemSettings {
 model VerificationDocument {
   id        String   @id @default(uuid())
   userId    String
-  fileType  String   // 'ID_CARD' or 'BANK_CERTIFICATE'
+  fileType  String
   fileName  String
   mimeType  String
   fileData  Bytes
@@ -314,24 +311,19 @@ model strapi_migrations_internal {
   time DateTime? @db.Timestamp(6)
 }
 
-
 model Report {
-  id              String       @id @default(uuid())
-  reporterId      String
-  reason          ReportReason
-  description     String?
-  
-  // Reported content (optional, one of these must be set)
-  reportedUserId  String?
+  id                String       @id @default(uuid())
+  reporterId        String
+  reason            ReportReason
+  description       String?
+  reportedUserId    String?
   reportedProductId String?
   reportedCommentId String?
-  
-  createdAt       DateTime     @default(now())
-  
-  reporter        User         @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  reportedUser    User?        @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
-  reportedProduct Product?     @relation(fields: [reportedProductId], references: [id])
-  reportedComment Comment?     @relation(fields: [reportedCommentId], references: [id])
+  createdAt         DateTime     @default(now())
+  reportedComment   Comment?     @relation(fields: [reportedCommentId], references: [id])
+  reportedProduct   Product?     @relation(fields: [reportedProductId], references: [id])
+  reportedUser      User?        @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  reporter          User         @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
 
   @@map("reports")
 }
@@ -341,9 +333,8 @@ model Block {
   blockerId     String
   blockedUserId String
   createdAt     DateTime @default(now())
-
-  blocker       User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
   blockedUser   User     @relation("BlockedUser", fields: [blockedUserId], references: [id], onDelete: Cascade)
+  blocker       User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
 
   @@unique([blockerId, blockedUserId])
   @@map("blocks")
