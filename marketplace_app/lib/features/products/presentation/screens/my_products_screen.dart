@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
@@ -124,7 +125,13 @@ class _ProductListTile extends ConsumerWidget {
               SizedBox(
                 width: 100,
                 child: product.imageUrls.isNotEmpty
-                    ? Image.network(product.imageUrls.first, fit: BoxFit.cover)
+                    ? CachedNetworkImage(
+                        imageUrl: product.imageUrls.first,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 200, // Optimize RAM for list view
+                        placeholder: (context, url) => Container(color: Colors.grey[200]),
+                        errorWidget: (context, url, error) => const Icon(Icons.broken_image),
+                      )
                     : Container(
                         color: Colors.grey[200],
                         child: const Icon(Icons.image_not_supported),

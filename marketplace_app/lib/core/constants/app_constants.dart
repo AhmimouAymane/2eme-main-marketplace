@@ -9,7 +9,7 @@ class AppConstants {
     if (Platform.isAndroid)
       return '10.0.2.2'; // Standard Android emulator loopback
     if (Platform.isIOS) 
-      return '192.168.100.118'; // Pour l'émulateur ios
+      return '192.168.200.8'; // Votre adresse IP Wi-Fi actuelle
     return 'localhost';
   }
 

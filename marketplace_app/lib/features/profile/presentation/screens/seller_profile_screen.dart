@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../data/user_reviews_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
 
 class SellerProfileScreen extends ConsumerWidget {
@@ -48,7 +49,7 @@ class SellerProfileScreen extends ConsumerWidget {
                         radius: 50,
                         backgroundColor: Colors.grey[200],
                         backgroundImage: seller.avatarUrl != null 
-                            ? NetworkImage(seller.avatarUrl!) 
+                            ? CachedNetworkImageProvider(seller.avatarUrl!, maxWidth: 200, maxHeight: 200) 
                             : null,
                         child: seller.avatarUrl == null 
                             ? Icon(Icons.person_rounded, size: 50, color: Colors.grey[400])
@@ -145,9 +146,15 @@ class SellerProfileScreen extends ConsumerWidget {
                                   width: double.infinity,
                                   color: Colors.grey[200],
                                   child: product.fullImageUrls.isNotEmpty
-                                      ? Image.network(
-                                          product.fullImageUrls.first,
+                                      ? CachedNetworkImage(
+                                          imageUrl: product.fullImageUrls.first,
                                           fit: BoxFit.cover,
+                                          memCacheWidth: 300, // Optimize RAM for grid
+                                          placeholder: (context, url) => Container(
+                                            color: Colors.grey[200],
+                                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                          ),
+                                          errorWidget: (context, url, error) => const Icon(Icons.broken_image),
                                         )
                                       : Icon(Icons.image_outlined, size: 40, color: Colors.grey[400]),
                                 ),

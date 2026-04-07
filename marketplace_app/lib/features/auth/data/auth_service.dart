@@ -169,7 +169,7 @@ class AuthService {
         lastName: lastName,
       );
     } catch (e) {
-      throw e.toString();
+      rethrow;
     }
   }
 
@@ -227,12 +227,12 @@ class AuthService {
         lastName: lastName,
       );
     } catch (e) {
-      final errorStr = e.toString();
-      // On ignore l'erreur si l'utilisateur a juste annulé le processus (Error Code -7003 ou "canceled")
-      if (errorStr.contains('7003') || errorStr.contains('canceled') || errorStr.contains('1001')) { // 1001 is canceled on Android
+      final errorStr = e.toString().toLowerCase();
+      // On ignore l'erreur si l'utilisateur a juste annulé le processus
+      if (errorStr.contains('7003') || errorStr.contains('canceled') || errorStr.contains('1001') || errorStr.contains('cancel')) {
         throw 'canceled';
       }
-      throw errorStr;
+      rethrow;
     }
   }
 

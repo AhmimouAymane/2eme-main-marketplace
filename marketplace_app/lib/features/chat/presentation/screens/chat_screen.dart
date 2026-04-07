@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/core/utils/formatters.dart';
@@ -409,10 +410,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     radius: 18,
                     backgroundColor: Colors.grey.withOpacity(0.1),
                     backgroundImage: otherUser?.avatarUrl != null && otherUser!.avatarUrl!.isNotEmpty
-                        ? NetworkImage(
+                        ? CachedNetworkImageProvider(
                             otherUser.avatarUrl!.startsWith('http')
                                 ? otherUser.avatarUrl!
                                 : '${AppConstants.mediaBaseUrl}${otherUser.avatarUrl}',
+                            maxWidth: 100,
+                            maxHeight: 100,
                           )
                         : null,
                     child: otherUser?.avatarUrl == null || otherUser!.avatarUrl!.isEmpty
@@ -696,12 +699,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: imageUrl.isNotEmpty
-                  ? Image.network(
-                      imageUrl,
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
                       width: 50,
                       height: 50,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      memCacheWidth: 150, // Optimize RAM for small header thumbnail
+                      placeholder: (context, url) => Container(
+                        width: 50,
+                        height: 50,
+                        color: Colors.grey.shade200,
+                      ),
+                      errorWidget: (_, __, ___) => Container(
                         width: 50,
                         height: 50,
                         color: Colors.grey.shade200,

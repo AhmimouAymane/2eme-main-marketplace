@@ -8,6 +8,7 @@ import 'package:marketplace_app/core/utils/validators.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'forgot_password_screen.dart';
 import 'verify_otp_screen.dart';
+import '../../../../core/utils/auth_error_formatter.dart';
 
 /// Écran de connexion
 class LoginScreen extends ConsumerStatefulWidget {
@@ -48,7 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        final message = e.toString().replaceAll('Exception: ', '');
+        final message = AuthErrorFormatter.format(e);
 
         if (message.contains('Email non vérifié')) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -104,7 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     } catch (e) {
       if (mounted) {
-        final message = e.toString().replaceAll('Exception: ', '');
+        final message = AuthErrorFormatter.format(e);
         
         // On ne montre pas d'erreur si c'est une annulation volontaire
         if (message == 'canceled') return;

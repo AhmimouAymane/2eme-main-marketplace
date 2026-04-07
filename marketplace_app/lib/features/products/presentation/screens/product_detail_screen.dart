@@ -15,6 +15,7 @@ import 'package:marketplace_app/shared/models/comment_model.dart';
 import 'package:marketplace_app/shared/providers/system_settings_provider.dart';
 import 'package:marketplace_app/shared/widgets/full_screen_image_viewer.dart';
 import 'package:marketplace_app/shared/widgets/report_dialog.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -214,14 +215,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   child: Hero(
                     // IMPROVEMENT: Hero tag tied to productId, not just index
                     tag: 'product_${widget.productId}_img_$index',
-                    child: Image.network(
-                      images[index],
+                    child: CachedNetworkImage(
+                      imageUrl: images[index],
                       fit: BoxFit.cover,
-                      // IMPROVEMENT: Show a shimmer placeholder while loading
-                      loadingBuilder: (_, child, progress) => progress == null
-                          ? child
-                          : Container(color: Colors.grey[200]),
-                      errorBuilder: (_, __, ___) => Container(
+                      memCacheWidth: 800, // Optimize RAM for detail view
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.cloviGreen.withOpacity(0.3),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
                         color: Colors.grey[100],
                         child: const Icon(
                           Icons.broken_image_outlined,

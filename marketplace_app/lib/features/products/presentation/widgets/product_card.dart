@@ -56,9 +56,10 @@ class ProductCard extends ConsumerWidget {
                       color: Colors.grey[100],
                       child: const Icon(Icons.image_outlined, size: 48, color: Colors.grey),
                     )
-                  : CachedNetworkImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
+                    : CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 400, // Optimize RAM usage on iOS
                       placeholder: (context, url) => Container(
                         color: Colors.grey[100],
                         child: Center(

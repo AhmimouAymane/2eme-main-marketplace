@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/utils/formatters.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
@@ -130,11 +131,13 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
                     ? Icon(Icons.image_outlined, color: Colors.grey[400])
                     : ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          imageUrl,
+                        child: CachedNetworkImage(
+                          imageUrl: imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Icon(Icons.broken_image_outlined, color: Colors.grey[400]),
+                          memCacheWidth: 200, // Optimize RAM for list view
+                          placeholder: (context, url) => Container(color: Colors.grey[200]),
+                          errorWidget: (context, url, error) =>
+                              const Icon(Icons.broken_image_outlined, color: Colors.grey),
                         ),
                       ),
               ),
