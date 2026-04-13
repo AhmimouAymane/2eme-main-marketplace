@@ -260,6 +260,11 @@ class ProfileScreen extends ConsumerWidget {
             title: 'Messages',
             onTap: () => context.push(AppRoutes.conversations),
           ),*/
+          _buildMenuTile(
+            icon: Icons.notifications_outlined,
+            title: 'Notifications',
+            onTap: () => context.push(AppRoutes.notifications),
+          ),
           _buildDivider(),
           _buildMenuTile(
             icon: Icons.inventory_2_outlined,

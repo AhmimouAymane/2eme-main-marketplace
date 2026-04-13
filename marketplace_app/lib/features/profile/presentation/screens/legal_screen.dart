@@ -297,6 +297,17 @@ class CguScreen extends StatelessWidget {
           ],
           footer: 'L\'utilisation continue après modification vaut acceptation des nouvelles conditions.',
         ),
+        LegalSection(
+          title: 'Article 13 – Contenus générés par les utilisateurs et Tolérance Zéro (EULA)',
+          intro: 'L\'application autorise le contenu généré par les utilisateurs, mais impose des règles strictes qui valent acceptation de nos conditions d\'utilisation (EULA). En accédant à la plateforme, vous acceptez que :',
+          bullets: [
+            'Il n\'y a aucune tolérance pour les comportements abusifs (harcèlement, menaces, fraude).',
+            'Il n\'y a aucune tolérance pour la publication de contenus répréhensibles (images violentes, inappropriées, haineuses ou illégales).',
+            'Tout contenu signalé par un utilisateur sera examiné et supprimé dans les 24 heures s\'il est jugé inapproprié.',
+            'Tout utilisateur enfreignant ces règles sera immédiatement bloqué et définitivement banni de la Plateforme.',
+          ],
+          footer: 'Nous nous réservons le droit de modérer les contenus et de bannir tout compte ne respectant pas ces conditions, afin de maintenir un environnement sûr pour tous les utilisateurs.',
+        ),
       ],
     );
   }

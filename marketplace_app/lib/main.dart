@@ -266,8 +266,9 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
         ref.invalidate(userProfileProvider);
       }
 
-      // Mise à jour du compteur de notifications non lues
+      // Mise à jour du compteur et de la liste des notifications
       ref.invalidate(unreadNotificationsCountProvider);
+      ref.invalidate(notificationsProvider);
 
       if (message.notification != null) {
         // Ne pas afficher de notification en double si c'est un message chat et que le Socket fonctionne

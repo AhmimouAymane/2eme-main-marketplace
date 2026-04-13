@@ -77,6 +77,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (!_acceptedCgu) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Vous devez accepter les conditions (EULA) pour continuer.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -123,6 +133,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _handleSocialLogin(String provider) async {
+    if (!_acceptedCgu) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Vous devez accepter les conditions (EULA) pour continuer.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final authService = ref.read(authServiceProvider);
@@ -489,43 +509,63 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
 
-                      // Politique d'utilisation (Texte informatif au lieu de checkbox)
+                      // Politique d'utilisation (Checkbox EULA obligatoire)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 16),
-                        child: Text.rich(
-                          TextSpan(
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondaryLight,
-                              height: 1.5,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: Checkbox(
+                                value: _acceptedCgu,
+                                activeColor: AppColors.cloviDarkGreen,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _acceptedCgu = value ?? false;
+                                  });
+                                },
+                              ),
                             ),
-                            children: [
-                              const TextSpan(
-                                text: "En créant un compte, vous acceptez nos ",
-                              ),
-                              TextSpan(
-                                text: "Conditions Générales d'Utilisation",
-                                style: const TextStyle(
-                                  color: AppColors.cloviDarkGreen,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.underline,
-                                ),
-                                recognizer: TapGestureRecognizer()
-                                  ..onTap = () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const CguScreen(),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text.rich(
+                                TextSpan(
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondaryLight,
+                                    height: 1.5,
+                                  ),
+                                  children: [
+                                    const TextSpan(
+                                      text: "En créant un compte ou en vous connectant, j'accepte le ",
+                                    ),
+                                    TextSpan(
+                                      text: "Contrat de Licence Utilisateur Final (EULA) / CGU",
+                                      style: const TextStyle(
+                                        color: AppColors.cloviDarkGreen,
+                                        fontWeight: FontWeight.bold,
+                                        decoration: TextDecoration.underline,
                                       ),
-                                    );
-                                  },
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => const CguScreen(),
+                                            ),
+                                          );
+                                        },
+                                    ),
+                                    const TextSpan(
+                                      text: " régissant les contenus et les comportements abusifs.",
+                                    ),
+                                  ],
+                                ),
                               ),
-                              const TextSpan(
-                                text: " ainsi que notre politique de confidentialité.",
-                              ),
-                            ],
-                          ),
-                          textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
 

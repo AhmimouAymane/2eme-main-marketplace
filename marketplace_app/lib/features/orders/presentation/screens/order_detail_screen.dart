@@ -100,8 +100,10 @@ class OrderDetailScreen extends ConsumerWidget {
         ? (serviceFee / itemPrice) * 100 
         : (currentServiceFeePercentage ?? 5.0);
 
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomPadding),
       children: [
         // ... (Status Card code remains same)
         // Statut de la commande

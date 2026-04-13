@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
@@ -345,17 +346,18 @@ class AuthService {
 
   /// Déconnexion
   Future<void> logout() async {
-    try {
-      // 1. Informer d'abord le backend d'effacer le token FCM
-      // On utilise le sessionToken actuel AVANT de vider le state
-      await syncFcmToken(fcmTokenOverride: '');
-      
-      // 2. Supprimer le token localement auprès de Firebase
-      await FirebaseMessaging.instance.deleteToken();
-    } catch (e) {
-       print('Erreur lors du nettoyage du token FCM: $e');
-    }
+    // 1. Déclencher le nettoyage en arrière-plan (sans bloquer)
+    // On ignore délibérément le résultat pour ne pas faire attendre l'utilisateur
+    unawaited(() async {
+      try {
+        await syncFcmToken(fcmTokenOverride: '');
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (e) {
+        print('Nettoyage FCM discret échoué: $e');
+      }
+    }());
 
+    // 2. Nettoyage local immédiat (Instantané)
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.keyAuthToken);
     await prefs.remove(AppConstants.keyRefreshToken);
