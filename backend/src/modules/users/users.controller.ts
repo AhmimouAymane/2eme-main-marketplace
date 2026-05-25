@@ -2,10 +2,13 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, NotFoundE
 import type { Response, Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { Role } from '@prisma/client';
 import { UsersService } from './users.service';
 import { GetCurrentUser } from '../../common/decorators/get-current-user.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { OptionalAuthGuard } from '../../common/guards/optional-auth.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../common/guards/roles.guard';
 
 @ApiTags('users')
 @Controller('users')
@@ -13,6 +16,9 @@ export class UsersController {
     constructor(private usersService: UsersService) { }
 
     @Get()
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
+    @Roles(Role.ADMIN)
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'List all users (Admin only)' })
     async findAll(@Res() res: Response, @Query() query: { _start?: number, _end?: number }) {
         const { data, total } = await this.usersService.findAll(query);
@@ -22,6 +28,8 @@ export class UsersController {
     }
 
     @Get('search')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Search users by name' })
     async search(@Query('q') query: string) {
         return this.usersService.search(query);

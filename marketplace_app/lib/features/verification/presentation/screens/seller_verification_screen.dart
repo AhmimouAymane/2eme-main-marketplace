@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../../shared/models/user_model.dart';
 import '../../data/verification_service.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 class SellerVerificationScreen extends ConsumerStatefulWidget {
   const SellerVerificationScreen({super.key});
@@ -15,12 +17,104 @@ class SellerVerificationScreen extends ConsumerStatefulWidget {
 }
 
 class _SellerVerificationScreenState extends ConsumerState<SellerVerificationScreen> {
+  final ImagePicker _picker = ImagePicker();
   PlatformFile? _idCardFrontFile;
   PlatformFile? _idCardBackFile;
   PlatformFile? _bankCertificateFile;
   bool _isLoading = false;
 
   Future<void> _pickFile(String type) async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text(
+                'Choisir une méthode',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined, color: AppColors.cloviGreen),
+              title: const Text('Prendre une photo'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(type, ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined, color: AppColors.cloviGreen),
+              title: const Text('Choisir dans la galerie'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(type, ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined, color: AppColors.cloviGreen),
+              title: const Text('Choisir un document (PDF...)'),
+              onTap: () {
+                Navigator.pop(context);
+                _handleFilePicker(type);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(String type, ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 70,
+      );
+
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        final platformFile = PlatformFile(
+          name: image.name,
+          path: image.path,
+          size: bytes.length,
+          bytes: bytes,
+        );
+
+        setState(() {
+          if (type == 'idFront') {
+            _idCardFrontFile = platformFile;
+          } else if (type == 'idBack') {
+            _idCardBackFile = platformFile;
+          } else {
+            _bankCertificateFile = platformFile;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            child: CloviErrorView(
+              error: e,
+              onRetry: () {
+                context.pop();
+                _pickImage(type, source);
+              },
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleFilePicker(String type) async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -41,12 +135,22 @@ class _SellerVerificationScreenState extends ConsumerState<SellerVerificationScr
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de la sélection: $e')),
+        showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            child: CloviErrorView(
+              error: e,
+              onRetry: () {
+                context.pop();
+                _handleFilePicker(type);
+              },
+            ),
+          ),
         );
       }
     }
   }
+
 
   Future<void> _submit() async {
     if (_idCardFrontFile == null || _idCardBackFile == null || _bankCertificateFile == null) {
@@ -75,8 +179,17 @@ class _SellerVerificationScreenState extends ConsumerState<SellerVerificationScr
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+        showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            child: CloviErrorView(
+              error: e,
+              onRetry: () {
+                context.pop();
+                _submit();
+              },
+            ),
+          ),
         );
       }
     } finally {
@@ -197,7 +310,10 @@ class _SellerVerificationScreenState extends ConsumerState<SellerVerificationScr
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Erreur: $e')),
+        error: (error, stack) => CloviErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(userProfileProvider),
+        ),
       ),
     );
   }

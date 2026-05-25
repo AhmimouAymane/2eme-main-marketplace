@@ -269,6 +269,12 @@ class AuthService {
     final token = data['accessToken'];
     final refreshToken = data['refreshToken'];
     final user = data['user'];
+    final isReactivated = data['isReactivated'] == true;
+    
+    if (isReactivated) {
+      print('DEBUG: [AuthService] Reactivation detected in _saveAuthData');
+      _ref.read(reactivationFlagProvider.notifier).state = true;
+    }
     
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(AppConstants.keyAuthToken, token);

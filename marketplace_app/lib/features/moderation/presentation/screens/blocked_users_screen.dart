@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../features/moderation/data/moderation_service.dart';
 import '../../../../core/constants/app_constants.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 final blockedUsersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   return ref.read(moderationServiceProvider).getBlockedUsers();
@@ -119,20 +120,9 @@ class BlockedUsersScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 12),
-              Text('Erreur: $e', textAlign: TextAlign.center),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(blockedUsersProvider),
-                child: const Text('Réessayer'),
-              ),
-            ],
-          ),
+        error: (error, stack) => CloviErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(blockedUsersProvider),
         ),
       ),
     );

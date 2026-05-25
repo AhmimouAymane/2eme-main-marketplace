@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
+import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/shared/models/category_model.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/features/products/presentation/widgets/product_card.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
 
 /// Écran de recherche et filtrage des produits
@@ -49,8 +51,14 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final productsAsync = ref.watch(productsProvider);
     final usersAsync = ref.watch(userSearchProvider);
 
-    return Scaffold(
-      appBar: AppBar(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go(AppRoutes.home);
+      },
+      child: Scaffold(
+        appBar: AppBar(
         title: const Text(
           'Search',
           style: TextStyle(
@@ -230,7 +238,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     loading: () => const Center(
                       child: CircularProgressIndicator(color: AppColors.cloviGreen),
                     ),
-                    error: (error, stack) => Center(child: Text('Error: $error')),
+                    error: (error, stack) => CloviErrorView(
+                      error: error,
+                      onRetry: () => ref.invalidate(productsProvider),
+                    ),
                   )
                 : usersAsync.when(
                     data: (users) {
@@ -254,13 +265,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     loading: () => const Center(
                       child: CircularProgressIndicator(color: AppColors.cloviGreen),
                     ),
-                    error: (error, stack) => Center(child: Text('Error: $error')),
+                    error: (error, stack) => CloviErrorView(
+                      error: error,
+                      onRetry: () => ref.invalidate(userSearchProvider),
+                    ),
                   ),
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildFilterButton({
     required VoidCallback onPressed,
@@ -427,6 +442,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ),
     );
   }
+
+
 
   Widget _buildUserTile(BuildContext context, UserModel user) {
     return ListTile(

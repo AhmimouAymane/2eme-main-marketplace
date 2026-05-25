@@ -77,7 +77,7 @@ class SettingsScreen extends ConsumerWidget {
                   _buildListTile(
                     icon: Icons.delete_outline,
                     title: 'Supprimer mon compte',
-                    subtitle: 'Cette action est irréversible',
+                    subtitle: 'Désactivation et anonymisation',
                     iconColor: AppColors.error,
                     textColor: AppColors.error,
                     onTap: () => _showDeleteAccountDialog(context, ref),
@@ -212,8 +212,9 @@ class SettingsScreen extends ConsumerWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Supprimer le compte', style: TextStyle(color: AppColors.error)),
         content: const Text(
-          'Êtes-vous sûr de vouloir supprimer définitivement votre compte et toutes vos données (annonces, messages, etc...) ?\n\n'
-          'Cette action est immédiate et NE PEUT PAS être annulée.',
+          'Votre compte sera désactivé immédiatement et vos annonces seront masquées.\n\n'
+          'Vous disposez de 30 jours pour changer d\'avis : il vous suffira de vous reconnecter pour tout restaurer.\n\n'
+          'Passé ce délai, vos données personnelles seront définitivement anonymisées.',
         ),
         actions: [
           TextButton(

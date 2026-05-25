@@ -7,6 +7,7 @@ import 'package:marketplace_app/core/utils/formatters.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/order_model.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 /// Écran de liste des commandes
 class OrdersScreen extends ConsumerStatefulWidget {
@@ -101,7 +102,10 @@ class _OrdersScreenState extends ConsumerState<OrdersScreen>
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Erreur: $error')),
+      error: (error, stack) => CloviErrorView(
+        error: error,
+        onRetry: () => ref.invalidate(provider),
+      ),
     );
   }
 

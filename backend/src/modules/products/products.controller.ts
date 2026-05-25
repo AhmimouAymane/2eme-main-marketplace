@@ -94,9 +94,12 @@ export class ProductsController {
     @ApiResponse({ status: 200, description: 'Product successfully deleted' })
     remove(
         @Param('id') id: string,
-        @GetCurrentUser('sub') userId: string,
+        @GetCurrentUser() user: any,
+        @Body() body: { reason?: string },
+        @Query('reason') queryReason?: string,
     ) {
-        return this.productsService.remove(id, userId);
+        const reason = body?.reason || queryReason;
+        return this.productsService.remove(id, user.sub, user.role, reason);
     }
 
     @Post(':id/reviews')

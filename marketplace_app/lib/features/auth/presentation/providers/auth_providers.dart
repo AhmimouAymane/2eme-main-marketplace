@@ -13,6 +13,9 @@ import 'package:marketplace_app/shared/providers/cache_providers.dart';
 /// Provider pour le token (synchrone pour l'intercepteur)
 final authTokenProvider = StateProvider<String?>((ref) => null);
 
+/// Flag indiquant que l'utilisateur vient de réactiver son compte
+final reactivationFlagProvider = StateProvider<bool>((ref) => false);
+
 /// Provider pour le client Dio
 final dioProvider = Provider<Dio>((ref) {
   // On ne regarde pas le token ici pour éviter de recréer Dio à chaque fois

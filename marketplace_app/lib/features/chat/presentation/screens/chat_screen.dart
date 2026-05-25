@@ -14,6 +14,7 @@ import 'package:marketplace_app/features/notifications/presentation/providers/no
 import 'package:marketplace_app/features/moderation/data/moderation_service.dart';
 import 'package:marketplace_app/shared/widgets/report_dialog.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -649,24 +650,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline, size: 48, color: AppColors.error),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Erreur de chargement',
-                      style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      e.toString(),
-                      style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+              error: (error, stack) => CloviErrorView(
+                error: error,
+                onRetry: () {
+                  ref.invalidate(conversationMessagesProvider(widget.conversationId));
+                  ref.invalidate(conversationProvider(widget.conversationId));
+                },
               ),
             ),
           ),

@@ -127,11 +127,26 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
 
   void _handleNotificationClick(RemoteMessage message) {
     final data = message.data;
+    
+    // S'assurer que le token est chargé avant de traiter le clic
+    final token = ref.read(authTokenProvider);
+    if (token == null) {
+      print("Clic notification ignoré: Utilisateur non authentifié");
+      // On pourrait rediriger vers /login ici si besoin
+      return;
+    }
+
     final currentUserId = ref.read(userIdProvider).value;
     final targetUserId = data['targetUserId'];
     
+    // Si l'ID utilisateur n'est pas encore chargé, on attend un tout petit peu
+    if (currentUserId == null) {
+      Future.delayed(const Duration(milliseconds: 500), () => _handleNotificationClick(message));
+      return;
+    }
+    
     // Si la notification est destinée à un autre utilisateur, on ignore le clic
-    if (targetUserId != null && currentUserId != null && targetUserId != currentUserId) {
+    if (targetUserId != null && targetUserId != currentUserId) {
       print("Clic notification ignoré: destinée à un autre utilisateur (Target: $targetUserId, Current: $currentUserId)");
       return;
     }

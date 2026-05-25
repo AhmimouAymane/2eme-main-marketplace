@@ -76,6 +76,7 @@ class UserModel extends Equatable {
   final UserRole role;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final DateTime? deletedAt;
   final bool isSellerVerified;
   final SellerStatus sellerStatus;
   final String? verificationComment;
@@ -98,6 +99,7 @@ class UserModel extends Equatable {
     required this.role,
     required this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.isSellerVerified = false,
     this.sellerStatus = SellerStatus.notSubmitted,
     this.verificationComment,
@@ -142,6 +144,7 @@ class UserModel extends Equatable {
         role: _roleFromString(json['role'] as String? ?? 'USER'),
         createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),
         updatedAt: json['updatedAt'] == null ? null : DateTime.parse(json['updatedAt'] as String),
+        deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
         isSellerVerified: json['isSellerVerified'] as bool? ?? false,
         sellerStatus: _sellerStatusFromString(json['sellerStatus'] as String? ?? 'NOT_SUBMITTED'),
         verificationComment: json['verificationComment'] as String?,
@@ -186,6 +189,7 @@ class UserModel extends Equatable {
         'verificationDocuments': verificationDocuments?.map((d) => d.toJson()).toList(),
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt?.toIso8601String(),
+        'deletedAt': deletedAt?.toIso8601String(),
       };
   
   // CopyWith
@@ -205,6 +209,7 @@ class UserModel extends Equatable {
     UserRole? role,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? deletedAt,
     bool? isSellerVerified,
     SellerStatus? sellerStatus,
     String? verificationComment,
@@ -227,6 +232,7 @@ class UserModel extends Equatable {
       role: role ?? this.role,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       isSellerVerified: isSellerVerified ?? this.isSellerVerified,
       sellerStatus: sellerStatus ?? this.sellerStatus,
       verificationComment: verificationComment ?? this.verificationComment,
@@ -249,6 +255,7 @@ class UserModel extends Equatable {
         givenReviews,
         createdAt,
         updatedAt,
+        deletedAt,
         isSellerVerified,
         sellerStatus,
         verificationComment,

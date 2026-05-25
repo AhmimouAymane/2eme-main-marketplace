@@ -6,6 +6,7 @@ import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:marketplace_app/shared/models/notification_model.dart';
 import 'package:marketplace_app/features/notifications/data/notifications_service.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -58,7 +59,10 @@ class NotificationsScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(child: Text('Erreur: $err')),
+        error: (error, stack) => CloviErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(notificationsProvider),
+        ),
       ),
     );
   }

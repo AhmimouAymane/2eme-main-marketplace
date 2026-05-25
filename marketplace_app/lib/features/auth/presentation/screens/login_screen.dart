@@ -8,6 +8,7 @@ import 'package:marketplace_app/core/utils/validators.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'forgot_password_screen.dart';
 import 'verify_otp_screen.dart';
+import '../widgets/welcome_back_overlay.dart';
 import '../../../../core/utils/auth_error_formatter.dart';
 
 /// Écran de connexion
@@ -39,7 +40,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
-      await authService.login(
+      final result = await authService.login(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
@@ -92,12 +93,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _isLoading = true);
     try {
       final authService = ref.read(authServiceProvider);
-      Map<String, dynamic> result;
 
       if (provider == 'google') {
-        result = await authService.signInWithGoogle();
+        await authService.signInWithGoogle();
       } else {
-        result = await authService.signInWithApple();
+        await authService.signInWithApple();
       }
 
       if (mounted) {
@@ -363,7 +363,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           // Apple Button
                           _buildSocialButton(
                             iconSvg:
-                                '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="384" height="512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 21.8-88.5 21.8-11.4 0-43.8-19.1-72.9-19.1-38.6 0-77.1 22.1-98.3 54.7-33.1 52.3-10.7 130.3 21.8 175.6 15.9 22.1 34.9 44 57.2 43.1 22.1-.9 30.5-13.8 56.4-13.8 25.8 0 33.6 13.8 56.5 13.5 23.2-.3 40-19.8 55.9-41.8 18.4-25.5 26.1-50.2 26.3-51.5-.5-.2-50.5-18.4-50.7-73.2zM271.8 81.6c17.5-20.9 29.4-49.9 26.2-78.8-25.1 1-55.5 16.3-73.5 36.9-16.1 18.2-30.2 47.7-26.4 75.7 27.9 2.2 56.2-12.9 73.7-33.8z"/></svg>''',
+                                '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path d="M722.2 522.6c-1.1-131 106.8-193.3 111.4-196.1-61.1-89.2-156.1-102.3-189.6-103.7-79.9-8.1-155.8 47.2-196.3 47.2-40.4 0-103.5-47.2-169.3-46.3-86.8 1.4-166.7 51-211.5 128.8-90.2 156.4-23.1 387 64.9 514.5 43.1 62.3 94.6 132.3 162.2 129.8 65.1-2.4 89.9-42 168.7-42s101 42 169.9 40.7c70.1-1.3 115-63.5 158.1-125.7 49.3-72.3 70-142.1 71.3-145.7-.3-.1-138.8-53.1-139.9-211.5zm-86.1-332.9c35.8-43.4 59.9-103.5 53.3-163.7-51.7 2.1-114.2 34.4-151.3 77.8-33.3 38.6-62.4 100-54.6 158.3 57.7 4.5 116.7-29 152.6-72.4z"/></svg>''',
                             label: 'Apple',
                             onPressed: () => _handleSocialLogin('apple'),
                           ),
@@ -434,7 +434,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: SvgPicture.string(iconSvg, width: 20, height: 20),
+              child: SvgPicture.string(iconSvg, width: 17, height: 17),
             ),
             Text(
               label,

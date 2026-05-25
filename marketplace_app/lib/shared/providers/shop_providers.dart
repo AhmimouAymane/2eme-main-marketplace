@@ -23,6 +23,12 @@ enum SearchMode { articles, members }
 
 final searchModeProvider = StateProvider<SearchMode>((ref) => SearchMode.articles);
 
+/// Navigation signal to scroll HomeScreen to top
+final homeScrollSignalProvider = StateProvider<int>((ref) => 0);
+
+/// Tracks if HomeScreen is currently at the top of its scroll
+final isHomeAtTopProvider = StateProvider<bool>((ref) => true);
+
 // Services
 // (usersServiceProvider moved to auth_providers.dart)
 
@@ -273,6 +279,20 @@ final womenShoesProductsProvider = FutureProvider.autoDispose<List<ProductModel>
 final bagsProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
   final service = ref.watch(productsServiceProvider);
   return service.getProducts(categorySlug: 'femme-accessoires-sacs', limit: 10);
+});
+
+final bagsAndAccessoriesProductsProvider = FutureProvider.autoDispose<List<ProductModel>>((ref) async {
+  final service = ref.watch(productsServiceProvider);
+  // On récupère les deux et on les combine (ou on utilise le slug parent si supporté)
+  final results = await Future.wait([
+    service.getProducts(categorySlug: 'femme-accessoires-sacs', limit: 10),
+    service.getProducts(categorySlug: 'femme-accessoires-bijoux', limit: 10),
+  ]);
+  
+  // On mélange un peu les deux pour la diversité
+  final combined = [...results[0], ...results[1]];
+  combined.shuffle();
+  return combined.take(15).toList();
 });
 
 // User Products Provider (My Ads)

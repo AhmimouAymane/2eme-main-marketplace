@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
@@ -12,7 +13,9 @@ import 'package:marketplace_app/shared/models/category_model.dart';
 import 'package:marketplace_app/core/constants/app_constants.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
+import 'package:marketplace_app/features/auth/presentation/widgets/welcome_back_overlay.dart';
 import '../../../profile/data/user_reviews_service.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 /// Écran d'accueil avec liste de produits
 class HomeScreen extends ConsumerStatefulWidget {
@@ -24,107 +27,178 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
+    
     // Reinitialiser les filtres quand on arrive sur l'accueil
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         print('DEBUG: HomeScreen.initState - Clearing filters');
         ref.read(productFilterProvider.notifier).clearAll();
+        
+        // Vérifier si on doit afficher l'overlay de bienvenue
+        final shouldShowWelcome = ref.read(reactivationFlagProvider);
+        if (shouldShowWelcome) {
+          debugPrint('DEBUG: HomeScreen detected reactivation flag in initState');
+          ref.read(reactivationFlagProvider.notifier).state = false;
+          final user = ref.read(userProfileProvider).value;
+          WelcomeBackOverlay.show(context, user?.firstName ?? '');
+        }
+
+        // Sync initial scroll state
+        if (_scrollController.hasClients) {
+          ref.read(isHomeAtTopProvider.notifier).state = _scrollController.offset <= 10;
+        }
       }
     });
   }
 
-
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     // Initialize socket connection globally to receive real-time updates for red dots
     ref.watch(chatSocketProvider);
-    
-    return Scaffold(
-      key: _scaffoldKey,
-      drawer: const CloviDrawer(),
-      body: SafeArea(
+
+    // Listen to scroll to top signal
+    ref.listen(homeScrollSignalProvider, (previous, next) {
+      if (next > 0 && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutQuart,
+        );
+      }
+    });
+
+    // Listen for reactivation welcome message
+    ref.listen(reactivationFlagProvider, (previous, next) {
+      debugPrint('DEBUG: HomeScreen reactivationFlagProvider changed: $next');
+      if (next == true) {
+        // Reset flag immediately
+        Future.microtask(() => ref.read(reactivationFlagProvider.notifier).state = false);
+        
+        final user = ref.read(userProfileProvider).value;
+        debugPrint('DEBUG: Showing WelcomeBackOverlay for user: ${user?.firstName}');
+        WelcomeBackOverlay.show(context, user?.firstName ?? '');
+      }
+    });
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        
+        final isAtTop = ref.read(isHomeAtTopProvider);
+        
+        if (!isAtTop) {
+          ref.read(homeScrollSignalProvider.notifier).state++;
+          
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Retour en haut de page..."),
+              duration: Duration(seconds: 1),
+              backgroundColor: Colors.black87,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        drawer: const CloviDrawer(),
+        body: SafeArea(
           bottom: false,
           child: Column(
             children: [
               // Custom Top Bar
               _buildTopBar(),
 
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    print(
-                      'DEBUG: HomeScreen.onRefresh - Clearing filters and refreshing products',
-                    );
-                    ref.read(productFilterProvider.notifier).clearAll();
-                    await ref.read(homeProductsProvider.notifier).refresh();
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  print(
+                    'DEBUG: HomeScreen.onRefresh - Clearing filters and refreshing products',
+                  );
+                  ref.read(productFilterProvider.notifier).clearAll();
+                  await ref.read(homeProductsProvider.notifier).refresh();
+                },
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: (notification) {
+                    final isAtTop = notification.metrics.pixels <= 20;
+                    if (ref.read(isHomeAtTopProvider) != isAtTop) {
+                      ref.read(isHomeAtTopProvider.notifier).state = isAtTop;
+                    }
+                    return false;
                   },
                   child: SingleChildScrollView(
+                    controller: _scrollController,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Search Section
-                        _buildSearchSection(),
-                        const SizedBox(height: 24),
+                      _buildSearchSection(),
+                      const SizedBox(height: 24),
 
-                        // Trending Categories
-                        _buildCategoriesSection(),
-                        const SizedBox(height: 32),
+                      // Trending Categories
+                      _buildCategoriesSection(),
+                      const SizedBox(height: 32),
 
-                        // Top Sellers
-                        _buildTopSellersSection(),
-                        const SizedBox(height: 32),
+                      // Top Sellers
+                      _buildTopSellersSection(),
+                      const SizedBox(height: 32),
 
-                        // Fresh Arrivals
-                        _buildFreshArrivalsSection(),
-                        const SizedBox(height: 32),
+                      // Fresh Arrivals
+                      _buildFreshArrivalsSection(),
+                      const SizedBox(height: 32),
 
-                        // Section Bijoux
-                        _buildCategoryProductSection(
-                          title: 'Bijoux Étincelants',
-                          provider: jewelryProductsProvider,
-                          slug: 'femme-accessoires-bijoux',
-                        ),
-                        const SizedBox(height: 32),
+                      // Section Chaussures Femme
+                      _buildCategoryProductSection(
+                        title: 'Chaussures Femmes',
+                        provider: womenShoesProductsProvider,
+                        slug: 'femme-chaussures',
+                      ),
+                      const SizedBox(height: 32),
 
-                        // Section Chaussures Femme
-                        _buildCategoryProductSection(
-                          title: 'Chaussures Femme',
-                          provider: womenShoesProductsProvider,
-                          slug: 'femme-chaussures',
-                        ),
-                        const SizedBox(height: 32),
+                      // Section Sacs & Accessoires (Combinée)
+                      _buildCategoryProductSection(
+                        title: 'Sacs & Accessoires',
+                        provider: bagsAndAccessoriesProductsProvider,
+                        slug: 'femme-accessoires',
+                      ),
+                      const SizedBox(height: 32),
 
-                        // Section Sacs & Accessoires
-                        _buildCategoryProductSection(
-                          title: 'Sacs & Accessoires',
-                          provider: bagsProductsProvider,
-                          slug: 'femme-accessoires-sacs',
-                        ),
-                        const SizedBox(height: 32),
+                      // Community Activity
+                      /*_buildCommunityActivitySection(),
+                        const SizedBox(height: 32),*/
 
-                        // Community Activity
-                        _buildCommunityActivitySection(),
-                        const SizedBox(height: 32),
-
-                        // All Products Grid (Requested: 2x2 vertical)
-                        _buildAllProductsGrid(),
-                        const SizedBox(height: 100),
-                      ],
-                    ),
+                      // All Products Grid
+                      _buildAllProductsGrid(),
+                      const SizedBox(height: 100),
+                    ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
+        ],
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   Widget _buildTopBar() {
     final unreadCountAsync = ref.watch(unreadNotificationsCountProvider);
@@ -150,7 +224,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Stack(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.menu, size: 28, color: AppColors.cloviDarkGreen),
+                    icon: const Icon(
+                      Icons.menu,
+                      size: 28,
+                      color: AppColors.cloviDarkGreen,
+                    ),
                     onPressed: () {
                       _scaffoldKey.currentState?.openDrawer();
                     },
@@ -191,7 +269,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Stack(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.notifications_none_rounded, size: 28, color: AppColors.cloviDarkGreen),
+                        icon: const Icon(
+                          Icons.notifications_none_rounded,
+                          size: 28,
+                          color: AppColors.cloviDarkGreen,
+                        ),
                         onPressed: () => context.push(AppRoutes.notifications),
                       ),
                       if (hasUnread)
@@ -210,7 +292,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ],
                   ),
                   IconButton(
-                    icon: ref.watch(userAvatarUrlProvider).maybeWhen(
+                    icon: ref
+                        .watch(userAvatarUrlProvider)
+                        .maybeWhen(
                           data: (url) {
                             if (url != null && url.isNotEmpty) {
                               final fullUrl = url.startsWith('http')
@@ -311,19 +395,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         'icon': Icons.security,
         'title': 'Safety First',
         'desc': 'Meet in public places for transactions.',
-        'color': AppColors.cloviGreen
+        'color': AppColors.cloviGreen,
       },
       {
         'icon': Icons.visibility,
         'title': 'Inspect Items',
         'desc': 'Check items thoroughly before paying.',
-        'color': AppColors.cloviDarkGreen
+        'color': AppColors.cloviDarkGreen,
       },
       {
         'icon': Icons.payments,
         'title': 'Cash on Delivery',
         'desc': 'Pay only after receiving your item.',
-        'color': Colors.brown[400]
+        'color': Colors.brown[400],
       },
     ];
 
@@ -345,8 +429,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             child: Row(
               children: [
-                Icon(tip['icon'] as IconData,
-                    size: 40, color: tip['color'] as Color),
+                Icon(
+                  tip['icon'] as IconData,
+                  size: 40,
+                  color: tip['color'] as Color,
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -402,7 +489,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           child: categoriesAsync.when(
             data: (categories) {
               // Liste ordonnée demandée par l'utilisateur
-              final targetNames = ['enfant', 'homme', 'femme', 'bijoux', 'montre', 'activewear'];
+              final targetNames = [
+                'enfant',
+                'homme',
+                'femme',
+                'bijoux',
+                'montre',
+                'activewear',
+              ];
               final List<CategoryModel> displayedCategories = [];
 
               void collectTargetCategories(List<CategoryModel> cats) {
@@ -428,12 +522,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 if (key.contains('enfant')) key = 'enfant';
                 if (key.contains('homme')) key = 'homme';
                 if (key.contains('femme')) key = 'femme';
-                
+
                 if (!uniqueCategories.containsKey(key)) {
                   uniqueCategories[key] = cat;
                 }
               }
-              
+
               final finalList = uniqueCategories.values.toList();
 
               // Tri selon l'ordre des targetNames
@@ -445,6 +539,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   }
                   return targetNames.length;
                 }
+
                 return getIndex(a).compareTo(getIndex(b));
               });
 
@@ -460,7 +555,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => const SizedBox(),
+            error: (e, _) => const SizedBox.shrink(),
           ),
         ),
       ],
@@ -497,10 +592,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -509,61 +601,95 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   IconData _getCategoryIcon(String name) {
-  name = name.toLowerCase();
+    name = name.toLowerCase();
 
-  // Genres & Types
-  if (name.contains('fille')) return Icons.face_3_outlined;
-  if (name.contains('garcon') || name.contains('garçon')) return Icons.face_6_outlined;
-  if (name.contains('enfant')) return Icons.child_care_outlined;
-  if (name.contains('femme')) return Icons.woman_2_outlined;
-  if (name.contains('homme')) return Icons.man_2_outlined;
+    // Genres & Types
+    if (name.contains('fille')) return Icons.face_3_outlined;
+    if (name.contains('garcon') || name.contains('garçon'))
+      return Icons.face_6_outlined;
+    if (name.contains('enfant')) return Icons.child_care_outlined;
+    if (name.contains('femme')) return Icons.woman_2_outlined;
+    if (name.contains('homme')) return Icons.man_2_outlined;
 
-  // Chaussures
+    // Chaussures
     // more shoe-like silhouette
-  if (name.contains('talon') || name.contains('escarpin')) return Icons.hiking_outlined;
-  if (name.contains('botte')) return Icons.do_not_step_outlined;
-  if (name.contains('basket') || name.contains('sneaker')) return Icons.directions_run_outlined;
-  if (name.contains('sandale')) return Icons.beach_access_outlined;
+    if (name.contains('talon') || name.contains('escarpin'))
+      return Icons.hiking_outlined;
+    if (name.contains('botte')) return Icons.do_not_step_outlined;
+    if (name.contains('basket') || name.contains('sneaker'))
+      return Icons.directions_run_outlined;
+    if (name.contains('sandale')) return Icons.beach_access_outlined;
 
-  // Vêtements
-  if (name.contains('vêtement') || name.contains('vetement')) return Icons.checkroom_outlined;
-  if (name.contains('hauts') || name.contains('haut') || name.contains('chemise') || name.contains('blouse')) return Icons.dry_cleaning_outlined;
-  if (name.contains('robe') || name.contains('robes')) return Icons.accessibility_new_outlined;
-  if (name.contains('jean') || name.contains('pantalon')) return Icons.airline_seat_legroom_normal_outlined;
-  if (name.contains('manteau') || name.contains('veste') || name.contains('blouson')) return Icons.umbrella_outlined;
-  if (name.contains('pull') || name.contains('sweat')) return Icons.self_improvement_outlined;
-  if (name.contains('jupe')) return Icons.interests_outlined;
+    // Vêtements
+    if (name.contains('vêtement') || name.contains('vetement'))
+      return Icons.checkroom_outlined;
+    if (name.contains('hauts') ||
+        name.contains('haut') ||
+        name.contains('chemise') ||
+        name.contains('blouse'))
+      return Icons.dry_cleaning_outlined;
+    if (name.contains('robe') || name.contains('robes'))
+      return Icons.accessibility_new_outlined;
+    if (name.contains('jean') || name.contains('pantalon'))
+      return Icons.airline_seat_legroom_normal_outlined;
+    if (name.contains('manteau') ||
+        name.contains('veste') ||
+        name.contains('blouson'))
+      return Icons.umbrella_outlined;
+    if (name.contains('pull') || name.contains('sweat'))
+      return Icons.self_improvement_outlined;
+    if (name.contains('jupe')) return Icons.interests_outlined;
 
-  // Sacs
-  if (name.contains('sac à dos') || name.contains('sac a dos')) return Icons.backpack_outlined;
-  if (name.contains('sac à main') || name.contains('sac a main')) return Icons.shopping_bag_outlined;
-  if (name.contains('portefeuille') || name.contains('pochette')) return Icons.account_balance_wallet_outlined;
-  if (name.contains('sac')) return Icons.luggage_outlined;
+    // Sacs
+    if (name.contains('sac à dos') || name.contains('sac a dos'))
+      return Icons.backpack_outlined;
+    if (name.contains('sac à main') || name.contains('sac a main'))
+      return Icons.shopping_bag_outlined;
+    if (name.contains('portefeuille') || name.contains('pochette'))
+      return Icons.account_balance_wallet_outlined;
+    if (name.contains('sac')) return Icons.luggage_outlined;
 
-  // Bijoux & Accessoires
-  if (name.contains('collier') || name.contains('pendentif')) return Icons.diamond_outlined;
-  if (name.contains('bague') || name.contains('bracelet')) return Icons.circle_outlined;
-  if (name.contains('boucle') || name.contains('earring')) return Icons.radio_button_unchecked_outlined;
-  if (name.contains('bijoux')) return Icons.diamond_outlined;
-  if (name.contains('montre')) return Icons.watch_outlined;
-  if (name.contains('lunettes')) return Icons.remove_red_eye_outlined;
-  if (name.contains('chapeau') || name.contains('casquette')) return Icons.emoji_people_outlined;
-  if (name.contains('écharpe') || name.contains('echarpe') || name.contains('foulard')) return Icons.air_outlined;
-  if (name.contains('ceinture')) return Icons.horizontal_rule_outlined;
-  if (name.contains('accessoire')) return Icons.watch_outlined;
+    // Bijoux & Accessoires
+    if (name.contains('collier') || name.contains('pendentif'))
+      return Icons.diamond_outlined;
+    if (name.contains('bague') || name.contains('bracelet'))
+      return Icons.circle_outlined;
+    if (name.contains('boucle') || name.contains('earring'))
+      return Icons.radio_button_unchecked_outlined;
+    if (name.contains('bijoux')) return Icons.diamond_outlined;
+    if (name.contains('montre')) return Icons.watch_outlined;
+    if (name.contains('lunettes')) return Icons.remove_red_eye_outlined;
+    if (name.contains('chapeau') || name.contains('casquette'))
+      return Icons.emoji_people_outlined;
+    if (name.contains('écharpe') ||
+        name.contains('echarpe') ||
+        name.contains('foulard'))
+      return Icons.air_outlined;
+    if (name.contains('ceinture')) return Icons.horizontal_rule_outlined;
+    if (name.contains('accessoire')) return Icons.watch_outlined;
 
-  // Catégories spéciales
-  if (name.contains('traditionnel')) return Icons.auto_awesome_outlined;
-  if (name.contains('lingerie')) return Icons.favorite_border_outlined;
-  if (name.contains('pyjama') || name.contains('nuit')) return Icons.bedtime_outlined;
-  if (name.contains('sport') || name.contains('activewear')) return Icons.sports_gymnastics_outlined;
-  if (name.contains('maillot') || name.contains('bain')) return Icons.pool_outlined;
-  if (name.contains('mariage') || name.contains('soirée') || name.contains('soiree')) return Icons.celebration_outlined;
-  if (name.contains('enfant') || name.contains('bébé') || name.contains('bebe')) return Icons.child_friendly_outlined;
+    // Catégories spéciales
+    if (name.contains('traditionnel')) return Icons.auto_awesome_outlined;
+    if (name.contains('lingerie')) return Icons.favorite_border_outlined;
+    if (name.contains('pyjama') || name.contains('nuit'))
+      return Icons.bedtime_outlined;
+    if (name.contains('sport') || name.contains('activewear'))
+      return Icons.sports_gymnastics_outlined;
+    if (name.contains('maillot') || name.contains('bain'))
+      return Icons.pool_outlined;
+    if (name.contains('mariage') ||
+        name.contains('soirée') ||
+        name.contains('soiree'))
+      return Icons.celebration_outlined;
+    if (name.contains('enfant') ||
+        name.contains('bébé') ||
+        name.contains('bebe'))
+      return Icons.child_friendly_outlined;
 
-  // Fallback
-  return Icons.category_outlined;
-}
+    // Fallback
+    return Icons.category_outlined;
+  }
+
   Widget _buildTopSellersSection() {
     final topSellersAsync = ref.watch(topSellersProvider);
 
@@ -573,7 +699,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Vendeurs à la une',
+            'Sous les projecteurs',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -618,12 +744,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 radius: 30,
                                 backgroundColor: Colors.grey[200],
                                 backgroundImage: avatarUrl != null
-                                    ? NetworkImage(avatarUrl.startsWith('http')
-                                        ? avatarUrl
-                                        : '${AppConstants.mediaBaseUrl}$avatarUrl')
+                                    ? NetworkImage(
+                                        avatarUrl.startsWith('http')
+                                            ? avatarUrl
+                                            : '${AppConstants.mediaBaseUrl}$avatarUrl',
+                                      )
                                     : null,
                                 child: avatarUrl == null
-                                    ? const Icon(Icons.person, color: Colors.grey)
+                                    ? const Icon(
+                                        Icons.person,
+                                        color: Colors.grey,
+                                      )
                                     : null,
                               ),
                             ),
@@ -631,7 +762,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               bottom: 0,
                               right: 0,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(8),
@@ -645,7 +779,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.star, color: Colors.amber, size: 10),
+                                    const Icon(
+                                      Icons.star,
+                                      color: Colors.amber,
+                                      size: 10,
+                                    ),
                                     const SizedBox(width: 2),
                                     Text(
                                       rating.toStringAsFixed(1),
@@ -685,7 +823,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               },
             ),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => const SizedBox(),
+            error: (error, stack) => CloviErrorView(
+              error: error,
+              onRetry: () => ref.read(topSellersProvider.notifier).refresh(),
+            ),
           ),
         ),
       ],
@@ -702,7 +843,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Juste arrivé',
+                'Nouveautés',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -718,7 +859,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         SizedBox(
           height: 240,
-          child: ref.watch(homeProductsProvider).when(
+          child: ref
+              .watch(homeProductsProvider)
+              .when(
                 data: (products) {
                   if (products.isEmpty) return const SizedBox();
                   return ListView.builder(
@@ -743,7 +886,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => const SizedBox(),
+                error: (error, stack) => const SizedBox.shrink(),
               ),
         ),
       ],
@@ -766,19 +909,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        ref.watch(homeProductsProvider).when(
+        ref
+            .watch(homeProductsProvider)
+            .when(
               data: (products) {
                 // Flatten all comments from all products for "Recent Activity"
                 final allComments = products
-                    .expand((p) => p.comments.map((c) => {'comment': c, 'product': p}))
+                    .expand(
+                      (p) =>
+                          p.comments.map((c) => {'comment': c, 'product': p}),
+                    )
                     .toList();
-                
-                allComments.sort((a, b) => (b['comment'] as dynamic).createdAt.compareTo((a['comment'] as dynamic).createdAt));
+
+                allComments.sort(
+                  (a, b) => (b['comment'] as dynamic).createdAt.compareTo(
+                    (a['comment'] as dynamic).createdAt,
+                  ),
+                );
 
                 if (allComments.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text('No recent activity', style: TextStyle(color: Colors.grey)),
+                    child: Text(
+                      'No recent activity',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   );
                 }
 
@@ -792,14 +947,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     final product = item['product'] as ProductModel;
 
                     return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundImage: NetworkImage(product.fullMainImageUrl),
+                          backgroundImage: NetworkImage(
+                            product.fullMainImageUrl,
+                          ),
                         ),
                         title: Text(
                           '${comment.user?.fullName ?? 'Someone'} commented on ${product.title}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         subtitle: Text(
                           comment.content,
@@ -814,7 +977,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 );
               },
               loading: () => const SizedBox(),
-              error: (e, _) => const SizedBox(),
+              error: (error, stack) => const SizedBox.shrink(),
             ),
       ],
     );
@@ -856,7 +1019,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         SizedBox(
           height: 240,
-          child: ref.watch(provider).when(
+          child: ref
+              .watch(provider)
+              .when(
                 data: (products) {
                   if (products.isEmpty) {
                     return const Center(
@@ -888,7 +1053,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => const SizedBox(),
+                error: (error, stack) => const SizedBox.shrink(),
               ),
         ),
       ],
@@ -911,7 +1076,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        ref.watch(homeProductsProvider).when(
+        ref
+            .watch(homeProductsProvider)
+            .when(
               data: (products) {
                 if (products.isEmpty) {
                   return const Padding(
@@ -929,12 +1096,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: 0.72, // Adjust based on ProductCard height
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio:
+                              0.72, // Adjust based on ProductCard height
+                        ),
                     itemCount: products.length,
                     itemBuilder: (context, index) {
                       final product = products[index];
@@ -956,11 +1125,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: CircularProgressIndicator(),
                 ),
               ),
-              error: (e, _) => const SizedBox(),
+              error: (error, stack) => CloviErrorView(
+                error: error,
+                onRetry: () => ref.read(homeProductsProvider.notifier).refresh(),
+              ),
             ),
       ],
     );
   }
 }
-
-

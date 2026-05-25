@@ -16,6 +16,7 @@ import 'package:marketplace_app/shared/providers/system_settings_provider.dart';
 import 'package:marketplace_app/shared/widgets/full_screen_image_viewer.dart';
 import 'package:marketplace_app/shared/widgets/report_dialog.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -45,58 +46,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           data: (product) => _buildContent(context, product),
           // IMPROVEMENT: Use a proper skeleton/shimmer instead of a bare spinner
           loading: () => const _ProductDetailSkeleton(),
-          error: (error, stack) {
-            final is404 =
-                error is DioException && error.response?.statusCode == 404;
-            final message = is404
-                ? 'Cette annonce n\'est plus disponible\n(supprimée ou vendue).'
-                : (error is DioException ? error.message : error.toString()) ??
-                      'Une erreur est survenue';
-
-            return Scaffold(
-              appBar: AppBar(title: const Text('Annonce indisponible')),
-              body: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        is404
-                            ? Icons.inventory_2_outlined
-                            : Icons.wifi_off_outlined,
-                        size: 72,
-                        color: Colors.grey[350],
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        message,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 32),
-                      FilledButton.icon(
-                        onPressed: () => context.pop(),
-                        icon: const Icon(Icons.arrow_back),
-                        label: const Text('Retour'),
-                      ),
-                      // IMPROVEMENT: Add retry for non-404 errors
-                      if (!is404) ...[
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: () => ref.invalidate(
-                            productDetailProvider(widget.productId),
-                          ),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Réessayer'),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
+          error: (error, stack) => Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.cloviGreen),
+                onPressed: () => context.pop(),
               ),
-            );
-          },
+            ),
+            body: CloviErrorView(
+              error: error,
+              onRetry: () => ref.invalidate(productDetailProvider(widget.productId)),
+            ),
+          ),
         );
   }
 

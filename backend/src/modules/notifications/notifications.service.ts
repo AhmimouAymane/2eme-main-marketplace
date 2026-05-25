@@ -87,6 +87,16 @@ export class NotificationsService {
                 console.log('DEBUG: [FCM] Push sent successfully:', response);
             } catch (error) {
                 console.error('DEBUG: [FCM] Push Error:', error);
+                
+                // Si le token n'est plus valide, on le supprime de la base pour ne plus retenter
+                if (error.code === 'messaging/registration-token-not-registered' || 
+                    error.code === 'messaging/invalid-registration-token') {
+                    console.log(`DEBUG: [FCM] Removing invalid token for user ${notificationData.userId}`);
+                    await this.prisma.user.update({
+                        where: { id: notificationData.userId },
+                        data: { fcmToken: null },
+                    }).catch(e => console.error('Error removing stale FCM token:', e));
+                }
             }
         } else {
             console.log(`DEBUG: [FCM] Skip push for user ${notificationData.userId}: No fcmToken found in database.`);

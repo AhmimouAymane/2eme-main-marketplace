@@ -437,30 +437,50 @@ export class ProductsService {
         });
     }
 
-    async remove(id: string, userId: string) {
+    async remove(id: string, userId: string, userRole?: string, reason?: string) {
+        console.log(`DEBUG: Deleting product ${id} requested by user ${userId} (Role: ${userRole}). Reason: ${reason}`);
         // ensure the product exists and retrieve owner
         const product = await this.findOne(id);
-        if (product.sellerId !== userId) {
-            // return a 403 Forbidden instead of generic error
-            throw new ForbiddenException('You can only delete your own products');
+        
+        const isOwner = product.sellerId === userId;
+        const isAdmin = userRole === Role.ADMIN;
+
+        if (!isOwner && !isAdmin) {
+            throw new ForbiddenException('Vous ne pouvez supprimer que vos propres produits ou être administrateur.');
         }
 
         // Prevent deletion when product has an active or completed order
         const lockedStatuses: ProductStatus[] = [ProductStatus.RESERVED, ProductStatus.CONFIRMED, ProductStatus.SOLD];
-        if (lockedStatuses.includes(product.status)) {
+        if (lockedStatuses.includes(product.status) && !isAdmin) {
             throw new ForbiddenException('Ce produit ne peut pas être supprimé car il a une commande en cours ou est déjà vendu.');
         }
 
         try {
-            return await this.prisma.product.update({
+            const deletedProduct = await this.prisma.product.update({
                 where: { id },
                 data: { deletedAt: new Date() },
             });
+
+            // Si c'est un admin qui supprime (et qu'il n'est pas le proprio), on notifie le vendeur
+            if (isAdmin && !isOwner) {
+                // On ne met pas de "await" ici pour ne pas bloquer la suppression 
+                // si le service de notification (Firebase) met du temps ou plante
+                this.notificationsService.create({
+                    userId: product.sellerId,
+                    title: 'Produit supprimé par la modération',
+                    message: `Votre produit "${product.title}" a été supprimé par un administrateur.${reason ? ` Raison : ${reason}` : ''}`,
+                    type: NotificationType.PRODUCT_REJECTED,
+                    data: {
+                        productId: product.id,
+                        reason: reason || 'Non spécifiée',
+                    },
+                }).catch(err => console.error('Erreur silencieuse notification suppression:', err));
+            }
+
+            return deletedProduct;
         } catch (err) {
-            // Prisma may throw for many reasons; log and wrap
             console.error('Error deleting product', id, err);
-            // if it's a known Prisma error, you could inspect err.code
-            throw new InternalServerErrorException('Unable to delete product at this time');
+            throw new InternalServerErrorException('Impossible de supprimer le produit pour le moment');
         }
     }
 

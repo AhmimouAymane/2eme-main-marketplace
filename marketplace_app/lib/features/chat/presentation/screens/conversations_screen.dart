@@ -9,6 +9,7 @@ import 'package:marketplace_app/shared/models/conversation_model.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
@@ -26,8 +27,14 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
   Widget build(BuildContext context) {
     final conversationsAsync = ref.watch(conversationsProvider);
 
-    return Scaffold(
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go(AppRoutes.home);
+      },
+      child: Scaffold(
+        body: SafeArea(
         bottom: false,
         child: Column(
           children: [
@@ -100,14 +107,18 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => _buildErrorState(e),
+                error: (error, stack) => CloviErrorView(
+                  error: error,
+                  onRetry: () => ref.invalidate(conversationsProvider),
+                ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTopBar() {
     final unreadCountAsync = ref.watch(unreadNotificationsCountProvider);
@@ -339,22 +350,7 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     );
   }
 
-  Widget _buildErrorState(Object e) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 64, color: AppColors.error),
-          const SizedBox(height: 16),
-          Text(e.toString()),
-          ElevatedButton(
-            onPressed: () => ref.invalidate(conversationsProvider),
-            child: const Text('Réessayer'),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   String _formatTime(DateTime dateUtc) {
     final date = dateUtc.toLocal();

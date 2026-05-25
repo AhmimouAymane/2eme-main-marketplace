@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 /// Écran permettant à l'utilisateur de voir et gérer ses adresses
 class AddressesScreen extends ConsumerWidget {
@@ -130,11 +131,17 @@ class AddressesScreen extends ConsumerWidget {
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Erreur: $e')),
+              error: (error, stack) => CloviErrorView(
+                error: error,
+                onRetry: () => ref.invalidate(userAddressesProvider(userId)),
+              ),
             );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Erreur: $e')),
+      error: (error, stack) => CloviErrorView(
+        error: error,
+        onRetry: () => ref.invalidate(userIdProvider),
+      ),
     );
   }
 }

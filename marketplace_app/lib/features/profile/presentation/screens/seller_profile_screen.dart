@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 class SellerProfileScreen extends ConsumerWidget {
   final String userId;
@@ -280,7 +281,10 @@ class SellerProfileScreen extends ConsumerWidget {
           ],
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, s) => Center(child: Text('Erreur : $e')),
+        error: (error, stack) => CloviErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(sellerProfileProvider(userId)),
+        ),
       ),
     );
   }

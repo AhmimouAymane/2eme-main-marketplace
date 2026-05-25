@@ -25,6 +25,8 @@ export class UserReviewsController {
     }
 
     @Get('top-sellers')
+    @UseGuards(AuthGuard('jwt'))
+    @ApiBearerAuth()
     @ApiOperation({ summary: 'Get top rated sellers' })
     getTopSellers() {
         return this.userReviewsService.getTopSellers();

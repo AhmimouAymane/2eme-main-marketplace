@@ -6,6 +6,7 @@ import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/shared/widgets/clovi_bottom_nav.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
+import 'package:marketplace_app/shared/providers/shop_providers.dart';
 
 /// Shell persistant avec la barre de navigation du bas.
 /// La barre reste fixe pendant la navigation entre les onglets.
@@ -54,6 +55,13 @@ class AppShell extends ConsumerWidget {
 
     // Convertit l'index barre (0,1,3,4) → branche shell (0,1,2,3)
     final branchIndex = index < 2 ? index : index - 1;
+
+    // SCROLL TO TOP FEATURE
+    // Si on clique sur l'onglet Accueil alors qu'on y est déjà, on envoie un signal pour scroller en haut
+    if (branchIndex == 0 && navigationShell.currentIndex == 0) {
+      ref.read(homeScrollSignalProvider.notifier).state++;
+    }
+
     navigationShell.goBranch(
       branchIndex,
       initialLocation: branchIndex == navigationShell.currentIndex,
@@ -72,15 +80,13 @@ class AppShell extends ConsumerWidget {
     return PopScope(
       canPop: false, // On intercepte tout pour gérer le retour inter-onglets
       onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        
         final currentIndex = navigationShell.currentIndex;
-        print('DEBUG: PopScope Invoked - currentIndex: $currentIndex');
-
+        
+        // Même si didPop est vrai (ce qui ne devrait pas arriver avec canPop: false), 
+        // on essaie quand même de gérer la navigation si on est dans le shell.
+        
         if (currentIndex != 0) {
-          print('DEBUG: Switching to Home branch (index 0)');
           
-          // Feedback visuel TRÈS visible pour confirmer que l'appui est bien détecté
           if (context.mounted) {
             ScaffoldMessenger.of(context).hideCurrentSnackBar();
             ScaffoldMessenger.of(context).showSnackBar(
@@ -95,8 +101,26 @@ class AppShell extends ConsumerWidget {
           
           navigationShell.goBranch(0);
         } else {
-          print('DEBUG: Already on Home, exiting app via SystemNavigator.pop()');
-          SystemNavigator.pop();
+          // On est sur l'accueil, on vérifie si on est en haut (avec petite marge de 20px)
+          final isAtTop = ref.read(isHomeAtTopProvider);
+          
+          if (!isAtTop) {
+            ref.read(homeScrollSignalProvider.notifier).state++;
+            
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Retour en haut de page..."),
+                  duration: Duration(seconds: 1),
+                  backgroundColor: Colors.black87,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          } else {
+            SystemNavigator.pop();
+          }
         }
       },
       child: Scaffold(

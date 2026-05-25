@@ -6,6 +6,7 @@ import '../../../../core/routes/app_routes.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 /// Écran de profil utilisateur — design aligné avec le reste de l'app (Clovi)
 class ProfileScreen extends ConsumerWidget {
@@ -15,9 +16,15 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(userProfileProvider);
 
-    return Scaffold(
-      // backgroundColor: AppColors.cloviBeige, // Inherited from theme
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        context.go(AppRoutes.home);
+      },
+      child: Scaffold(
+        // backgroundColor: AppColors.cloviBeige, // Inherited from theme
+        body: SafeArea(
         bottom: false,
         child: Column(
           children: [
@@ -56,19 +63,18 @@ class ProfileScreen extends ConsumerWidget {
                 loading: () => const Center(
                   child: CircularProgressIndicator(color: AppColors.cloviGreen),
                 ),
-                error: (e, _) => Center(
-                  child: Text(
-                    'Erreur : $e',
-                    style: const TextStyle(color: AppColors.textSecondaryLight),
-                  ),
+                error: (error, stack) => CloviErrorView(
+                  error: error,
+                  onRetry: () => ref.invalidate(userProfileProvider),
                 ),
               ),
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTopBar(BuildContext context) {
     return Padding(
@@ -424,7 +430,9 @@ class ProfileScreen extends ConsumerWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Supprimer le compte'),
         content: const Text(
-          'Cette action est irréversible. Votre compte sera supprimé de Clovi et de Firebase. Voulez-vous continuer ?',
+          'Votre compte sera désactivé immédiatement et vos annonces seront masquées.\n\n'
+          'Vous disposez de 30 jours pour changer d\'avis : il vous suffira de vous reconnecter pour tout restaurer.\n\n'
+          'Passé ce délai, vos données personnelles seront définitivement anonymisées.',
         ),
         actions: [
           TextButton(

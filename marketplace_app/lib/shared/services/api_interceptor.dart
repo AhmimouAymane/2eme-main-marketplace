@@ -97,18 +97,16 @@ class ApiInterceptor extends Interceptor {
           final options = err.requestOptions;
           options.headers['Authorization'] = 'Bearer $newToken';
           
-          final fullPath = options.path.startsWith('http') 
-              ? options.path 
-              : '${AppConstants.apiBaseUrl}${options.path}';
-          
-          final dio = Dio(); 
+          // Utiliser une instance Dio propre mais avec la même base URL
+          final dio = Dio(BaseOptions(baseUrl: AppConstants.apiBaseUrl)); 
           final response = await dio.request(
-            fullPath,
+            options.path,
             data: options.data,
             queryParameters: options.queryParameters,
             options: Options(
               method: options.method,
               headers: options.headers,
+              contentType: options.contentType,
             ),
           );
           _isRefreshing = false;

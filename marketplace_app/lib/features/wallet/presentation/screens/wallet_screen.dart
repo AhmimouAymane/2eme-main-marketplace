@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/wallet_service.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
@@ -44,7 +45,10 @@ class WalletScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Erreur: $e')),
+        error: (error, stack) => CloviErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(walletBalanceProvider),
+        ),
       ),
     );
   }
@@ -123,10 +127,20 @@ class WalletScreen extends ConsumerWidget {
           child: CircularProgressIndicator(),
         ),
       ),
-      error: (e, _) => const Center(
+      error: (error, stack) => Center(
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 20),
-          child: Text('Erreur chargement transactions'),
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.error),
+              const SizedBox(height: 8),
+              const Text('Impossible de charger l\'historique', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              TextButton(
+                onPressed: () => ref.invalidate(walletTransactionsProvider),
+                child: const Text('Réessayer'),
+              ),
+            ],
+          ),
         ),
       ),
     );

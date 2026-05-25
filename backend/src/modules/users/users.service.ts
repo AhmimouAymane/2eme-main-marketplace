@@ -15,7 +15,7 @@ export class UsersService {
     ) { }
 
     async findAll(query: { _start?: number, _end?: number }) {
-        const where = {};
+        const where = { deletedAt: null };
         const total = await this.prisma.user.count({ where });
         const users = await this.prisma.user.findMany({
             where,
@@ -38,6 +38,7 @@ export class UsersService {
 
         return this.prisma.user.findMany({
             where: {
+                deletedAt: null,
                 OR: [
                     { firstName: { contains: searchTerm, mode: 'insensitive' } },
                     { lastName: { contains: searchTerm, mode: 'insensitive' } },
@@ -116,6 +117,15 @@ export class UsersService {
 
         const { password, _count, receivedReviews: rr, givenReviews: gr, products: pr, ...userData } = anyUser;
 
+        // Filter sensitive data for public profiles
+        if (isPublic) {
+            delete (userData as any).email;
+            delete (userData as any).phone;
+            delete (userData as any).fcmToken;
+            delete (userData as any).document_id;
+            delete (userData as any).verificationComment;
+        }
+
         return {
             ...userData,
             averageRating,
@@ -174,21 +184,89 @@ export class UsersService {
         // 1. Find user first to get email
         const user = await this.prisma.user.findUnique({ where: { id } });
 
-        if (user) {
-            // 2. Try to delete from Firebase Auth
+        if (user && !user.deletedAt) {
+            // 2. Try to delete from Firebase Auth (Optional: keep it in Firebase for grace period login)
+            // But we keep it in Firebase so they CAN log back in to reactivate.
+            // We just mark it in DB.
+            console.log(`Soft deleting user ${id} (Grace Period started)`);
+        }
+
+        // 3. Mark user and their products as deleted in database
+        await this.prisma.product.updateMany({
+            where: { sellerId: id, deletedAt: null },
+            data: { deletedAt: new Date() },
+        });
+
+        return this.prisma.user.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+        });
+    }
+
+    async reactivate(id: string): Promise<User> {
+        console.log(`Reactivating user ${id} and their products`);
+        
+        // Restore products (optional: you might want to keep them deleted if you want a fresh start, 
+        // but since we want auto-reactivation, it's better to restore them)
+        await this.prisma.product.updateMany({
+            where: { sellerId: id, deletedAt: { not: null } },
+            data: { deletedAt: null },
+        });
+
+        return this.prisma.user.update({
+            where: { id },
+            data: { deletedAt: null },
+        });
+    }
+
+    async anonymizeDeletedUsers() {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        console.log(`Checking for users to anonymize (deleted before ${thirtyDaysAgo.toISOString()})`);
+
+        const usersToAnonymize = await this.prisma.user.findMany({
+            where: {
+                deletedAt: {
+                    lt: thirtyDaysAgo,
+                },
+                // Only anonymize if not already anonymized (check email prefix)
+                NOT: {
+                    email: {
+                        startsWith: 'deleted_',
+                    },
+                },
+            },
+        });
+
+        for (const user of usersToAnonymize) {
+            console.log(`Anonymizing user ${user.id}`);
+            
+            // 1. Delete from Firebase permanently
             try {
                 const firebaseUser = await this.firebaseAdmin.auth().getUserByEmail(user.email);
                 await this.firebaseAdmin.auth().deleteUser(firebaseUser.uid);
             } catch (error) {
-                // Log error but continue with DB deletion (user might already be deleted in Firebase)
-                console.warn(`Could not delete Firebase user for email ${user.email}:`, error);
+                console.warn(`Could not delete Firebase user during anonymization for ${user.email}:`, error);
             }
+
+            // 2. Update DB record with anonymous data
+            await this.prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    email: `deleted_${user.id}@clovi.ma`,
+                    phone: null,
+                    avatarUrl: null,
+                    bio: 'Compte supprimé',
+                    fcmToken: null,
+                    firstName: 'Utilisateur',
+                    lastName: 'Clovi',
+                    // Keep addresses but clear sensitive info if necessary
+                },
+            });
         }
 
-        // 3. Delete from database
-        return this.prisma.user.delete({
-            where: { id },
-        });
+        return usersToAnonymize.length;
     }
 
     async rateUser(reviewerId: string, targetUserId: string, rating: number, comment?: string) {

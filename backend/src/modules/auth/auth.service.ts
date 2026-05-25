@@ -98,11 +98,22 @@ export class AuthService {
                 await this.updateFcmToken(user.id, fcmToken);
             }
 
+            // Handle soft-delete reactivation
+            let isReactivated = false;
+            if (user.deletedAt) {
+                user = await this.usersService.reactivate(user.id);
+                isReactivated = true;
+                await this.sendWelcomeBackNotification(user.id, user.firstName);
+            }
+
             const tokens = await this.getTokens(user.id, user.email, user.role);
-            return {
+            const response = {
                 user: this.sanitizeUser(user),
+                isReactivated,
                 ...tokens,
             };
+            console.log('[AuthService] Social Login Response:', { ...response, accessToken: 'HIDDEN', refreshToken: 'HIDDEN' });
+            return response;
         } catch (error) {
             console.error('[AuthService] Firebase token verification failed:', error);
             throw new UnauthorizedException(`Invalid Firebase token: ${error.message}`);
@@ -280,6 +291,19 @@ export class AuthService {
         }
     }
 
+    private async sendWelcomeBackNotification(userId: string, firstName: string) {
+        try {
+            await this.notificationsService.create({
+                userId,
+                title: '🌿 Bon retour parmi nous !',
+                message: `Heureux de vous revoir ${firstName} ! Tout votre contenu a été restauré avec succès.`,
+                type: NotificationType.WELCOME,
+            });
+        } catch (error) {
+            console.error('Failed to send welcome back notification:', error);
+        }
+    }
+
     async login(loginDto: LoginDto) {
         const normalizedEmail = loginDto.email.toLowerCase();
         const user = await this.usersService.findByEmail(normalizedEmail);
@@ -305,11 +329,24 @@ export class AuthService {
             throw new UnauthorizedException('Email non vérifié');
         }
 
+        // Handle soft-delete reactivation
+        let isReactivated = false;
+        if (user.deletedAt) {
+            await this.usersService.reactivate(user.id);
+            isReactivated = true;
+            // Refresh user object after reactivation
+            user.deletedAt = null;
+            await this.sendWelcomeBackNotification(user.id, user.firstName);
+        }
+
         const tokens = await this.getTokens(user.id, user.email, user.role);
-        return {
+        const response = {
             user: this.sanitizeUser(user),
+            isReactivated,
             ...tokens,
         };
+        console.log('[AuthService] Login Response:', { ...response, accessToken: 'HIDDEN', refreshToken: 'HIDDEN' });
+        return response;
     }
 
     private async getTokens(userId: string, email: string, role: string) {

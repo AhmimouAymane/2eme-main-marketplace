@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Tag, Space, Button, message, Select, Image, Typography, Modal, Input, Form, InputNumber, Row, Col, Descriptions, Divider, Card } from 'antd';
-import { RefreshCw, CheckCircle, XCircle, Search, Filter, Eye } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, Search, Filter, Eye, Trash2 } from 'lucide-react';
 import { apiClient } from '../../api/api-client';
 import { Product, ProductStatus } from '../../types';
 import { API_URL } from '../../theme/constants';
@@ -15,6 +15,8 @@ const ProductListPage: React.FC = () => {
     const [rejectModalVisible, setRejectModalVisible] = useState(false);
     const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
+    const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+    const [deletionReason, setDeletionReason] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [form] = Form.useForm();
 
@@ -91,6 +93,30 @@ const ProductListPage: React.FC = () => {
         await handleStatusChange(selectedProductId, ProductStatus.REJECTED, rejectionReason);
         setSubmitting(false);
         setRejectModalVisible(false);
+    };
+
+    const showDeleteModal = (id: string) => {
+        setSelectedProductId(id);
+        setDeletionReason('');
+        setDeleteModalVisible(true);
+    };
+
+    const handleDeleteSubmit = async () => {
+        if (!selectedProductId) return;
+        setSubmitting(true);
+        try {
+            await apiClient.delete(`products/${selectedProductId}`, {
+                searchParams: { reason: deletionReason },
+                json: { reason: deletionReason }
+            }).json();
+            message.success('Produit supprimé avec succès');
+            fetchProducts(form.getFieldsValue());
+        } catch (error) {
+            message.error('Échec de la suppression du produit');
+        } finally {
+            setSubmitting(false);
+            setDeleteModalVisible(false);
+        }
     };
 
     const [detailsModalVisible, setDetailsModalVisible] = useState(false);
@@ -201,6 +227,17 @@ const ProductListPage: React.FC = () => {
                     >
                         Détails
                     </Button>
+                    <Button
+                        danger
+                        type="default"
+                        ghost
+                        size="small"
+                        icon={<Trash2 size={14} />}
+                        onClick={() => showDeleteModal(record.id)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#ff4d4f', border: '1px solid #ff4d4f' }}
+                    >
+                        Supprimer
+                    </Button>
                 </Space>
             )
         }
@@ -310,6 +347,27 @@ const ProductListPage: React.FC = () => {
                         placeholder="Ex: Photos de mauvaise qualité, description incomplète, etc."
                         value={rejectionReason}
                         onChange={(e) => setRejectionReason(e.target.value)}
+                    />
+                </div>
+            </Modal>
+
+            <Modal
+                title="Supprimer le produit"
+                open={deleteModalVisible}
+                onOk={handleDeleteSubmit}
+                onCancel={() => setDeleteModalVisible(false)}
+                confirmLoading={submitting}
+                okText="Confirmer la suppression"
+                okButtonProps={{ danger: true }}
+            >
+                <div style={{ marginBottom: 16 }}>
+                    <p style={{ fontWeight: 'bold', color: '#ff4d4f' }}>Attention : Cette action est irréversible.</p>
+                    <p>Veuillez fournir une raison pour la suppression de ce produit. Ce message sera envoyé au vendeur pour l'informer.</p>
+                    <Input.TextArea
+                        rows={4}
+                        placeholder="Ex: Contrefaçon, contenu inapproprié, article interdit, etc."
+                        value={deletionReason}
+                        onChange={(e) => setDeletionReason(e.target.value)}
                     />
                 </div>
             </Modal>

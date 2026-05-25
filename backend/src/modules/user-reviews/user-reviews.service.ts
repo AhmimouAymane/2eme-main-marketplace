@@ -99,12 +99,20 @@ export class UserReviewsService {
             // Fetch all users with at least one published product
             const sellers = await this.prisma.user.findMany({
                 where: {
-                    products: { some: { status: 'PUBLISHED' } },
+                    products: { 
+                        some: { 
+                            status: 'PUBLISHED',
+                            deletedAt: null 
+                        } 
+                    },
                 },
                 include: {
                     receivedReviews: true,
                     products: {
-                        where: { status: 'PUBLISHED' },
+                        where: { 
+                            status: 'PUBLISHED',
+                            deletedAt: null 
+                        },
                         select: { id: true },
                     },
                 },

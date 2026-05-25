@@ -9,7 +9,9 @@ import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/shared/models/product_model.dart';
 import 'package:marketplace_app/core/utils/formatters.dart';
 
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/shared/models/user_model.dart';
 
 class MyProductsScreen extends ConsumerWidget {
   const MyProductsScreen({super.key});
@@ -34,8 +36,17 @@ class MyProductsScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+        showDialog(
+          context: context,
+          builder: (context) => Dialog(
+            child: CloviErrorView(
+              error: e,
+              onRetry: () {
+                context.pop();
+                _checkVerification(context, ref);
+              },
+            ),
+          ),
         );
       }
     }
@@ -98,7 +109,10 @@ class MyProductsScreen extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Erreur: $error')),
+        error: (error, stack) => CloviErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(userProductsProvider),
+        ),
       ),
     );
   }

@@ -11,6 +11,7 @@ import '../../../auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import '../../../../shared/providers/system_settings_provider.dart';
 import '../../../profile/data/user_reviews_service.dart';
+import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 
 
 /// Écran de détail d'une commande
@@ -50,20 +51,9 @@ class OrderDetailScreen extends ConsumerWidget {
           error: (err, _) => _buildContent(context, ref, order, null, settingsAsync.value?.serviceFeePercentage),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('Erreur: $err'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(orderDetailProvider(orderId)),
-                child: const Text('Réessayer'),
-              ),
-            ],
-          ),
+        error: (error, stack) => CloviErrorView(
+          error: error,
+          onRetry: () => ref.invalidate(orderDetailProvider(orderId)),
         ),
       ),
     );
