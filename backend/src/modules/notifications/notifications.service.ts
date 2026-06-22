@@ -46,10 +46,6 @@ export class NotificationsService {
             try {
                 const response = await this.firebaseAdmin.messaging().send({
                     token: user.fcmToken,
-                    notification: {
-                        title: notificationData.title,
-                        body: notificationData.message,
-                    },
                     // Android-specific configuration for popups
                     android: {
                         priority: 'high',
@@ -61,13 +57,17 @@ export class NotificationsService {
                             body: notificationData.message,
                         },
                     },
-                    // iOS: NO apns.alert — lets Flutter FCM plugin handle foreground display
-                    // Flutter onMessage will fire, showing SnackBar + updating badge
+                    // Data-only: Flutter handles ALL foreground display via onMessage
+                    // No 'notification' key = no apns.alert = onMessage fires on iOS
                     data: {
                         type: String(notificationData.type),
                         targetUserId: notificationData.userId,
                         title: notificationData.title,
                         message: notificationData.message,
+                        screen: notificationData.data?.screen ?? '',
+                        productId: notificationData.data?.productId ?? '',
+                        orderId: notificationData.data?.orderId ?? '',
+                        conversationId: notificationData.data?.conversationId ?? '',
                         ...(notificationData.data ?
                             Object.entries(notificationData.data).reduce((acc, [k, v]) => ({
                                 ...acc, [k]: String(v)
