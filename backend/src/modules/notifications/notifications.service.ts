@@ -46,6 +46,11 @@ export class NotificationsService {
             try {
                 const response = await this.firebaseAdmin.messaging().send({
                     token: user.fcmToken,
+                    // notification payload: needed for iOS background display
+                    notification: {
+                        title: notificationData.title,
+                        body: notificationData.message,
+                    },
                     // Android-specific configuration for popups
                     android: {
                         priority: 'high',
@@ -57,17 +62,13 @@ export class NotificationsService {
                             body: notificationData.message,
                         },
                     },
-                    // Data-only: Flutter handles ALL foreground display via onMessage
-                    // No 'notification' key = no apns.alert = onMessage fires on iOS
+                    // NO apns block — prevents iOS from bypassing Flutter onMessage
+                    // Flutter handles foreground display via onMessage + local notifications
                     data: {
                         type: String(notificationData.type),
                         targetUserId: notificationData.userId,
                         title: notificationData.title,
                         message: notificationData.message,
-                        screen: notificationData.data?.screen ?? '',
-                        productId: notificationData.data?.productId ?? '',
-                        orderId: notificationData.data?.orderId ?? '',
-                        conversationId: notificationData.data?.conversationId ?? '',
                         ...(notificationData.data ?
                             Object.entries(notificationData.data).reduce((acc, [k, v]) => ({
                                 ...acc, [k]: String(v)

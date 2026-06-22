@@ -38,20 +38,6 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   print("Handling a background message: ${message.messageId}");
-
-  // Show local notification for iOS (no notification payload = no native banner)
-  final title = message.data['title'] ?? message.notification?.title ?? 'Notification';
-  final body = message.data['message'] ?? message.notification?.body ?? '';
-
-  const androidDetails = AndroidNotificationDetails(
-    'high_importance_channel',
-    'High Importance Notifications',
-    importance: Importance.max,
-    priority: Priority.high,
-  );
-  const darwinDetails = DarwinNotificationDetails();
-  const details = NotificationDetails(android: androidDetails, iOS: darwinDetails);
-  await flutterLocalNotificationsPlugin.show(0, title, body, details);
 }
 
 // Clé globale pour pouvoir afficher des SnackBar depuis la racine
