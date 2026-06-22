@@ -1,25 +1,12 @@
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
-
 /// Constantes de l'application marketplace
 class AppConstants {
-  // API Configuration
-  static const String _productionHost = '154.70.207.29';
+  static const String _host = String.fromEnvironment(
+    'API_HOST',
+    defaultValue: '154.70.207.29',
+  );
 
-  static String get _host {
-    if (kIsWeb) return _productionHost;
-    if (Platform.isIOS) return _productionHost;
-    if (Platform.isAndroid) return _productionHost;
-    return _productionHost;
-  }
-
-  static String get apiBaseUrl {
-    return 'http://$_host:8085/api/v1/';
-  }
-
-  static String get mediaBaseUrl {
-    return 'http://$_host:8085/';
-  }
+  static String get apiBaseUrl => 'http://$_host:8085/api/v1/';
+  static String get mediaBaseUrl => 'http://$_host:8085/';
 
   static const Duration apiTimeout = Duration(seconds: 60);
 

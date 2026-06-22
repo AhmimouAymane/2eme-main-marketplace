@@ -51,16 +51,6 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Configuration FCM
-  FirebaseMessaging messaging = FirebaseMessaging.instance;
-  
-  // Demander les permissions (pour iOS et Android 13+)
-  await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
-
   // Configurer le gestionnaire d'arrière-plan
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
@@ -197,56 +187,60 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
   }
 
   void _setupNotifications() async {
-    // Log des tokens pour le débogage iOS
-    final fcmToken = await FirebaseMessaging.instance.getToken();
-    final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-    print('DEBUG: FCM Token = $fcmToken');
-    print('DEBUG: APNS Token = $apnsToken');
-
-    // 0. IMPORTANT : Demander les permissions iOS/Android 13+
-    final settings = await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-    print('DEBUG: Notification permission status = ${settings.authorizationStatus}');
-
-    // 0.1 Synchro du token avec le backend (CRUCIAL pour les notifs en arrière-plan)
-    final authService = ref.read(authServiceProvider);
-    
     try {
-      await authService.syncFcmToken();
-      print('DEBUG: [FCM] Sync attempt finished');
-    } catch (e) {
-      print('DEBUG: [FCM] Sync Error: $e');
-    }
+      // 0. IMPORTANT : Demander les permissions AVANT de récupérer les tokens
+      final settings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+      print('DEBUG: Notification permission status = ${settings.authorizationStatus}');
 
-    // Autoriser les notifications système en premier plan sur iOS
-    // (les doublons avec nos SnackBars sont gérés dans le listener onMessage)
-    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+      // Log des tokens pour le débogage iOS
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+      print('DEBUG: FCM Token = $fcmToken');
+      print('DEBUG: APNS Token = $apnsToken');
+
+      // 0.1 Synchro du token avec le backend (CRUCIAL pour les notifs en arrière-plan)
+      final authService = ref.read(authServiceProvider);
+      
+      try {
+        await authService.syncFcmToken();
+        print('DEBUG: [FCM] Sync attempt finished');
+      } catch (e) {
+        print('DEBUG: [FCM] Sync Error: $e');
+      }
+
+      // Autoriser les notifications système en premier plan sur iOS
+      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } catch (e) {
+      print('DEBUG: [FCM] Setup error (continuing anyway): $e');
+    }
 
     // 1. Gérer les messages en premier plan (Foreground)
     _fcmSubscription = FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       final data = message.data;
+      print('DEBUG: [FCM onMessage] Received! title=${message.notification?.title}, body=${message.notification?.body}, data=$data');
       
       // Vérifier si l'utilisateur est authentifié avant toute action
       final token = ref.read(authTokenProvider);
       final currentUserId = ref.read(userIdProvider).value;
       
       if (token == null || currentUserId == null) {
-        print("Notification reçue en premier plan mais ignorée: Utilisateur non connecté");
+        print("DEBUG: [FCM onMessage] BLOCKED - Utilisateur non connecté (token=${token != null}, userId=$currentUserId)");
         return;
       }
 
       // Filtrer les notifications destinées à un autre utilisateur (anti-bleeding)
       final targetUserId = data['targetUserId'];
       if (targetUserId != null && targetUserId != currentUserId) {
-        print("Notification ignorée: destinée à un autre utilisateur (Target: $targetUserId, Current: $currentUserId)");
+        print("DEBUG: [FCM onMessage] BLOCKED - destinée à un autre utilisateur (Target: $targetUserId, Current: $currentUserId)");
         return;
       }
 
@@ -266,28 +260,37 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
       ref.invalidate(unreadNotificationsCountProvider);
       ref.invalidate(notificationsProvider);
 
-      if (message.notification != null) {
-        // Ne pas afficher de notification en double si c'est un message chat et que le Socket fonctionne
-        // (Socket.io s'en occupe déjà au premier plan pour plus de réactivité)
-        if (data['screen'] == 'chat') {
-          final chatSocket = ref.read(chatSocketProvider);
-          final isSocketConnected = chatSocket?.connected ?? false;
-          
-          if (isSocketConnected) {
-            print('DEBUG: FCM chat push ignored because Socket.IO is handling it');
-            return;
-          } else {
-            print('DEBUG: Socket.IO disconnected! Falling back to FCM for chat notification');
-          }
-        }
+      // Sur iOS avec setForegroundNotificationPresentationOptions(alert: true),
+      // le système affiche son propre banner. message.notification peut être null.
+      // On utilise les data comme fallback pour toujours afficher la SnackBar.
+      final title = message.notification?.title
+          ?? data['title']
+          ?? 'Notification';
+      final body = message.notification?.body
+          ?? data['message']
+          ?? data['body']
+          ?? '';
 
-        _showCloviNotification(
-          message.notification!.title ?? 'Notification',
-          message.notification!.body ?? '',
-          isSystem: true,
-          message: message,
-        );
+      // Ne pas afficher de notification en double si c'est un message chat et que le Socket fonctionne
+      if (data['screen'] == 'chat') {
+        final chatSocket = ref.read(chatSocketProvider);
+        final isSocketConnected = chatSocket?.connected ?? false;
+        
+        if (isSocketConnected) {
+          print('DEBUG: [FCM onMessage] BLOCKED - chat push ignored because Socket.IO is handling it');
+          return;
+        } else {
+          print('DEBUG: [FCM onMessage] Socket.IO disconnected! Falling back to FCM for chat notification');
+        }
       }
+
+      print('DEBUG: [FCM onMessage] Showing SnackBar: title=$title, body=$body');
+      _showCloviNotification(
+        title,
+        body,
+        isSystem: true,
+        message: message,
+      );
     });
 
     // 2. Gérer le clic sur une notification (Background)
@@ -312,6 +315,7 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
   void _showCloviNotification(String title, String body, {bool isSystem = false, RemoteMessage? message}) {
     final messengerState = rootScaffoldMessengerKey.currentState;
     if (messengerState == null) {
+      print('DEBUG: SnackBar skipped - rootScaffoldMessengerKey.currentState is null');
       return;
     }
 

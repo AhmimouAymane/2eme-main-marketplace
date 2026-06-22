@@ -16,7 +16,14 @@ class NotificationsService {
     try {
       final response = await _dio.get('notifications');
       return (response.data as List)
-          .map((json) => NotificationModel.fromJson(json))
+          .map((json) {
+            try {
+              return NotificationModel.fromJson(json);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<NotificationModel>()
           .toList();
     } catch (e) {
       rethrow;
@@ -26,10 +33,8 @@ class NotificationsService {
   Future<int> getUnreadCount() async {
     try {
       final response = await _dio.get('notifications/unread-count');
-      // Safely parse count as it might come as a String or int
       return int.tryParse(response.data.toString()) ?? 0;
-    } catch (e) {
-      print('DEBUG: Error in getUnreadCount: $e');
+    } catch (_) {
       return 0;
     }
   }

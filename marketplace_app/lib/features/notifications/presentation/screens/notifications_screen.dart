@@ -49,13 +49,20 @@ class NotificationsScreen extends ConsumerWidget {
             );
           }
 
-          return ListView.separated(
-            itemCount: notifications.length,
-            separatorBuilder: (context, index) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final notification = notifications[index];
-              return _NotificationTile(notification: notification);
+          return RefreshIndicator(
+            onRefresh: () async {
+              ref.invalidate(notificationsProvider);
+              ref.invalidate(unreadNotificationsCountProvider);
+              await ref.read(notificationsProvider.future);
             },
+            child: ListView.separated(
+              itemCount: notifications.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final notification = notifications[index];
+                return _NotificationTile(notification: notification);
+              },
+            ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

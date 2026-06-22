@@ -57,26 +57,17 @@ export class NotificationsService {
                             channelId: 'high_importance_channel',
                             priority: 'high',
                             sound: 'default',
+                            title: notificationData.title,
+                            body: notificationData.message,
                         },
                     },
-                    // iOS/APNS configuration for popups
-                    apns: {
-                        payload: {
-                            aps: {
-                                alert: {
-                                    title: notificationData.title,
-                                    body: notificationData.message,
-                                },
-                                sound: 'default',
-                                badge: 1,
-                            },
-                        },
-                    },
-                    // Flutter read "data" as Map<String, dynamic>
-                    // All values MUST be Strings for FCM data payload
+                    // iOS: NO apns.alert — lets Flutter FCM plugin handle foreground display
+                    // Flutter onMessage will fire, showing SnackBar + updating badge
                     data: {
-                        type: notificationData.type,
+                        type: String(notificationData.type),
                         targetUserId: notificationData.userId,
+                        title: notificationData.title,
+                        message: notificationData.message,
                         ...(notificationData.data ?
                             Object.entries(notificationData.data).reduce((acc, [k, v]) => ({
                                 ...acc, [k]: String(v)
