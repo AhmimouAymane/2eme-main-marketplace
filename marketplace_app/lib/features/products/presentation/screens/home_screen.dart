@@ -693,6 +693,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildTopSellersSection() {
     final topSellersAsync = ref.watch(topSellersProvider);
 
+    // Hide section entirely when there's an error and no cached data
+    if (topSellersAsync.hasError && (!topSellersAsync.hasValue || topSellersAsync.value!.isEmpty)) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

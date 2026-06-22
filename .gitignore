@@ -3,23 +3,82 @@ backend/node_modules
 backend/dist
 backend/uploads
 backend/.env
+backend/.env.development
+backend/test-email.ts
+backend/fix_encoding.sql
 
 # Flutter / Dart
 marketplace_app/.dart_tool
 marketplace_app/build
 marketplace_app/.env
+marketplace_app/android/.gradle
+marketplace_app/android/app/build
+marketplace_app/ios/Pods
+marketplace_app/ios/.symlinks
+marketplace_app/ios/build
+marketplace_app/.flutter-plugins-dependencies
+
+# Firebase service account (secrets)
+backend/firebase-service-account.json
 
 # OS / IDE
 .DS_Store
 .vscode
 .idea
+*.iml
 
 # Admin Panel
 admin-panel-new/node_modules
 admin-panel-new/dist
 
-# Sync / Backup (Syncthing)
+# Agent Marketing (separate repo)
+agent-marketing/
+
+# Syncthing / Sync
 *.sync-conflict-*
 ~syncthing~*
 .stfolder
 .stversions
+
+# Backup files
+*.bak
+*.bak2
+*.swp
+*.swo
+
+# Database dumps
+*.sql
+
+# PlantUML
+plantuml.jar
+plantuml/
+
+# Rapport & LaTeX
+Rapport_PFE__2_/
+Rapport_PFE__2_.zip
+Rapport_Chapitre2.html
+Rapport_Chapitre2.md
+SFE_Template_5IIR_26.pdf
+test_compile.pdf
+test_compile.tex
+compile_err.txt
+compile_log.txt
+texput.*
+*.aux
+*.log
+*.idx
+*.ilg
+*.ist
+*.ind
+*.out
+*.toc
+*.synctex.gz
+*.nav
+*.snm
+*.vrb
+*.fdb_latexmk
+*.fls
+*.xml
+
+# StarUML
+**/*.mdj

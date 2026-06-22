@@ -17,6 +17,7 @@ import 'package:marketplace_app/shared/widgets/full_screen_image_viewer.dart';
 import 'package:marketplace_app/shared/widgets/report_dialog.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -784,7 +785,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       context.push('/chat/$id');
     } catch (e) {
       if (!mounted) return;
-      _showError(context, 'Impossible d\'ouvrir la messagerie: $e');
+      _showError(context, friendlyError(e));
     }
   }
 
@@ -917,10 +918,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         ..invalidate(productDetailProvider(product.id));
     } catch (e) {
       if (!context.mounted) return;
-      final msg = e is DioException && e.response?.data is Map
-          ? (e.response!.data as Map)['message']?.toString() ?? e.toString()
-          : e.toString();
-      _showError(context, 'Erreur: $msg');
+      _showError(context, friendlyError(e));
     }
   }
 
@@ -986,7 +984,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   ref.invalidate(productDetailProvider(product.id));
                   _showSuccess(context, 'Avis ajouté !');
                 } catch (e) {
-                  _showError(context, 'Erreur: $e');
+                  _showError(context, friendlyError(e));
                 }
               },
               child: const Text('Envoyer'),
@@ -1056,7 +1054,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       : (isReply ? 'Réponse envoyée !' : 'Question envoyée !'),
                 );
               } catch (e) {
-                _showError(context, 'Erreur: $e');
+                _showError(context, friendlyError(e));
               }
             },
             child: const Text('Envoyer'),
@@ -1090,7 +1088,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ref.invalidate(productDetailProvider(comment.productId));
                 _showSuccess(context, 'Message supprimé');
               } catch (e) {
-                _showError(context, 'Erreur: $e');
+                _showError(context, friendlyError(e));
               }
             },
             child: const Text('Supprimer', style: TextStyle(color: Colors.red)),
@@ -1817,11 +1815,11 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
                                 loading: () => const Center(
                                   child: CircularProgressIndicator(),
                                 ),
-                                error: (e, _) => Text('Erreur: $e'),
+                                error: (e, _) => Text(friendlyError(e)),
                               );
                         },
                         loading: () => const SizedBox(height: 100),
-                        error: (e, _) => Text('Erreur: $e'),
+                        error: (e, _) => Text(friendlyError(e)),
                       ),
 
                       const SizedBox(height: 16),
@@ -1900,7 +1898,7 @@ class _CheckoutDialogState extends ConsumerState<_CheckoutDialog> {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, s) => Center(child: Text('Erreur settings: $e')),
+          error: (e, s) => Center(child: Text(friendlyError(e))),
         );
   }
 

@@ -6,6 +6,7 @@ import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/features/notifications/presentation/providers/notifications_provider.dart';
 import 'package:marketplace_app/shared/widgets/clovi_logo.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 class CloviDrawer extends ConsumerWidget {
   const CloviDrawer({super.key});
@@ -142,7 +143,7 @@ class CloviDrawer extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de la déconnexion: $e'),
+            content: Text(friendlyError(e)),
             backgroundColor: AppColors.error,
           ),
         );

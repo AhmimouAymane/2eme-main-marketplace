@@ -22,7 +22,7 @@ export class MediaService {
                 },
                 (error: UploadApiErrorResponse, result: UploadApiResponse) => {
                     if (error) {
-                        return reject(new BadRequestException(`Cloudinary Error: ${error.message}`));
+                        return reject(new BadRequestException('Erreur lors de l\'envoi du fichier.'));
                     }
                     resolve(result.secure_url);
                 },

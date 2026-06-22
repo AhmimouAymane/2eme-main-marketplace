@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserReviewDto } from './dto/create-user-review.dto';
 import { OrderStatus, NotificationType } from '@prisma/client';
@@ -142,7 +142,7 @@ export class UserReviewsService {
                 .slice(0, limit);
         } catch (error) {
             console.error('Error in getTopSellers:', error);
-            throw error;
+            throw new InternalServerErrorException('Une erreur est survenue lors du chargement.');
         }
     }
 }

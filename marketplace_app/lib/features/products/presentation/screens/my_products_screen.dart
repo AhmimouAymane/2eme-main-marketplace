@@ -12,6 +12,7 @@ import 'package:marketplace_app/core/utils/formatters.dart';
 import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 class MyProductsScreen extends ConsumerWidget {
   const MyProductsScreen({super.key});
@@ -289,7 +290,7 @@ class _ProductListTile extends ConsumerWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(
                     context,
-                  ).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                  ).showSnackBar(SnackBar(content: Text(friendlyError(e))));
                 }
               }
             },

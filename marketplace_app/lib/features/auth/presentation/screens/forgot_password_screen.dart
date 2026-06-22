@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'verify_otp_screen.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -41,14 +42,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
-        String message = e.toString().replaceAll('Exception: ', '');
-        // Check if it's a 404 from Dio
-        if (message.contains('404')) {
-          message = 'Aucun compte n\'est associé à cet email.';
-        }
-        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message), backgroundColor: Colors.red),
+          SnackBar(content: Text(friendlyError(e)), backgroundColor: Colors.red),
         );
       }
     } finally {

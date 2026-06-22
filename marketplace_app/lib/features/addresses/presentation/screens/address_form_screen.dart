@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/shared/models/address_model.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 class AddressFormScreen extends ConsumerStatefulWidget {
   final AddressModel? initial;
@@ -86,7 +87,7 @@ class _AddressFormScreenState extends ConsumerState<AddressFormScreen> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de l\'enregistrement : $e')),
+          SnackBar(content: Text(friendlyError(e))),
         );
       }
     }

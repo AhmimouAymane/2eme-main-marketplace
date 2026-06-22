@@ -91,7 +91,7 @@ class _NotificationTile extends ConsumerWidget {
             Text(notification.message),
             const SizedBox(height: 4),
             Text(
-              DateFormat('dd/MM HH:mm').format(notification.createdAt),
+              DateFormat('dd/MM HH:mm').format(notification.createdAt.toLocal()),
               style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
             ),
           ],

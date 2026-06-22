@@ -186,7 +186,7 @@ class AboutScreen extends StatelessWidget {
                                 'Suppression de votre compte et de vos données',
                               ],
                               footer:
-                                  'Pour exercer vos droits, rendez-vous dans les paramètres de votre compte ou contactez-nous à support@clovi.ma.',
+                                  'Pour exercer vos droits, rendez-vous dans les paramètres de votre compte ou contactez-nous à contact@clovi.ma.',
                             ),
                           ],
                         ),
@@ -208,7 +208,7 @@ class AboutScreen extends StatelessWidget {
                               bullets: [
                                 'Nom : Clovi',
                                 'Pays : Maroc',
-                                'Email : support@clovi.ma',
+                                'Email : contact@clovi.ma',
                               ],
                             ),
                           ],

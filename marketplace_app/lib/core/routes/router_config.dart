@@ -29,7 +29,6 @@ import 'package:marketplace_app/shared/widgets/app_shell.dart';
 import 'package:marketplace_app/features/wallet/presentation/screens/wallet_screen.dart';
 import 'package:marketplace_app/features/verification/presentation/screens/seller_verification_screen.dart';
 import 'package:marketplace_app/features/moderation/presentation/screens/blocked_users_screen.dart';
-
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 
 /// Provider pour le routeur Go Router

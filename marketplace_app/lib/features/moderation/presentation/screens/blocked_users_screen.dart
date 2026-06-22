@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../features/moderation/data/moderation_service.dart';
 import '../../../../core/constants/app_constants.dart';
 import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 final blockedUsersProvider = FutureProvider.autoDispose<List<dynamic>>((ref) async {
   return ref.read(moderationServiceProvider).getBlockedUsers();
@@ -166,7 +167,7 @@ class BlockedUsersScreen extends ConsumerWidget {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+                    SnackBar(content: Text(friendlyError(e)), backgroundColor: Colors.red),
                   );
                 }
               }

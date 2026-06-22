@@ -4,24 +4,21 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 /// Constantes de l'application marketplace
 class AppConstants {
   // API Configuration
+  static const String _productionHost = '154.70.207.29';
+
   static String get _host {
-    if (kIsWeb) return 'localhost';
-    if (Platform.isAndroid)
-      return '10.0.2.2'; // Standard Android emulator loopback
-    if (Platform.isIOS)
-      return '192.168.200.8'; // Votre adresse IP Wi-Fi actuelle
-    return 'localhost';
+    if (kIsWeb) return _productionHost;
+    if (Platform.isIOS) return _productionHost;
+    if (Platform.isAndroid) return _productionHost;
+    return _productionHost;
   }
 
   static String get apiBaseUrl {
-    // For local development, use the local IP or localhost
-    //return 'http://154.70.207.29:8085/api/v1/';
-    return 'http://$_host:808/api/v1/';
+    return 'http://$_host:8085/api/v1/';
   }
 
   static String get mediaBaseUrl {
-    //return 'http://154.70.207.29:8085/';
-    return 'http://$_host:808/';
+    return 'http://$_host:8085/';
   }
 
   static const Duration apiTimeout = Duration(seconds: 60);
@@ -38,7 +35,6 @@ class AppConstants {
   // Pagination
   static const int itemsPerPage = 20;
   static const int maxImageUpload = 5;
-
 
   // Image
   static const double maxImageSizeMB = 5.0;

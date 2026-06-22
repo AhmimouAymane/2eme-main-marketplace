@@ -7,6 +7,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
 import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 /// Écran de profil utilisateur — design aligné avec le reste de l'app (Clovi)
 class ProfileScreen extends ConsumerWidget {
@@ -466,7 +467,7 @@ class ProfileScreen extends ConsumerWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Erreur lors de la suppression : $e'),
+                      content: Text(friendlyError(e)),
                       backgroundColor: AppColors.error,
                     ),
                   );

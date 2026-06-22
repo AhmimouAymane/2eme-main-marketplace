@@ -62,19 +62,16 @@ class ApiInterceptor extends Interceptor {
   }
   
   @override
-  void onError(DioException err, ErrorInterceptorHandler handler) async {
-    // Si déjà en cours de rafraîchissement, ne pas réessayer
+  Future<void> onError(DioException err, ErrorInterceptorHandler handler) async {
     if (_isRefreshing) {
       return handler.next(err);
     }
 
-    // Gestion des erreurs globales
     if (err.response?.statusCode == 401) {
       _isRefreshing = true;
       String? newToken;
 
       try {
-        // 1. Tenter de rafraîchir le token via Firebase si c'est un user social
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
           final idToken = await user.getIdToken(true);
@@ -84,33 +81,34 @@ class ApiInterceptor extends Interceptor {
           }
         } 
         
-        // 2. Si pas de user Firebase ou refresh a échoué, tenter via notre propre refresh token
         if (newToken == null) {
           newToken = await _ref.read(authServiceProvider).refreshToken();
         }
 
         if (newToken != null) {
-          // Mettre à jour le provider
           _ref.read(authTokenProvider.notifier).state = newToken;
           
-          // Réessayer la requête originale
           final options = err.requestOptions;
           options.headers['Authorization'] = 'Bearer $newToken';
           
-          // Utiliser une instance Dio propre mais avec la même base URL
           final dio = Dio(BaseOptions(baseUrl: AppConstants.apiBaseUrl)); 
-          final response = await dio.request(
-            options.path,
-            data: options.data,
-            queryParameters: options.queryParameters,
-            options: Options(
-              method: options.method,
-              headers: options.headers,
-              contentType: options.contentType,
-            ),
-          );
-          _isRefreshing = false;
-          return handler.resolve(response);
+          try {
+            final response = await dio.request(
+              options.path,
+              data: options.data,
+              queryParameters: options.queryParameters,
+              options: Options(
+                method: options.method,
+                headers: options.headers,
+                contentType: options.contentType,
+              ),
+            );
+            _isRefreshing = false;
+            return handler.resolve(response);
+          } catch (_) {
+            _isRefreshing = false;
+            return handler.next(err);
+          }
         }
       } catch (e) {
         print('DEBUG: Auto refresh failed: $e');
@@ -118,7 +116,6 @@ class ApiInterceptor extends Interceptor {
         _isRefreshing = false;
       }
       
-      // Si tout a échoué, redirection vers login
       _handleUnauthorized();
     }
     

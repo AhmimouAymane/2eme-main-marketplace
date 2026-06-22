@@ -375,7 +375,7 @@ export class ProductsService {
             return product;
         } catch (error) {
             console.error('Prisma Error in createProduct:', error);
-            throw error;
+            throw new InternalServerErrorException('Une erreur est survenue lors de la création du produit.');
         }
     }
 
@@ -461,20 +461,19 @@ export class ProductsService {
                 data: { deletedAt: new Date() },
             });
 
-            // Si c'est un admin qui supprime (et qu'il n'est pas le proprio), on notifie le vendeur
-            if (isAdmin && !isOwner) {
-                // On ne met pas de "await" ici pour ne pas bloquer la suppression 
-                // si le service de notification (Firebase) met du temps ou plante
-                this.notificationsService.create({
+            // Si c'est un admin qui supprime, on notifie le vendeur
+            if (isAdmin) {
+                await this.notificationsService.create({
                     userId: product.sellerId,
-                    title: 'Produit supprimé par la modération',
-                    message: `Votre produit "${product.title}" a été supprimé par un administrateur.${reason ? ` Raison : ${reason}` : ''}`,
+                    title: '🗑️ Produit supprimé',
+                    message: `Votre article '${product.title}' a été supprimé par un administrateur.${reason ? ` Raison : ${reason}` : ''}`,
                     type: NotificationType.PRODUCT_REJECTED,
                     data: {
                         productId: product.id,
+                        screen: 'my_products',
                         reason: reason || 'Non spécifiée',
                     },
-                }).catch(err => console.error('Erreur silencieuse notification suppression:', err));
+                });
             }
 
             return deletedProduct;

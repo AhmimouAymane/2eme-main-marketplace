@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Conversation, Message, NotificationType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -218,7 +218,7 @@ export class ConversationsService {
       };
     } catch (error) {
       console.error('Error creating message:', error);
-      throw error;
+      throw new InternalServerErrorException('Une erreur est survenue lors de l\'envoi du message.');
     }
   }
 

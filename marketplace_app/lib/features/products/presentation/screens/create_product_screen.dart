@@ -2,7 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'; // Pour kIsWeb
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/core/utils/validators.dart';
@@ -20,6 +20,7 @@ import 'package:marketplace_app/shared/models/category_model.dart';
 import 'package:go_router/go_router.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 
 class CreateProductScreen extends ConsumerStatefulWidget {
@@ -38,7 +39,8 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   final _priceController = TextEditingController();
   final _brandController = TextEditingController();
   
-  final List<XFile> _selectedImages = [];
+  final List<Uint8List> _selectedImageBytes = [];
+  final List<String> _selectedImageNames = [];
   final List<String> _existingImageUrls = [];
   
   // Hierarchical categories state
@@ -90,7 +92,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
   }
 
   Future<void> _pickImages() async {
-    if (_selectedImages.length + _existingImageUrls.length >= AppConstants.maxImageUpload) {
+    if (_selectedImageBytes.length + _existingImageUrls.length >= AppConstants.maxImageUpload) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Maximum ${AppConstants.maxImageUpload} images'),
@@ -100,15 +102,37 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
     }
 
     final ImagePicker picker = ImagePicker();
-    final List<XFile> images = await picker.pickMultiImage();
+    final List<XFile> images = await picker.pickMultiImage(
+      imageQuality: 60,
+      maxWidth: 1200,
+      maxHeight: 1200,
+    );
     
     if (images.isNotEmpty) {
-      setState(() {
-        _selectedImages.addAll(
-          images.take(AppConstants.maxImageUpload - _selectedImages.length - _existingImageUrls.length),
-        );
-      });
+      final remaining = AppConstants.maxImageUpload - _selectedImageBytes.length - _existingImageUrls.length;
+      final toAdd = images.take(remaining);
+      for (final file in toAdd) {
+        final bytes = await file.readAsBytes();
+        _selectedImageBytes.add(bytes);
+        _selectedImageNames.add(file.name);
+      }
+      setState(() {});
     }
+  }
+
+  Future<List<XFile>> _createTempFiles(List<Uint8List> bytesList, List<String> names) async {
+    final dir = Directory('${Directory.systemTemp.path}/clovi_uploads');
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    final List<XFile> files = [];
+    for (int i = 0; i < bytesList.length; i++) {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final tempPath = '${dir.path}/${timestamp}_${i}_${names[i]}';
+      await File(tempPath).writeAsBytes(bytesList[i]);
+      files.add(XFile(tempPath, name: names[i]));
+    }
+    return files;
   }
 
   Future<void> _handleSubmit() async {
@@ -136,9 +160,17 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       return;
     }
 
-    if (_selectedImages.length + _existingImageUrls.length < 2) {
+    if (_selectedImageBytes.length + _existingImageUrls.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez ajouter au moins 2 photos')),
+      );
+      return;
+    }
+
+    final parsedPrice = double.tryParse(_priceController.text);
+    if (parsedPrice == null || parsedPrice <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Veuillez entrer un prix valide')),
       );
       return;
     }
@@ -151,8 +183,26 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       
       // Upload new images
       List<String> newImageUrls = [];
-      if (_selectedImages.isNotEmpty) {
-        newImageUrls = await mediaService.uploadImages(_selectedImages);
+      List<XFile> tempFiles = [];
+      if (_selectedImageBytes.isNotEmpty) {
+        try {
+          tempFiles = await _createTempFiles(_selectedImageBytes, _selectedImageNames);
+          newImageUrls = await mediaService.uploadImages(tempFiles);
+          debugPrint('Uploaded ${newImageUrls.length} image URLs: $newImageUrls');
+        } catch (e) {
+          debugPrint('Image upload error: ${e.runtimeType}: $e');
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Erreur lors de l'envoi des images. Réessayez.")),
+            );
+          }
+          return;
+        } finally {
+          for (final f in tempFiles) {
+            try { await File(f.path).delete(); } catch (_) {}
+          }
+        }
       }
 
       final allImageUrls = [..._existingImageUrls, ...newImageUrls];
@@ -163,7 +213,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
         await productsService.updateProduct(widget.productToEdit!.id, {
           'title': _titleController.text,
           'description': _descriptionController.text,
-          'price': double.parse(_priceController.text),
+          'price': parsedPrice,
           'categoryId': _selectedSubCategory!.id,
           'size': sizeToSend,
           'brand': _brandController.text,
@@ -176,7 +226,6 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
             const SnackBar(content: Text('Produit mis à jour avec succès !')),
           );
           
-          // Invalider les providers pour rafraîchir les listes
           ref.invalidate(homeProductsProvider);
           ref.invalidate(productsProvider);
           ref.invalidate(userProductsProvider);
@@ -190,8 +239,8 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
           id: '',
           title: _titleController.text,
           description: _descriptionController.text,
-          price: double.parse(_priceController.text),
-          category: _selectedSubCategory!.name, // Temporary display name
+          price: parsedPrice,
+          category: _selectedSubCategory!.name,
           categoryId: _selectedSubCategory!.id,
           size: sizeToSend,
           brand: _brandController.text,
@@ -202,6 +251,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
           createdAt: DateTime.now(),
         );
 
+        debugPrint('Creating product: ${product.toJson()}');
         await productsService.createProduct(product);
 
         if (mounted) {
@@ -209,7 +259,6 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
             const SnackBar(content: Text('Produit créé avec succès !')),
           );
           
-          // Invalider les providers pour rafraîchir les listes immédiatement
           ref.invalidate(homeProductsProvider);
           ref.invalidate(productsProvider);
           ref.invalidate(userProductsProvider);
@@ -218,13 +267,15 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
 
       if (mounted) {
         setState(() => _isLoading = false);
-        Navigator.pop(context, true);
+        if (mounted) Navigator.pop(context, true);
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Create product error: ${e.runtimeType}: $e');
+      debugPrint('Stack: $stack');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur : ${e.toString()}')),
+          SnackBar(content: Text(friendlyError(e))),
         );
       }
     }
@@ -571,7 +622,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
                         ),
                       ),
                       ..._existingImageUrls.map((url) => _buildImageThumbnail(url, isNetwork: true)),
-                      ..._selectedImages.map((file) => _buildImageThumbnail(file.path, isNetwork: false)),
+                      ...List.generate(_selectedImageBytes.length, (i) => _buildLocalImageThumbnail(_selectedImageBytes[i], _selectedImageNames[i], i)),
                     ],
                   ),
                 ),
@@ -650,7 +701,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
                 categoriesAsync.when(
                   data: (genres) => _buildCategorySelectors(genres),
                   loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (err, stack) => Text('Erreur: $err'),
+                  error: (err, stack) => Text(friendlyError(err)),
                 ),
                 _buildSizeSelector(),
               ],
@@ -760,11 +811,45 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
             child: GestureDetector(
               onTap: () {
                 setState(() {
-                  if (isNetwork) {
-                    _existingImageUrls.remove(path);
-                  } else {
-                    _selectedImages.removeWhere((f) => f.path == path);
-                  }
+                  _existingImageUrls.remove(path);
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocalImageThumbnail(Uint8List bytes, String name, int index) {
+    return Container(
+      width: 100,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.memory(bytes, fit: BoxFit.cover),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedImageBytes.removeAt(index);
+                  _selectedImageNames.removeAt(index);
                 });
               },
               child: Container(

@@ -117,7 +117,7 @@ class HelpSupportScreen extends StatelessWidget {
                   _buildContactTile(
                     icon: Icons.email_outlined,
                     title: 'Email',
-                    subtitle: 'support@clovi.ma',
+                    subtitle: 'contact@clovi.ma',
                   ),
                   const Divider(height: 1, indent: 56),
                   _buildContactTile(

@@ -14,6 +14,7 @@ import 'package:flutter/gestures.dart';
 import '../../../profile/presentation/screens/legal_screen.dart';
 import 'verify_otp_screen.dart';
 import '../../../../core/utils/auth_error_formatter.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 /// Écran d'inscription
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -52,16 +53,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         case DioExceptionType.sendTimeout:
         case DioExceptionType.receiveTimeout:
         case DioExceptionType.connectionError:
-          return 'Impossible de joindre le serveur. Vérifiez que le backend est démarré '
-              'et que l\'appareil est sur le même réseau (${AppConstants.apiBaseUrl.replaceFirst('/api/v1', '')}).';
+          return 'Impossible de joindre le serveur. Vérifiez votre connexion internet.';
         case DioExceptionType.badResponse:
           final msg = e.response?.data is Map ? (e.response!.data as Map)['message'] : null;
-          return msg?.toString() ?? 'Erreur serveur (${e.response?.statusCode})';
+          return msg?.toString() ?? 'Une erreur est survenue. Réessayez.';
         default:
           break;
       }
     }
-    return e.toString();
+    return 'Une erreur est survenue. Réessayez.';
   }
 
   String? _validateConfirmPassword(String? value) {

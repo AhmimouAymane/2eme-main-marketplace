@@ -38,7 +38,7 @@ export class MediaController {
         FileInterceptor('file', {
             storage: memoryStorage(),
             fileFilter: (req, file, cb) => {
-                if (!file.originalname.match(/\.(jpg|jpeg|png|webp)$/)) {
+                if (!file.originalname.match(/\.(jpg|jpeg|png|webp|heic|heif)$/i)) {
                     return cb(new BadRequestException('Only image files are allowed!'), false);
                 }
                 cb(null, true);
@@ -62,7 +62,7 @@ export class MediaController {
         FilesInterceptor('files', 5, {
             storage: memoryStorage(),
             fileFilter: (req, file, cb) => {
-                if (!file.originalname.match(/\.(jpg|jpeg|png|webp)$/)) {
+                if (!file.originalname.match(/\.(jpg|jpeg|png|webp|heic|heif)$/i)) {
                     return cb(new BadRequestException('Only image files are allowed!'), false);
                 }
                 cb(null, true);

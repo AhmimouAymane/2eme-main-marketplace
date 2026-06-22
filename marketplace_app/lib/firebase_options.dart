@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBPGnbjNGlvczQMlgV9OTRC0MmrXSqJ5xE',
-    appId: '1:735878764760:android:a65ec6a7fcdd49549d1fad',
+    appId: '1:735878764760:android:5941b04b2c794ecb9d1fad',
     messagingSenderId: '735878764760',
     projectId: 'clovi-17ec1',
     storageBucket: 'clovi-17ec1.firebasestorage.app',

@@ -7,6 +7,7 @@ import 'package:marketplace_app/shared/widgets/clovi_bottom_nav.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 /// Shell persistant avec la barre de navigation du bas.
 /// La barre reste fixe pendant la navigation entre les onglets.
@@ -41,7 +42,7 @@ class AppShell extends ConsumerWidget {
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur de vérification : $e')),
+            SnackBar(content: Text(friendlyError(e))),
           );
         }
         return;

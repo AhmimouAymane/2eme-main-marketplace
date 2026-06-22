@@ -22,19 +22,22 @@ class CloviErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final errorStr = error.toString().toLowerCase();
-    final isAuth = errorStr.contains('401') || errorStr.contains('unauthorized');
+    final isAuth =
+        errorStr.contains('401') || errorStr.contains('unauthorized');
 
     if (isAuth) {
       return Center(
-        child: Padding(
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(24.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -45,7 +48,7 @@ class CloviErrorView extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               const Text(
-                'Session expirée',
+                'Session expiree',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 18,
@@ -55,12 +58,9 @@ class CloviErrorView extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Votre session a expiré ou nécessite une reconnexion.',
+                'Votre session a expire ou necessite une reconnexion.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
               const SizedBox(height: 32),
               SizedBox(
@@ -85,15 +85,17 @@ class CloviErrorView extends StatelessWidget {
     }
 
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(24.0),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.1),
+                color: AppColors.error.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -104,7 +106,7 @@ class CloviErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              title ?? 'Un problème est survenu',
+              title ?? 'Un probleme est survenu',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 18,
@@ -114,12 +116,9 @@ class CloviErrorView extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              message ?? 'Vérifiez votre connexion internet et réessayez.',
+              message ?? 'Verifiez votre connexion internet et reessayez.',
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 32),
             SizedBox(
@@ -127,7 +126,7 @@ class CloviErrorView extends StatelessWidget {
               child: ElevatedButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Réessayer'),
+                label: const Text('Reessayer'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.cloviGreen,
                   foregroundColor: Colors.white,

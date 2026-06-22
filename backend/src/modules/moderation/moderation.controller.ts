@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Param, UseGuards, Req, ForbiddenException } from '@nestjs/common';
 import { ModerationService } from './moderation.service';
 import { AuthGuard } from '@nestjs/passport';
 import { ReportReason } from '@prisma/client';
@@ -25,7 +25,7 @@ export class ModerationController {
     @Get('reports')
     async getAllReports(@Req() req: any) {
         if (req.user.role !== 'ADMIN') {
-            throw new Error('Forbidden');
+            throw new ForbiddenException('Accès non autorisé.');
         }
         return this.moderationService.getAllReports();
     }

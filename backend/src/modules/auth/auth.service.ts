@@ -22,7 +22,7 @@ export class AuthService {
 
     async signInWithFirebase(token: string, metadata?: { firstName?: string; lastName?: string }) {
         if (this.firebaseAdmin.apps.length === 0) {
-            throw new BadRequestException('Social login is currently disabled (Firebase not initialized). Please check the server configuration.');
+            throw new BadRequestException('Connexion sociale temporairement indisponible.');
         }
         try {
             const decodedToken = await this.firebaseAdmin.auth().verifyIdToken(token);
@@ -116,7 +116,7 @@ export class AuthService {
             return response;
         } catch (error) {
             console.error('[AuthService] Firebase token verification failed:', error);
-            throw new UnauthorizedException(`Invalid Firebase token: ${error.message}`);
+            throw new UnauthorizedException('Token d\'authentification invalide.');
         }
     }
 

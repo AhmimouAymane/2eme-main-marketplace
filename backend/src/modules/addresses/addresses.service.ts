@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
@@ -28,7 +28,7 @@ export class AddressesService {
   async create(userId: string, dto: CreateAddressDto): Promise<Address> {
     const count = await this.prisma.address.count({ where: { userId } });
     if (count >= 5) {
-      throw new Error('Vous ne pouvez pas avoir plus de 5 adresses.');
+      throw new BadRequestException('Vous ne pouvez pas avoir plus de 5 adresses.');
     }
 
     const isDefault = count == 0 || dto.isDefault === true;

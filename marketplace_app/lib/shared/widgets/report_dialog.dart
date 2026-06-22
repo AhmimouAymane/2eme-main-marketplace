@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../features/moderation/data/moderation_service.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 class ReportDialog extends ConsumerStatefulWidget {
   final String? productId;
@@ -47,7 +48,7 @@ class _ReportDialogState extends ConsumerState<ReportDialog> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
+        SnackBar(content: Text(friendlyError(e)), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

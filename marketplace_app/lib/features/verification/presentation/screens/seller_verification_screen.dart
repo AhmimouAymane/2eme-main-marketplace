@@ -74,7 +74,9 @@ class _SellerVerificationScreenState extends ConsumerState<SellerVerificationScr
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
-        imageQuality: 70,
+        imageQuality: 60,
+        maxWidth: 1200,
+        maxHeight: 1200,
       );
 
       if (image != null) {

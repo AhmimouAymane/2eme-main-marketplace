@@ -19,6 +19,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
                     tls: {
                         rejectUnauthorized: false,
                     },
+                    connectionTimeout: 5000,
+                    socketTimeout: 5000,
                 },
                 defaults: {
                     from: `"Clovi Support" <${config.get('MAIL_USER')}>`,

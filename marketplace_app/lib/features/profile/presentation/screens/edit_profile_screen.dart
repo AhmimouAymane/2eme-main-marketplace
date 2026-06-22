@@ -8,6 +8,7 @@ import 'package:marketplace_app/core/utils/validators.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:marketplace_app/shared/providers/shop_providers.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 /// Écran d'édition du profil — même design que la page profil (Clovi)
 class EditProfileScreen extends ConsumerStatefulWidget {
@@ -109,7 +110,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur : ${e.toString()}'),
+            content: Text(friendlyError(e)),
             behavior: SnackBarBehavior.floating,
             backgroundColor: AppColors.error,
           ),
@@ -143,7 +144,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur d\'upload : $e'),
+            content: Text(friendlyError(e)),
             backgroundColor: AppColors.error,
           ),
         );

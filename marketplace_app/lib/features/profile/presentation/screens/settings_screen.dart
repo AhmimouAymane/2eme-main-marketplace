@@ -6,6 +6,7 @@ import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'package:marketplace_app/shared/providers/settings_providers.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 /// Écran Paramètres : thème, notifications, à propos
 class SettingsScreen extends ConsumerWidget {
@@ -263,7 +264,7 @@ class SettingsScreen extends ConsumerWidget {
         Navigator.pop(context); // Close loading dialog
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur: $e'),
+            content: Text(friendlyError(e)),
             backgroundColor: AppColors.error,
           ),
         );

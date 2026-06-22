@@ -15,6 +15,7 @@ import 'package:marketplace_app/features/moderation/data/moderation_service.dart
 import 'package:marketplace_app/shared/widgets/report_dialog.dart';
 import 'package:marketplace_app/core/routes/app_routes.dart';
 import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -149,10 +150,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
       if (!mounted) return;
       
-      String errorMessage = 'Erreur lors de l\'envoi: $e';
-      if (e.toString().contains('403') || e.toString().contains('Forbidden')) {
-        errorMessage = 'Vous ne pouvez pas envoyer de message à cet utilisateur.';
-      }
+      String errorMessage = friendlyError(e);
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -282,7 +280,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur: $e'),
+          content: Text(friendlyError(e)),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
@@ -331,7 +329,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               } catch (e) {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Erreur: $e'), backgroundColor: AppColors.error),
+                  SnackBar(content: Text(friendlyError(e)), backgroundColor: AppColors.error),
                 );
               }
             },
@@ -893,7 +891,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur: $e')),
+                    SnackBar(content: Text(friendlyError(e))),
                   );
                 }
               }

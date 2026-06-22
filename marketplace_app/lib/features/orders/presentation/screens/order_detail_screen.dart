@@ -12,6 +12,7 @@ import 'package:marketplace_app/core/routes/app_routes.dart';
 import '../../../../shared/providers/system_settings_provider.dart';
 import '../../../profile/data/user_reviews_service.dart';
 import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 
 /// Écran de détail d'une commande
@@ -73,7 +74,7 @@ class OrderDetailScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de l\'ouverture du chat: $e')),
+          SnackBar(content: Text(friendlyError(e))),
         );
       }
     }
@@ -540,7 +541,7 @@ class OrderDetailScreen extends ConsumerWidget {
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erreur: $e')),
+                    SnackBar(content: Text(friendlyError(e))),
                   );
                 }
               }
@@ -781,7 +782,7 @@ class OrderDetailScreen extends ConsumerWidget {
                                   );
                                 },
                                 loading: () => const Center(child: CircularProgressIndicator()),
-                                error: (e, _) => Text('Erreur: $e'),
+                                error: (e, _) => Text(friendlyError(e)),
                               );
                         },
                       ),
@@ -847,7 +848,7 @@ class OrderDetailScreen extends ConsumerWidget {
                             );
                           } catch (e) {
                             parentMessenger.showSnackBar(
-                              SnackBar(content: Text('Erreur: $e')),
+                              SnackBar(content: Text(friendlyError(e))),
                             );
                           }
                         },
@@ -970,7 +971,7 @@ class OrderDetailScreen extends ConsumerWidget {
               } catch (e) {
                 print('[REJECT] Error: $e');
                 parentMessenger.showSnackBar(
-                  SnackBar(content: Text('Erreur: $e')),
+                  SnackBar(content: Text(friendlyError(e))),
                 );
               }
             },
@@ -1045,7 +1046,7 @@ class OrderDetailScreen extends ConsumerWidget {
               } catch (e) {
                 print('[CANCEL] Error: $e');
                 parentMessenger.showSnackBar(
-                  SnackBar(content: Text('Erreur: $e')),
+                  SnackBar(content: Text(friendlyError(e))),
                 );
               }
             },
@@ -1122,7 +1123,7 @@ class OrderDetailScreen extends ConsumerWidget {
               } catch (e) {
                 print('[RETURN] Error: $e');
                 parentMessenger.showSnackBar(
-                  SnackBar(content: Text('Erreur: $e')),
+                  SnackBar(content: Text(friendlyError(e))),
                 );
               }
             },
@@ -1360,7 +1361,7 @@ class OrderDetailScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text(friendlyError(e))),
         );
       }
     }
@@ -1499,7 +1500,7 @@ class OrderDetailScreen extends ConsumerWidget {
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erreur: $e')),
+                      SnackBar(content: Text(friendlyError(e))),
                     );
                   }
                 }
@@ -1531,7 +1532,7 @@ class OrderDetailScreen extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: $e')),
+          SnackBar(content: Text(friendlyError(e))),
         );
       }
     }

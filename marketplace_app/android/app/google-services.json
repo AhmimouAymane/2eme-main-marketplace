@@ -7,50 +7,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:735878764760:android:a65ec6a7fcdd49549d1fad",
-        "android_client_info": {
-          "package_name": "com.example.marketplace_app"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "735878764760-asb07u6ernlo6scppepbdhkektr80t2u.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.marketplace_app",
-            "certificate_hash": "dd6d8b4db7fb963e20857834ad5983807f874ed9"
-          }
-        },
-        {
-          "client_id": "735878764760-ie5tbjrqgjca09v5igbgo928afvu86u2.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBPGnbjNGlvczQMlgV9OTRC0MmrXSqJ5xE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "735878764760-ie5tbjrqgjca09v5igbgo928afvu86u2.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "735878764760-qn7pkh20oh56vlpq5np5bn1a23c8dk41.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.marketplaceApp"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:735878764760:android:5941b04b2c794ecb9d1fad",
         "android_client_info": {
           "package_name": "com.techpal.clovi"

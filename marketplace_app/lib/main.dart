@@ -18,6 +18,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'shared/providers/connectivity_provider.dart';
 import 'shared/widgets/no_internet_screen.dart';
+import 'core/utils/error_handler.dart';
 
 
 // Plugin pour gérer les canaux de notification Android
@@ -214,32 +215,12 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
     // 0.1 Synchro du token avec le backend (CRUCIAL pour les notifs en arrière-plan)
     final authService = ref.read(authServiceProvider);
     
-    // Attendre un peu que tout soit bien chargé
-    Future.delayed(const Duration(seconds: 2), () async {
-      try {
-        await authService.syncFcmToken();
-        print('DEBUG: [FCM] Sync attempt finished');
-        
-        // Optionnel : Afficher un succès discret pour le débogage (à retirer en prod)
-        /*
-        rootScaffoldMessengerKey.currentState?.showSnackBar(
-          const SnackBar(
-            content: Text('🔔 [FCM] Notifications synchronisées'),
-            backgroundColor: Colors.blueGrey,
-            duration: Duration(seconds: 2),
-          ),
-        );
-        */
-      } catch (e) {
-        print('DEBUG: [FCM] Sync Error: $e');
-        rootScaffoldMessengerKey.currentState?.showSnackBar(
-          SnackBar(
-            content: Text('⚠️ [FCM] Erreur synchronisation : $e'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    });
+    try {
+      await authService.syncFcmToken();
+      print('DEBUG: [FCM] Sync attempt finished');
+    } catch (e) {
+      print('DEBUG: [FCM] Sync Error: $e');
+    }
 
     // Autoriser les notifications système en premier plan sur iOS
     // (les doublons avec nos SnackBars sont gérés dans le listener onMessage)
@@ -490,7 +471,7 @@ class MarketplaceAppContent extends ConsumerWidget {
       next.on('connect_error', (err) {
         rootScaffoldMessengerKey.currentState?.showSnackBar(
           SnackBar(
-            content: Text('❌ [SOCKET] Erreur de connexion: $err'),
+            content: Text(friendlyError(err)),
             backgroundColor: Colors.red,
             duration: Duration(seconds: 5),
           ),

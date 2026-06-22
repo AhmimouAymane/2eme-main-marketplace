@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:marketplace_app/features/auth/presentation/providers/auth_providers.dart';
 import 'package:marketplace_app/core/theme/app_colors.dart';
 import 'reset_password_screen.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 class VerifyOtpScreen extends ConsumerStatefulWidget {
   final String email;
@@ -60,7 +61,7 @@ class _VerifyOtpScreenState extends ConsumerState<VerifyOtpScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(content: Text(friendlyError(e)), backgroundColor: Colors.red),
         );
       }
     } finally {

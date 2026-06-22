@@ -9,6 +9,7 @@ import '../../../../core/utils/formatters.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:marketplace_app/shared/models/user_model.dart';
 import 'package:marketplace_app/shared/widgets/clovi_error_view.dart';
+import 'package:marketplace_app/core/utils/error_handler.dart';
 
 class SellerProfileScreen extends ConsumerWidget {
   final String userId;
@@ -417,7 +418,7 @@ class SellerProfileScreen extends ConsumerWidget {
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erreur: $e')),
+                      SnackBar(content: Text(friendlyError(e))),
                     );
                   }
                 }
