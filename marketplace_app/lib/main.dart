@@ -12,8 +12,10 @@ import 'shared/models/conversation_model.dart';
 import 'features/auth/presentation/providers/auth_providers.dart';
 import 'features/notifications/presentation/providers/notifications_provider.dart';
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'shared/providers/connectivity_provider.dart';
@@ -70,12 +72,14 @@ void main() async {
     macOS: initializationSettingsDarwin,
   );
 
-  await flutterLocalNotificationsPlugin.initialize(
-    initializationSettings,
-    onDidReceiveNotificationResponse: (NotificationResponse response) {
-      // Optionnel: Gérer ici les clics sur notifications locales si besoin
-    },
-  );
+  if (!Platform.isIOS) {
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // Optionnel: Gérer ici les clics sur notifications locales si besoin
+      },
+    );
+  }
 
   // Charger les préférences partagées AVANT de démarrer l'UI
   // Cela empêche le flash de la page de login au démarrage
@@ -109,11 +113,16 @@ class MarketplaceApp extends ConsumerStatefulWidget {
 
 class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
   StreamSubscription<RemoteMessage>? _fcmSubscription;
+  Timer? _pollingTimer;
 
   @override
   void initState() {
     super.initState();
     _setupNotifications();
+    // Démarrer le polling iOS immédiatement, pas à la fin des await FCM
+    if (Platform.isIOS) {
+      _startPollingForNewNotifications();
+    }
   }
 
   void _handleNotificationClick(RemoteMessage message) {
@@ -304,11 +313,48 @@ class _MarketplaceAppState extends ConsumerState<MarketplaceApp> {
         _handleNotificationClick(initialMessage);
       });
     }
+
+  }
+
+  void _startPollingForNewNotifications() {
+    debugPrint('[Polling iOS] Démarré');
+    int lastCount = 0;
+    bool firstCycle = true;
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      debugPrint('[Polling iOS] Cycle, lastCount=$lastCount');
+      try {
+        final dio = ref.read(dioProvider);
+        final response = await dio.get('notifications/unread-count');
+        debugPrint('[Polling iOS] Réponse: status=${response.statusCode}, data=${response.data}');
+        final count = int.tryParse(response.data.toString()) ?? 0;
+        debugPrint('[Polling iOS] count=$count, lastCount=$lastCount');
+        if (count > lastCount && !firstCycle) {
+          debugPrint('[Polling iOS] Nouvelle notification détectée !');
+          final notifResponse = await dio.get('notifications');
+          final list = (notifResponse.data as List?) ?? [];
+          debugPrint('[Polling iOS] Liste notifications: ${list.length} éléments');
+          if (list.isNotEmpty) {
+            final latest = list.first;
+            final title = latest['title']?.toString() ?? '';
+            final body = latest['message']?.toString() ?? latest['body']?.toString() ?? '';
+            debugPrint('[Polling iOS] Affichage: title=$title body=$body');
+            if (title.isNotEmpty) {
+              _showCloviNotification(title, body, isSystem: true);
+            }
+          }
+        }
+        lastCount = count;
+        firstCycle = false;
+      } catch (e, stack) {
+        debugPrint('[Polling iOS] Erreur: $e\n$stack');
+      }
+    });
   }
 
   @override
   void dispose() {
     _fcmSubscription?.cancel();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 

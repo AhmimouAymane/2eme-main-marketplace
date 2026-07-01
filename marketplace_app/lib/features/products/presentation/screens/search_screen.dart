@@ -780,12 +780,14 @@ class _PriceFilterSheetState extends State<_PriceFilterSheet> {
                       return;
                     }
 
-                    final min = minStr.isEmpty
+                    final cleanMin = minStr.replaceAll(',', '.').replaceAll(' ', '');
+                    final cleanMax = maxStr.replaceAll(',', '.').replaceAll(' ', '');
+                    final min = cleanMin.isEmpty
                         ? 0.0
-                        : (double.tryParse(minStr) ?? 0.0);
-                    final max = maxStr.isEmpty
+                        : (double.tryParse(cleanMin) ?? 0.0);
+                    final max = cleanMax.isEmpty
                         ? 99999.0
-                        : (double.tryParse(maxStr) ?? 99999.0);
+                        : (double.tryParse(cleanMax) ?? 99999.0);
 
                     if (min > max) {
                       ScaffoldMessenger.of(context).showSnackBar(

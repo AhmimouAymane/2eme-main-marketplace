@@ -58,7 +58,7 @@ class Validators {
       return 'Le prix est requis';
     }
     
-    final price = double.tryParse(value);
+    final price = double.tryParse(value.replaceAll(',', '.').replaceAll(' ', ''));
     if (price == null) {
       return 'Prix invalide';
     }

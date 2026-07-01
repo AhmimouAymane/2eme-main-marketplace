@@ -167,7 +167,7 @@ class _CreateProductScreenState extends ConsumerState<CreateProductScreen> {
       return;
     }
 
-    final parsedPrice = double.tryParse(_priceController.text);
+    final parsedPrice = double.tryParse(_priceController.text.replaceAll(',', '.').replaceAll(' ', ''));
     if (parsedPrice == null || parsedPrice <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Veuillez entrer un prix valide')),

@@ -128,6 +128,8 @@ export class UsersService {
 
         return {
             ...userData,
+            isSellerVerified: true,    // TEMPORAIRE — forcer à true
+            sellerStatus: 'APPROVED' as any,  // TEMPORAIRE — forcer à APPROVED
             averageRating,
             salesCount: _count.sellerOrders,
             products: pr || [],

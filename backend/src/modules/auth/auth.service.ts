@@ -167,7 +167,7 @@ export class AuthService {
 
         if (existingUser) {
             if (existingUser.isEmailVerified) {
-                throw new ConflictException('User already exists');
+                throw new ConflictException('Cet email est déjà utilisé');
             }
 
             // If user exists but NOT VERIFIED, resend code

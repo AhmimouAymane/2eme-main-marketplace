@@ -844,7 +844,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
           FilledButton(
             onPressed: () {
-              final val = double.tryParse(controller.text.trim());
+              final val = double.tryParse(controller.text.trim().replaceAll(',', '.').replaceAll(' ', ''));
               if (val == null || val <= 0) return;
               Navigator.pop(context);
               showDialog<void>(

@@ -61,6 +61,10 @@ class AuthErrorFormatter {
       return 'Email ou mot de passe incorrect.';
     }
     
+    if (message.contains('Cet email est déjà utilisé') || message.contains('User already exists')) {
+      return 'Cet email est déjà utilisé.';
+    }
+    
     return message;
   }
 }

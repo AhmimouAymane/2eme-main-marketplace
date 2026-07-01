@@ -337,17 +337,17 @@ export class ProductsService {
 
 
     async create(createProductDto: CreateProductDto, sellerId: string) {
-        // Check if user is verified
-        const user = await this.prisma.user.findUnique({
-            where: { id: sellerId },
-            select: { isSellerVerified: true, sellerStatus: true }
-        });
+        // Check if user is verified — DÉSACTIVÉ TEMPORAIREMENT
+        // const user = await this.prisma.user.findUnique({
+        //     where: { id: sellerId },
+        //     select: { isSellerVerified: true, sellerStatus: true }
+        // });
 
-        if (!user || !user.isSellerVerified) {
-            throw new ForbiddenException(
-                'Vous devez faire vérifier votre compte (RIB et CIN) avant de pouvoir poster un produit.'
-            );
-        }
+        // if (!user || !user.isSellerVerified) {
+        //     throw new ForbiddenException(
+        //         'Vous devez faire vérifier votre compte (RIB et CIN) avant de pouvoir poster un produit.'
+        //     );
+        // }
 
         console.log('--- PRODUCT CREATE DEBUG ---');
         console.log('Seller ID:', sellerId);
